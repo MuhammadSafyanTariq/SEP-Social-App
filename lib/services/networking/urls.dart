@@ -115,6 +115,11 @@ class Urls {
 
   static const String inviteFriendToLiveStream = '/api/inviteUserLive';
 
+  // Agora Cloud Recording
+  static const String agoraRecordingAcquire = '/api/agora/recording/acquire';
+  static const String agoraRecordingStart = '/api/agora/recording/start';
+  static const String agoraRecordingStop = '/api/agora/recording/stop';
+
   // core.....
 
   static const String uploadFile = '/fileUpload';

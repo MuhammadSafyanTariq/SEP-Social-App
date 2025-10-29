@@ -789,6 +789,29 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Recording button (only for host)
+            Obx(
+              () => GestureDetector(
+                onTap: () => ctrl.toggleRecording(),
+                child: Container(
+                  padding: const EdgeInsets.all(7),
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: ctrl.isRecording.value
+                        ? Colors.red.withValues(alpha: 0.9)
+                        : AppColors.black.withValues(alpha: 0.35),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    ctrl.isRecording.value
+                        ? Icons.stop
+                        : Icons.fiber_manual_record,
+                    size: 24,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
             if (hasVisibleBroadcasters)
               IconControl(
                 url: AppImages.broadcaster,

@@ -11,11 +11,12 @@ import '../../../../components/coreComponents/TextView.dart';
 import '../../../../components/styles/appColors.dart';
 import '../../../../components/styles/appImages.dart';
 import '../../controller/agora_chat_ctrl.dart';
+import '../live_stream_ctrl.dart';
 
 class LiveStatusButtons extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return  Row(
+    return Row(
       children: [
         AppButton(
           buttonColor: AppColors.red,
@@ -39,10 +40,35 @@ class LiveStatusButtons extends StatelessWidget {
                 tintColor: AppColors.white,
               ),
               const SizedBox(width: 7),
-              Obx(()=> TextView(text: AgoraChatCtrl.find.liveCountValue, style: 14.txtMediumWhite)),
+              Obx(
+                () => TextView(
+                  text: AgoraChatCtrl.find.liveCountValue,
+                  style: 14.txtMediumWhite,
+                ),
+              ),
             ],
           ),
         ),
+        const SizedBox(width: 5),
+        // Recording indicator
+        Obx(() {
+          final isRecording = LiveStreamCtrl.find.isRecording.value;
+          if (!isRecording) return const SizedBox.shrink();
+
+          return AppButton(
+            buttonColor: AppColors.red,
+            isFilledButton: false,
+            radius: 8,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            child: Row(
+              children: [
+                Icon(Icons.fiber_manual_record, color: Colors.white, size: 16),
+                const SizedBox(width: 5),
+                TextView(text: 'REC', style: 14.txtsemiBoldWhite),
+              ],
+            ),
+          );
+        }),
       ],
     );
   }
@@ -66,13 +92,16 @@ class StartStreamButton extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: AppColors.white.withValues(alpha: 0.2),
-              border: Border.all(color: AppColors.grey.withValues(alpha: 0.8), width: 2.5),
+              border: Border.all(
+                color: AppColors.grey.withValues(alpha: 0.8),
+                width: 2.5,
+              ),
             ),
             child: Center(
               child: Container(
                 width: 30,
                 height: 30,
-                decoration:  BoxDecoration(
+                decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: AppColors.grey.withValues(alpha: 0.8),
                 ),
@@ -81,15 +110,17 @@ class StartStreamButton extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 5),
-        TextView(text: 'LIVE',
+        TextView(
+          text: 'LIVE',
           style: 14.txtBoldGrey.withShadow(AppColors.grey),
           margin: EdgeInsets.only(bottom: context.bottomSafeArea),
-          )
+        ),
       ],
     );
   }
 }
-OutlineInputBorder get _inputBorder =>OutlineInputBorder(
+
+OutlineInputBorder get _inputBorder => OutlineInputBorder(
   borderRadius: BorderRadius.circular(50),
   borderSide: BorderSide(color: AppColors.grey, width: 2),
 );
@@ -99,20 +130,17 @@ class ChatInputBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
     return Padding(
-      padding: EdgeInsets.zero
+      padding: EdgeInsets.zero,
 
       // EdgeInsets.symmetric(horizontal: 16) +
       //     EdgeInsets.only(bottom: context.bottomSafeArea, top: 5)
-
-      ,
       child: TextFormField(
-        onTapOutside: (event) =>  FocusScope.of(context).unfocus(),
+        onTapOutside: (event) => FocusScope.of(context).unfocus(),
         controller: _msgCtrl,
         maxLines: null,
         style: 14.txtRegularBlack.withShadow(AppColors.grey),
-        decoration:  InputDecoration(
+        decoration: InputDecoration(
           hintText: 'Type something...',
           // hintStyle: 14.txtBoldGrey,
           hintStyle: 14.txtRegularRetake1,
@@ -132,51 +160,13 @@ class ChatInputBox extends StatelessWidget {
                     _msgCtrl.clear();
                   }
                 },
-                  url: 'assets/images/sendmsg.png', size: 40, margin: EdgeInsets.only(right: 10, top: 3),)
-            ],
-          )
-        ),
-      ),
-    );
-
-
-
-
-      Container(
-      height: 70,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-      ),
-      child: Row(
-        children: [
-          IconButton(icon: const Icon(Icons.emoji_emotions_outlined), onPressed: () {}),
-          Expanded(
-            child: TextFormField(
-              onTapOutside: (event) =>  FocusScope.of(context).unfocus(),
-              controller: _msgCtrl,
-              maxLines: null,
-              decoration: const InputDecoration(
-                hintText: 'Type something...',
-                border: InputBorder.none,
+                url: 'assets/images/sendmsg.png',
+                size: 40,
+                margin: EdgeInsets.only(right: 10, top: 3),
               ),
-            ),
+            ],
           ),
-          GestureDetector(
-            onTap: () {
-              final text = _msgCtrl.getText;
-              if (text.isNotNullEmpty) {
-                AgoraChatCtrl.find.sendMessage(text);
-                _msgCtrl.clear();
-              }
-            },
-            child: Padding(
-              padding: const EdgeInsets.only(right: 5),
-              child: ImageView(url: 'assets/images/sendmsg.png', size: 40),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -187,7 +177,7 @@ class IconControl extends StatelessWidget {
   final String? url;
   final VoidCallback onTap;
 
-  const IconControl({ this.icon, required this.onTap, this.url});
+  const IconControl({this.icon, required this.onTap, this.url});
 
   @override
   Widget build(BuildContext context) {
@@ -196,14 +186,16 @@ class IconControl extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-            padding: const EdgeInsets.all(7),
-            decoration: BoxDecoration(
-              color: AppColors.black.withValues(alpha: 0.35), // semi-transparent dark bg
-              shape: BoxShape.circle,
-            ),
-           child:  icon != null ?
-            Icon(icon, size: 24, color: Colors.black45) :
-            ImageView(url: url ?? '', size: 24, tintColor: Colors.black45,)
+          padding: const EdgeInsets.all(7),
+          decoration: BoxDecoration(
+            color: AppColors.black.withValues(
+              alpha: 0.35,
+            ), // semi-transparent dark bg
+            shape: BoxShape.circle,
+          ),
+          child: icon != null
+              ? Icon(icon, size: 24, color: Colors.black45)
+              : ImageView(url: url ?? '', size: 24, tintColor: Colors.black45),
         ),
       ),
     );

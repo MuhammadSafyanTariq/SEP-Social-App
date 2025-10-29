@@ -10,6 +10,7 @@ import 'package:sep/utils/extensions/extensions.dart';
 
 import '../../../services/networking/urls.dart';
 import '../../../services/storage/preferences.dart';
+import '../../../services/agora/agora_recording_service.dart';
 import '../../data/models/dataModels/profile_data/profile_data_model.dart';
 import '../../data/models/dataModels/responseDataModel.dart';
 import '../helpers/token_transfer_helper.dart';
@@ -194,6 +195,25 @@ class LiveStreamCtrl extends GetxController {
   RxBool videoRequestButtonEnable = RxBool(true);
 
   ///---------------------------------------------------------------------------
+  /// Recording variables
+  RxBool isRecording = RxBool(false);
+  String? _recordingResourceId;
+  String? _recordingSid;
+  DateTime? _recordingStartTime;
+  String? recordedVideoUrl;
+
+  ///---------------------------------------------------------------------------
+  /// Recording getters
+  bool get canRecord => isHost; // Only host can record
+  String? get recordingDuration {
+    if (_recordingStartTime == null) return null;
+    final duration = DateTime.now().difference(_recordingStartTime!);
+    final minutes = duration.inMinutes;
+    final seconds = duration.inSeconds % 60;
+    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  ///---------------------------------------------------------------------------
   /// getters.......
   bool get isHost => streamCtrl.value.channelId == Preferences.uid;
   int get hostAgoraId => getNumericUserId(uid: streamCtrl.value.channelId);
@@ -367,6 +387,148 @@ class LiveStreamCtrl extends GetxController {
       }
     }).toList();
   }
+
+  ///---------------------------------------------------------------------------
+  /// Recording Methods
+
+  /// Start Agora cloud recording
+  Future<bool> startRecording() async {
+    if (!canRecord) {
+      AppUtils.toastError('Only host can start recording');
+      return false;
+    }
+
+    if (isRecording.value) {
+      AppUtils.toastError('Recording is already in progress');
+      return false;
+    }
+
+    final channelName = streamCtrl.value.channelId;
+    if (channelName == null || channelName.isEmpty) {
+      AppUtils.toastError('Channel not initialized');
+      return false;
+    }
+
+    try {
+      AppUtils.log('Starting recording for channel: $channelName');
+      isRecording.value = true;
+
+      // Step 1: Acquire resource
+      final acquireResult = await AgoraRecordingService.acquire(
+        channelName: channelName,
+        uid: hostAgoraId.toString(),
+      );
+
+      if (!acquireResult.success || acquireResult.resourceId == null) {
+        throw Exception(
+          acquireResult.errorMessage ?? 'Failed to acquire resource',
+        );
+      }
+
+      _recordingResourceId = acquireResult.resourceId;
+      AppUtils.log('Acquired resourceId: $_recordingResourceId');
+
+      // Step 2: Start recording
+      final startResult = await AgoraRecordingService.start(
+        channelName: channelName,
+        uid: hostAgoraId.toString(),
+        resourceId: _recordingResourceId!,
+      );
+
+      if (!startResult.success || startResult.sid == null) {
+        throw Exception(
+          startResult.errorMessage ?? 'Failed to start recording',
+        );
+      }
+
+      _recordingSid = startResult.sid;
+      _recordingStartTime = DateTime.now();
+
+      AppUtils.toast('Recording started successfully');
+      AppUtils.log('Recording started with SID: $_recordingSid');
+
+      return true;
+    } catch (e) {
+      isRecording.value = false;
+      _recordingResourceId = null;
+      _recordingSid = null;
+      _recordingStartTime = null;
+
+      AppUtils.logEr('Error starting recording: $e');
+      AppUtils.toastError('Failed to start recording: $e');
+      return false;
+    }
+  }
+
+  /// Stop Agora cloud recording
+  Future<bool> stopRecording() async {
+    if (!isRecording.value) {
+      AppUtils.toastError('No recording in progress');
+      return false;
+    }
+
+    if (_recordingResourceId == null || _recordingSid == null) {
+      AppUtils.toastError('Recording session not found');
+      isRecording.value = false;
+      return false;
+    }
+
+    final channelName = streamCtrl.value.channelId;
+    if (channelName == null || channelName.isEmpty) {
+      AppUtils.toastError('Channel not initialized');
+      return false;
+    }
+
+    try {
+      AppUtils.log('Stopping recording - SID: $_recordingSid');
+
+      final stopResult = await AgoraRecordingService.stop(
+        channelName: channelName,
+        uid: hostAgoraId.toString(),
+        resourceId: _recordingResourceId!,
+        sid: _recordingSid!,
+      );
+
+      if (!stopResult.success) {
+        throw Exception(stopResult.errorMessage ?? 'Failed to stop recording');
+      }
+
+      recordedVideoUrl = stopResult.fileUrl;
+
+      isRecording.value = false;
+      _recordingResourceId = null;
+      _recordingSid = null;
+      _recordingStartTime = null;
+
+      AppUtils.toast('Recording stopped successfully');
+      AppUtils.log('Recording stopped. File URL: $recordedVideoUrl');
+      AppUtils.log('Server response: ${stopResult.serverResponse}');
+
+      return true;
+    } catch (e) {
+      AppUtils.logEr('Error stopping recording: $e');
+      AppUtils.toastError('Failed to stop recording: $e');
+
+      // Reset recording state even on error
+      isRecording.value = false;
+      _recordingResourceId = null;
+      _recordingSid = null;
+      _recordingStartTime = null;
+
+      return false;
+    }
+  }
+
+  /// Toggle recording on/off
+  Future<void> toggleRecording() async {
+    if (isRecording.value) {
+      await stopRecording();
+    } else {
+      await startRecording();
+    }
+  }
+
+  ///---------------------------------------------------------------------------
 
   /// Initialize Live Broadcast session
   void initBroadCast(
