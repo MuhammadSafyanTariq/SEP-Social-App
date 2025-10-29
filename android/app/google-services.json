@@ -1,0 +1,70 @@
+{
+  "project_info": {
+    "project_number": "1018343115284",
+    "project_id": "sep-app-9b95e",
+    "storage_bucket": "sep-app-9b95e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1018343115284:android:bc08635ee5a436a099b501",
+        "android_client_info": {
+          "package_name": "com.app.sep"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1018343115284-00lr26d6pl1ntb2i08st8jr5mi3hn660.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.app.sep",
+            "certificate_hash": "0ad11e54211ac1ad04635bb0efcfdf297ad93f7c"
+          }
+        },
+        {
+          "client_id": "1018343115284-gcftdr8ec5hkflo97knhavkv2tjfcrmp.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.app.sep",
+            "certificate_hash": "3fdb00b6b38f7a6176c3b7b7c5d433cd60b73d07"
+          }
+        },
+        {
+          "client_id": "1018343115284-hek8tvnh1rdm3u200vgn5g9mfq3l5j0o.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.app.sep",
+            "certificate_hash": "95410456027673eb20a9e3427c72e948f96971f5"
+          }
+        },
+        {
+          "client_id": "1018343115284-j88mdkj7kdppp9ebnckop50bh2af0ipm.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCRYkOMfbgTp0_hVbUN2zN8IxF-h5kA7Hw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1018343115284-j88mdkj7kdppp9ebnckop50bh2af0ipm.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1018343115284-8kdno8bqr2hhcbbku1vradbdhmtkrk3q.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.app.sep"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
