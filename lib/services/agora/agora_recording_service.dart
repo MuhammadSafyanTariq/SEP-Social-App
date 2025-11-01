@@ -13,10 +13,15 @@ class AgoraRecordingService {
   static String get customerSecret => dotenv.env['AGORA_CUSTOMER_SECRET'] ?? '';
 
   // Blackblaze B2 credentials from environment
-  static String get b2KeyId => dotenv.env['BACKBLAZE_KEY_ID'] ?? '';
-  static String get b2AppKey => dotenv.env['BACKBLAZE_APP_KEY'] ?? '';
-  static String get b2Bucket => dotenv.env['BACKBLAZE_BUCKET_NAME'] ?? '';
-  static String get b2Endpoint => dotenv.env['BACKBLAZE_ENDPOINT'] ?? '';
+  static String get b2KeyId =>
+      dotenv.env['BACKBLAZE_KEY_ID'] ?? '005ac5db476e4ed0000000001';
+  static String get b2AppKey =>
+      dotenv.env['BACKBLAZE_APP_KEY'] ?? 'K005X7NwZPbaIlsoh2MKWs3bqIFM17E';
+  static String get b2Bucket =>
+      dotenv.env['BACKBLAZE_BUCKET_NAME'] ?? 'sep-recordings';
+  static String get b2Endpoint =>
+      dotenv.env['BACKBLAZE_ENDPOINT'] ??
+      'https://s3.us-east-005.backblazeb2.com';
 
   // Agora Cloud Recording API base URL
   static String get baseUrl =>
@@ -113,6 +118,16 @@ class AgoraRecordingService {
       AppUtils.log('🔑 [START] Token: ${token?.substring(0, 20) ?? 'null'}...');
       AppUtils.log('🪣 [START] B2 Bucket: $b2Bucket');
       AppUtils.log('🌍 [START] B2 Endpoint: $b2Endpoint');
+      AppUtils.log('🔧 [START] B2 KeyId: ${b2KeyId.substring(0, 10)}...');
+      AppUtils.log('🔧 [START] B2 AppKey: ${b2AppKey.substring(0, 10)}...');
+
+      // Debug environment loading
+      AppUtils.log(
+        '🐛 [DEBUG] Raw env BACKBLAZE_BUCKET_NAME: ${dotenv.env['BACKBLAZE_BUCKET_NAME']}',
+      );
+      AppUtils.log(
+        '🐛 [DEBUG] Raw env BACKBLAZE_ENDPOINT: ${dotenv.env['BACKBLAZE_ENDPOINT']}',
+      );
 
       final url = Uri.parse('$baseUrl/resourceid/$resourceId/mode/mix/start');
 
@@ -150,7 +165,9 @@ class AgoraRecordingService {
             "accessKey": b2KeyId,
             "secretKey": b2AppKey,
             "extensionParams": {
-              "endpoint": b2Endpoint.replaceAll('https://', ''),
+              "endpoint": b2Endpoint
+                  .replaceAll('https://', '')
+                  .replaceAll('http://', ''),
             },
             "fileNamePrefix": [
               "recordings",
