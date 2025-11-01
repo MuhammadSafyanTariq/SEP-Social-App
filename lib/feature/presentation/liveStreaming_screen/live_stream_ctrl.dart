@@ -732,7 +732,8 @@ class LiveStreamCtrl extends GetxController {
 
           for (final file in fileList) {
             if (file is Map<String, dynamic>) {
-              final filename = file['filename'] ?? '';
+              // Fix: Use 'fileName' (capital N) as returned by Agora API
+              final filename = file['fileName'] ?? file['filename'] ?? '';
               final downloadUrl = file['downloadUrl'] as String?;
               final trackType = file['trackType'] ?? '';
 
@@ -753,14 +754,17 @@ class LiveStreamCtrl extends GetxController {
               }
               // Also check for other video formats or construct URL if needed
               else if ((filename.contains('.mp4') ||
+                      filename.contains('.m3u8') ||
                       trackType.contains('video')) &&
                   filename.isNotEmpty) {
-                // Construct URL based on your cloud storage configuration
+                // Construct Blackblaze B2 URL with proper format
                 final constructedUrl =
-                    VideoUrlRetrieverService.constructBackblazeUrl(filename);
+                    'https://s3.us-east-005.backblazeb2.com/$filename';
                 if (!extractedVideoUrls.contains(constructedUrl)) {
                   extractedVideoUrls.add(constructedUrl);
-                  AppUtils.log('🎬 ✅ Constructed video URL: $constructedUrl');
+                  AppUtils.log(
+                    '🎬 ✅ Constructed Blackblaze B2 URL: $constructedUrl',
+                  );
                 }
               }
             }
@@ -793,10 +797,51 @@ class LiveStreamCtrl extends GetxController {
         );
         AppUtils.log('🎬 📋 All recorded URLs: $recordedVideoUrls');
       } else {
-        // No URLs available immediately - this should be rare with your setup
-        AppUtils.logEr(
-          '⚠️ No video URLs available immediately. Recording may still be processing.',
+        // Try extracting using the new AgoraRecordingService method
+        AppUtils.log(
+          '🔄 [FALLBACK] Trying AgoraRecordingService.extractRecordingFiles...',
         );
+
+        if (stopResult.serverResponse != null) {
+          final recordingFiles = AgoraRecordingService.extractRecordingFiles(
+            stopResult,
+            channelName,
+          );
+
+          final immediateUrl = AgoraRecordingService.getImmediateVideoUrl(
+            recordingFiles,
+          );
+
+          if (immediateUrl != null && immediateUrl.isNotEmpty) {
+            recordedVideoUrls.add(immediateUrl);
+            recordedVideoUrl = immediateUrl;
+            AppUtils.log(
+              '🎬 ✅ [FALLBACK] Found immediate video URL: $immediateUrl',
+            );
+          } else {
+            // Last resort: Wait for video URL to become available
+            AppUtils.log('⏳ [WAIT] Starting wait for video URL...');
+
+            final waitedUrl = await AgoraRecordingService.waitForVideoUrl(
+              resourceId: tempResourceId!,
+              sid: tempSid!,
+              maxWaitSeconds: 30,
+              checkIntervalSeconds: 5,
+            );
+
+            if (waitedUrl != null && waitedUrl.isNotEmpty) {
+              recordedVideoUrls.add(waitedUrl);
+              recordedVideoUrl = waitedUrl;
+              AppUtils.log(
+                '🎬 ✅ [WAIT] Video URL available after waiting: $waitedUrl',
+              );
+            } else {
+              AppUtils.logEr(
+                '⚠️ No video URLs available immediately. Recording may still be processing.',
+              );
+            }
+          }
+        }
 
         // Store metadata for potential future retrieval
         AppUtils.log(

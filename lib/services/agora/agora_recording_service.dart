@@ -275,7 +275,8 @@ class AgoraRecordingService {
 
           for (final file in fileList) {
             if (file is Map<String, dynamic>) {
-              final filename = file['filename'] ?? '';
+              // Fix: Use 'fileName' (capital N) as returned by Agora API
+              final filename = file['fileName'] ?? file['filename'] ?? '';
               final trackType = file['trackType'] ?? '';
 
               AppUtils.log('📄 [STOP] File: $filename, trackType: $trackType');
@@ -283,8 +284,11 @@ class AgoraRecordingService {
               // Look for MP4 files with audio_and_video track type
               if (filename.endsWith('.mp4') &&
                   trackType.contains('audio_and_video')) {
-                // Construct Blackblaze B2 URL
-                mp4Url = '$b2Endpoint/$filename';
+                // Construct Blackblaze B2 URL with correct endpoint format
+                final cleanEndpoint = b2Endpoint
+                    .replaceAll('https://', '')
+                    .replaceAll('http://', '');
+                mp4Url = 'https://$cleanEndpoint/$filename';
                 fileUrl = mp4Url;
 
                 // Store for later backend submission
@@ -292,6 +296,17 @@ class AgoraRecordingService {
 
                 AppUtils.log('🎥 [STOP] Found MP4 URL: $mp4Url');
                 break;
+              }
+
+              // Also check for .m3u8 files as backup
+              if (filename.endsWith('.m3u8') &&
+                  fileUrl == null &&
+                  trackType.contains('audio_and_video')) {
+                final cleanEndpoint = b2Endpoint
+                    .replaceAll('https://', '')
+                    .replaceAll('http://', '');
+                fileUrl = 'https://$cleanEndpoint/$filename';
+                AppUtils.log('🎬 [STOP] Found M3U8 URL as backup: $fileUrl');
               }
             }
           }
@@ -485,7 +500,7 @@ class AgoraRecordingService {
         '🎯 [WORKFLOW] Stopping complete recording workflow for SID: $sid',
       );
 
-      // Stop recording
+      // Stop recording and get immediate response
       final stopResult = await stop(
         channelName: channelName,
         uid: uid.toString(),
@@ -493,14 +508,34 @@ class AgoraRecordingService {
         sid: sid,
       );
 
-      if (stopResult.success) {
+      if (stopResult.success && stopResult.serverResponse != null) {
         AppUtils.log('✅ [WORKFLOW] Recording workflow stopped successfully');
 
-        // Extract recording files with URLs (like your working files)
+        // Extract recording files with URLs immediately
         final recordingFiles = extractRecordingFiles(stopResult, channelName);
 
+        // Also add any immediate URLs from stop result
+        if (stopResult.fileUrl != null && stopResult.fileUrl!.isNotEmpty) {
+          final immediateFile = {
+            'filename': 'immediate_recording.mp4',
+            'url': stopResult.fileUrl!,
+            'downloadUrl': stopResult.fileUrl!,
+            'trackType': 'audio_and_video',
+            'uid': '',
+            'mixedAllUser': true,
+            'isPlayable': true,
+            'sliceStartTime': 0,
+            'size': 0,
+            'source': 'immediate_stop_result',
+          };
+
+          // Add to beginning of list for priority
+          recordingFiles.insert(0, immediateFile);
+          AppUtils.log('🚀 [WORKFLOW] Added immediate URL from stop result');
+        }
+
         AppUtils.log(
-          '🎬 [WORKFLOW] Extracted ${recordingFiles.length} recording files',
+          '🎬 [WORKFLOW] Extracted ${recordingFiles.length} recording files with immediate URLs',
         );
         return recordingFiles;
       } else {
@@ -520,6 +555,117 @@ class AgoraRecordingService {
   /// Clear the stored video URL
   static void clearLastRecordedVideoUrl() {
     lastRecordedVideoUrl = null;
+  }
+
+  /// Get immediate video URL from recording files (matching your working files)
+  static String? getImmediateVideoUrl(
+    List<Map<String, dynamic>> recordingFiles,
+  ) {
+    try {
+      AppUtils.log(
+        '🔍 [IMMEDIATE] Searching for immediate video URL in ${recordingFiles.length} files',
+      );
+
+      // Priority 1: MP4 files with audio_and_video track type
+      for (final file in recordingFiles) {
+        final filename = file['fileName'] ?? file['filename'] ?? '';
+        final url = file['url'] ?? '';
+        final trackType = file['trackType'] ?? '';
+
+        if (filename.endsWith('.mp4') &&
+            trackType.contains('audio_and_video') &&
+            url.isNotEmpty) {
+          AppUtils.log('🎥 [IMMEDIATE] Found MP4 video URL: $url');
+          return url;
+        }
+      }
+
+      // Priority 2: Any MP4 file with URL
+      for (final file in recordingFiles) {
+        final filename = file['fileName'] ?? file['filename'] ?? '';
+        final url = file['url'] ?? '';
+
+        if (filename.endsWith('.mp4') && url.isNotEmpty) {
+          AppUtils.log('🎬 [IMMEDIATE] Found MP4 video URL: $url');
+          return url;
+        }
+      }
+
+      // Priority 3: Any playable file with URL
+      for (final file in recordingFiles) {
+        final url = file['url'] ?? '';
+        final isPlayable = file['isPlayable'] ?? false;
+
+        if (isPlayable && url.isNotEmpty) {
+          AppUtils.log('🎬 [IMMEDIATE] Found playable video URL: $url');
+          return url;
+        }
+      }
+
+      // Priority 4: Any file with URL
+      for (final file in recordingFiles) {
+        final url = file['url'] ?? '';
+        if (url.isNotEmpty) {
+          AppUtils.log('📹 [IMMEDIATE] Found any video URL: $url');
+          return url;
+        }
+      }
+
+      AppUtils.log('⚠️ [IMMEDIATE] No video URLs found in recording files');
+      return null;
+    } catch (e) {
+      AppUtils.logEr('❌ [IMMEDIATE] Error getting immediate video URL: $e');
+      return null;
+    }
+  }
+
+  /// Wait for video files to be available with timeout (matching your working files)
+  static Future<String?> waitForVideoUrl({
+    required String resourceId,
+    required String sid,
+    int maxWaitSeconds = 60,
+    int checkIntervalSeconds = 5,
+  }) async {
+    try {
+      AppUtils.log(
+        '⏳ [WAIT] Waiting for video URL - maxWait: ${maxWaitSeconds}s, interval: ${checkIntervalSeconds}s',
+      );
+
+      final startTime = DateTime.now();
+
+      while (DateTime.now().difference(startTime).inSeconds < maxWaitSeconds) {
+        try {
+          // Query Agora for current status
+          final queryResult = await query(resourceId: resourceId, sid: sid);
+
+          if (queryResult.success && queryResult.serverResponse != null) {
+            final files = extractRecordingFiles(queryResult, 'query_check');
+            final videoUrl = getImmediateVideoUrl(files);
+
+            if (videoUrl != null) {
+              AppUtils.log(
+                '🎉 [WAIT] Video URL available after ${DateTime.now().difference(startTime).inSeconds}s: $videoUrl',
+              );
+              return videoUrl;
+            }
+          }
+
+          AppUtils.log(
+            '⏳ [WAIT] Video not ready yet, waiting ${checkIntervalSeconds}s...',
+          );
+          await Future.delayed(Duration(seconds: checkIntervalSeconds));
+        } catch (e) {
+          AppUtils.log('⚠️ [WAIT] Query error during wait: $e');
+          await Future.delayed(Duration(seconds: checkIntervalSeconds));
+        }
+      }
+
+      AppUtils.log('⏰ [WAIT] Timeout reached, no video URL found');
+      return null;
+    } catch (e) {
+      AppUtils.logEr('❌ [WAIT] Error waiting for video URL: $e');
+      return null;
+    }
   }
 
   /// Extract recording files from stop response (matching your working files)
@@ -575,7 +721,8 @@ class AgoraRecordingService {
 
           for (final file in fileList) {
             if (file is Map<String, dynamic>) {
-              final filename = file['filename'] ?? '';
+              // Fix: Use 'fileName' (capital N) as returned by Agora API
+              final filename = file['fileName'] ?? file['filename'] ?? '';
               final downloadUrl = file['downloadUrl'] as String?;
               final trackType = file['trackType'] ?? '';
 
@@ -587,7 +734,10 @@ class AgoraRecordingService {
               String? fileUrl = downloadUrl;
               if (fileUrl == null || fileUrl.isEmpty) {
                 if (filename.isNotEmpty) {
-                  fileUrl = '$b2Endpoint/$filename';
+                  final cleanEndpoint = b2Endpoint
+                      .replaceAll('https://', '')
+                      .replaceAll('http://', '');
+                  fileUrl = 'https://$cleanEndpoint/$filename';
                   AppUtils.log('🔗 [FILES] Constructed B2 URL: $fileUrl');
                 }
               }

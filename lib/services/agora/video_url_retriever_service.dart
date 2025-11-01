@@ -27,7 +27,9 @@ class VideoUrlRetrieverService {
     for (final file in recordingFiles) {
       final url = file['url'] as String?;
       final downloadUrl = file['downloadUrl'] as String?;
-      final filename = file['filename'] as String?;
+      // Fix: Handle both 'fileName' and 'filename' fields
+      final filename =
+          file['fileName'] as String? ?? file['filename'] as String?;
       final trackType = file['trackType'] as String?;
 
       developer.log(
@@ -43,7 +45,8 @@ class VideoUrlRetrieverService {
         final isVideoFile =
             filename?.endsWith('.mp4') == true ||
             filename?.endsWith('.m3u8') == true ||
-            trackType?.contains('video') == true;
+            trackType?.contains('video') == true ||
+            trackType?.contains('audio_and_video') == true;
 
         if (isVideoFile) {
           videoUrls.add(finalUrl);
