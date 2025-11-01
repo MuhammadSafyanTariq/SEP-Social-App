@@ -20,7 +20,7 @@ class RecordingDiagnosticScreen extends StatefulWidget {
 
 class _RecordingDiagnosticScreenState extends State<RecordingDiagnosticScreen> {
   final TextEditingController _channelController = TextEditingController(
-    text: 'test-diagnostic',
+    text: 'testDiagnostic',
   );
   final TextEditingController _uidController = TextEditingController(
     text: '123456',
