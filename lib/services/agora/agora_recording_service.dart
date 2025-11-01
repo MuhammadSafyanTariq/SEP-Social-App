@@ -12,11 +12,11 @@ class AgoraRecordingService {
   static String get customerId => dotenv.env['AGORA_CUSTOMER_ID'] ?? '';
   static String get customerSecret => dotenv.env['AGORA_CUSTOMER_SECRET'] ?? '';
 
-  // AWS S3 credentials from environment
-  static String get s3AccessKey => dotenv.env['CLOUD_STORAGE_ACCESS_KEY'] ?? '';
-  static String get s3SecretKey => dotenv.env['CLOUD_STORAGE_SECRET_KEY'] ?? '';
-  static String get s3Bucket => dotenv.env['CLOUD_STORAGE_BUCKET'] ?? '';
-  static String get s3Region => dotenv.env['CLOUD_STORAGE_REGION'] ?? '';
+  // Blackblaze B2 credentials from environment
+  static String get b2KeyId => dotenv.env['BACKBLAZE_KEY_ID'] ?? '';
+  static String get b2AppKey => dotenv.env['BACKBLAZE_APP_KEY'] ?? '';
+  static String get b2Bucket => dotenv.env['BACKBLAZE_BUCKET_NAME'] ?? '';
+  static String get b2Endpoint => dotenv.env['BACKBLAZE_ENDPOINT'] ?? '';
 
   // Agora Cloud Recording API base URL
   static String get baseUrl =>
@@ -95,12 +95,15 @@ class AgoraRecordingService {
     }
   }
 
-  /// Step 2: Start cloud recording with S3 storage
+  /// Step 2: Start cloud recording with Blackblaze B2 storage
   static Future<AgoraRecordingResult> start({
     required String channelName,
     required String uid,
     required String resourceId,
     String? token,
+    String?
+    storageChannelName, // For battle recordings using requester's channel
+    int? incrementNumber, // For recording sequence numbering
   }) async {
     try {
       AppUtils.log('🟡 [START] Starting recording...');
@@ -108,8 +111,8 @@ class AgoraRecordingService {
       AppUtils.log('👤 [START] UID: $uid');
       AppUtils.log('🆔 [START] Resource ID: ${resourceId.substring(0, 20)}...');
       AppUtils.log('🔑 [START] Token: ${token?.substring(0, 20) ?? 'null'}...');
-      AppUtils.log('🪣 [START] S3 Bucket: $s3Bucket');
-      AppUtils.log('🌍 [START] S3 Region: $s3Region');
+      AppUtils.log('🪣 [START] B2 Bucket: $b2Bucket');
+      AppUtils.log('🌍 [START] B2 Endpoint: $b2Endpoint');
 
       final url = Uri.parse('$baseUrl/resourceid/$resourceId/mode/mix/start');
 
@@ -141,12 +144,19 @@ class AgoraRecordingService {
             "avFileType": ["hls", "mp4"],
           },
           "storageConfig": {
-            "vendor": 1, // AWS S3
-            "region": 3, // EU West (closest to eu-north-1)
-            "bucket": s3Bucket,
-            "accessKey": s3AccessKey,
-            "secretKey": s3SecretKey,
-            "fileNamePrefix": ["recordings", channelName],
+            "vendor": 11, // AWS S3 compatible (for Blackblaze B2)
+            "region": 0, // US East 1
+            "bucket": b2Bucket,
+            "accessKey": b2KeyId,
+            "secretKey": b2AppKey,
+            "extensionParams": {
+              "endpoint": b2Endpoint.replaceAll('https://', ''),
+            },
+            "fileNamePrefix": [
+              "recordings",
+              storageChannelName ?? channelName,
+              (incrementNumber ?? 1).toString(),
+            ],
           },
         },
       };
@@ -256,9 +266,8 @@ class AgoraRecordingService {
               // Look for MP4 files with audio_and_video track type
               if (filename.endsWith('.mp4') &&
                   trackType.contains('audio_and_video')) {
-                // Construct S3 URL
-                mp4Url =
-                    'https://$s3Bucket.s3.$s3Region.amazonaws.com/$filename';
+                // Construct Blackblaze B2 URL
+                mp4Url = '$b2Endpoint/$filename';
                 fileUrl = mp4Url;
 
                 // Store for later backend submission
@@ -359,11 +368,14 @@ class AgoraRecordingService {
     }
   }
 
-  /// Complete recording workflow with retry logic
+  /// Complete recording workflow with retry logic (matching your working files)
   static Future<Map<String, dynamic>> startCompleteRecording({
     required String channelName,
     required int uid,
     String? token,
+    String?
+    storageChannelName, // For battle recordings using requester's channel
+    int? incrementNumber, // For recording sequence numbering
     int maxRetries = 3,
   }) async {
     int retryCount = 0;
@@ -396,6 +408,8 @@ class AgoraRecordingService {
           uid: uid.toString(),
           resourceId: acquireResult.resourceId!,
           token: token,
+          storageChannelName: storageChannelName,
+          incrementNumber: incrementNumber,
         );
 
         if (!startResult.success || startResult.sid == null) {
@@ -442,8 +456,8 @@ class AgoraRecordingService {
     throw Exception('Recording workflow failed after $maxRetries attempts');
   }
 
-  /// Complete stop workflow
-  static Future<String?> stopCompleteRecording({
+  /// Complete stop workflow (matching your working files)
+  static Future<List<Map<String, dynamic>>> stopCompleteRecording({
     required String channelName,
     required int uid,
     required String resourceId,
@@ -464,7 +478,14 @@ class AgoraRecordingService {
 
       if (stopResult.success) {
         AppUtils.log('✅ [WORKFLOW] Recording workflow stopped successfully');
-        return stopResult.fileUrl; // Return the video URL
+
+        // Extract recording files with URLs (like your working files)
+        final recordingFiles = extractRecordingFiles(stopResult, channelName);
+
+        AppUtils.log(
+          '🎬 [WORKFLOW] Extracted ${recordingFiles.length} recording files',
+        );
+        return recordingFiles;
       } else {
         throw Exception(stopResult.errorMessage ?? 'Failed to stop recording');
       }
@@ -482,6 +503,107 @@ class AgoraRecordingService {
   /// Clear the stored video URL
   static void clearLastRecordedVideoUrl() {
     lastRecordedVideoUrl = null;
+  }
+
+  /// Extract recording files from stop response (matching your working files)
+  static List<Map<String, dynamic>> extractRecordingFiles(
+    AgoraRecordingResult stopResult,
+    String channelName,
+  ) {
+    try {
+      AppUtils.log('🔍 [FILES] Extracting files from stop result');
+
+      final List<Map<String, dynamic>> recordingFiles = [];
+
+      // First, check if we have immediate URLs
+      if (stopResult.fileUrl != null && stopResult.fileUrl!.isNotEmpty) {
+        recordingFiles.add({
+          'filename': 'recording.mp4',
+          'url': stopResult.fileUrl!,
+          'downloadUrl': stopResult.fileUrl!,
+          'trackType': 'audio_and_video',
+          'uid': '',
+          'mixedAllUser': true,
+          'isPlayable': true,
+          'sliceStartTime': 0,
+          'size': 0,
+        });
+        AppUtils.log('🎬 [FILES] Added fileUrl: ${stopResult.fileUrl}');
+      }
+
+      if (stopResult.mp4Url != null &&
+          stopResult.mp4Url!.isNotEmpty &&
+          stopResult.mp4Url != stopResult.fileUrl) {
+        recordingFiles.add({
+          'filename': 'recording_mp4.mp4',
+          'url': stopResult.mp4Url!,
+          'downloadUrl': stopResult.mp4Url!,
+          'trackType': 'audio_and_video',
+          'uid': '',
+          'mixedAllUser': true,
+          'isPlayable': true,
+          'sliceStartTime': 0,
+          'size': 0,
+        });
+        AppUtils.log('🎬 [FILES] Added mp4Url: ${stopResult.mp4Url}');
+      }
+
+      // Also extract from server response if available
+      if (stopResult.serverResponse != null) {
+        final fileList = stopResult.serverResponse!['fileList'] as List?;
+        if (fileList != null && fileList.isNotEmpty) {
+          AppUtils.log(
+            '🔍 [FILES] Processing ${fileList.length} files from server response',
+          );
+
+          for (final file in fileList) {
+            if (file is Map<String, dynamic>) {
+              final filename = file['filename'] ?? '';
+              final downloadUrl = file['downloadUrl'] as String?;
+              final trackType = file['trackType'] ?? '';
+
+              AppUtils.log(
+                '📄 [FILES] File: $filename, trackType: $trackType, downloadUrl: $downloadUrl',
+              );
+
+              // Construct Blackblaze B2 URL if no downloadUrl
+              String? fileUrl = downloadUrl;
+              if (fileUrl == null || fileUrl.isEmpty) {
+                if (filename.isNotEmpty) {
+                  fileUrl = '$b2Endpoint/$filename';
+                  AppUtils.log('🔗 [FILES] Constructed B2 URL: $fileUrl');
+                }
+              }
+
+              if (fileUrl != null && fileUrl.isNotEmpty) {
+                recordingFiles.add({
+                  'filename': filename,
+                  'url': fileUrl,
+                  'downloadUrl': fileUrl,
+                  'trackType': trackType,
+                  'uid': file['uid'] ?? '',
+                  'mixedAllUser': file['mixedAllUser'] ?? false,
+                  'isPlayable': file['isPlayable'] ?? false,
+                  'sliceStartTime': file['sliceStartTime'] ?? 0,
+                  'size': file['size'] ?? 0,
+                });
+                AppUtils.log(
+                  '🎬 [FILES] Added file: $filename with URL: $fileUrl',
+                );
+              }
+            }
+          }
+        }
+      }
+
+      AppUtils.log(
+        '🎬 [FILES] Extracted ${recordingFiles.length} recording files total',
+      );
+      return recordingFiles;
+    } catch (e) {
+      AppUtils.logEr('❌ [FILES] Failed to extract recording files: $e');
+      return [];
+    }
   }
 }
 

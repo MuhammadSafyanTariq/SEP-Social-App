@@ -17,6 +17,7 @@ import 'package:sep/utils/extensions/extensions.dart';
 import '../../../services/networking/urls.dart';
 import '../../../services/storage/preferences.dart';
 import '../../../services/agora/agora_recording_service.dart';
+import '../../../services/agora/video_url_retriever_service.dart';
 import '../../data/models/dataModels/profile_data/profile_data_model.dart';
 import '../../data/models/dataModels/responseDataModel.dart';
 import '../helpers/token_transfer_helper.dart';
@@ -702,29 +703,102 @@ class LiveStreamCtrl extends GetxController {
         return false;
       }
 
-      recordedVideoUrl = stopResult.fileUrl;
-      AppUtils.log('Assigned recordedVideoUrl: $recordedVideoUrl');
+      // 🎬 IMMEDIATE VIDEO URL EXTRACTION (like your working files)
+      // Extract video URLs directly from the server response
+      List<String> extractedVideoUrls = [];
 
-      // Log MP4 URL if available
-      if (stopResult.mp4Url != null && stopResult.mp4Url!.isNotEmpty) {
-        AppUtils.log('MP4 file name: ${stopResult.mp4Url}');
+      // First, check if fileUrl is immediately available
+      if (stopResult.fileUrl != null && stopResult.fileUrl!.isNotEmpty) {
+        extractedVideoUrls.add(stopResult.fileUrl!);
+        recordedVideoUrl = stopResult.fileUrl;
+        AppUtils.log('🎬 ✅ Immediate URL available: ${stopResult.fileUrl}');
       }
 
-      // Add to recorded videos array if URL is valid
-      if (recordedVideoUrl != null && recordedVideoUrl!.isNotEmpty) {
-        recordedVideoUrls.add(recordedVideoUrl!);
+      // Also check MP4 URL if available
+      if (stopResult.mp4Url != null && stopResult.mp4Url!.isNotEmpty) {
+        if (!extractedVideoUrls.contains(stopResult.mp4Url!)) {
+          extractedVideoUrls.add(stopResult.mp4Url!);
+        }
+        AppUtils.log('🎬 ✅ MP4 URL available: ${stopResult.mp4Url}');
+      }
+
+      // Extract URLs from server response (like extractRecordingFiles in your working files)
+      if (stopResult.serverResponse != null) {
+        final fileList = stopResult.serverResponse!['fileList'] as List?;
+        if (fileList != null && fileList.isNotEmpty) {
+          AppUtils.log(
+            '🎬 🔍 Processing ${fileList.length} files from server response',
+          );
+
+          for (final file in fileList) {
+            if (file is Map<String, dynamic>) {
+              final filename = file['filename'] ?? '';
+              final downloadUrl = file['downloadUrl'] as String?;
+              final trackType = file['trackType'] ?? '';
+
+              AppUtils.log(
+                '🎬 📄 File: $filename, trackType: $trackType, downloadUrl: $downloadUrl',
+              );
+
+              // Look for MP4 files with downloadUrl (like your working files approach)
+              if (filename.endsWith('.mp4') &&
+                  downloadUrl != null &&
+                  downloadUrl.isNotEmpty) {
+                if (!extractedVideoUrls.contains(downloadUrl)) {
+                  extractedVideoUrls.add(downloadUrl);
+                  AppUtils.log(
+                    '🎬 ✅ Extracted video URL from fileList: $downloadUrl',
+                  );
+                }
+              }
+              // Also check for other video formats or construct URL if needed
+              else if ((filename.contains('.mp4') ||
+                      trackType.contains('video')) &&
+                  filename.isNotEmpty) {
+                // Construct URL based on your cloud storage configuration
+                final constructedUrl =
+                    VideoUrlRetrieverService.constructBackblazeUrl(filename);
+                if (!extractedVideoUrls.contains(constructedUrl)) {
+                  extractedVideoUrls.add(constructedUrl);
+                  AppUtils.log('🎬 ✅ Constructed video URL: $constructedUrl');
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // 🎯 PROFESSIONAL VIDEO URL STORAGE (like your working files)
+      if (extractedVideoUrls.isNotEmpty) {
+        // Use VideoUrlRetrieverService to store URLs professionally
+        VideoUrlRetrieverService.storeVideoUrls(
+          extractedVideoUrls,
+          (videoUrl) {
+            if (!recordedVideoUrls.contains(videoUrl)) {
+              recordedVideoUrls.add(videoUrl);
+            }
+          },
+          onVideoStored: (videoUrl) {
+            // Set main recordedVideoUrl to first available URL
+            recordedVideoUrl ??= videoUrl;
+            AppUtils.log('🎯 Stored video URL: $videoUrl');
+          },
+        );
+
         AppUtils.log(
-          'Added video URL to array. Total recordings: ${recordedVideoUrls.length}',
+          '🎬 ✅ Successfully extracted ${extractedVideoUrls.length} video URLs immediately',
         );
-        AppUtils.log('All recorded URLs: $recordedVideoUrls');
+        AppUtils.log(
+          '🎬 📊 Total recordings in array: ${recordedVideoUrls.length}',
+        );
+        AppUtils.log('🎬 📋 All recorded URLs: $recordedVideoUrls');
       } else {
+        // No URLs available immediately - this should be rare with your setup
         AppUtils.logEr(
-          '⚠️ Video URL is null or empty. This is expected - Agora needs time to process the recording.',
+          '⚠️ No video URLs available immediately. Recording may still be processing.',
         );
-        AppUtils.logEr(
-          '⚠️ The video file will be available in your cloud storage shortly.',
-        );
-        // Store recording metadata for future reference
+
+        // Store metadata for potential future retrieval
         AppUtils.log(
           'Recording metadata - ResourceID: $tempResourceId, SID: $tempSid, Channel: $channelName',
         );
@@ -763,6 +837,10 @@ class LiveStreamCtrl extends GetxController {
       return false;
     }
   }
+
+  // 🎬 NOTE: Old _startVideoUrlRetrieval method removed
+  // We now use immediate URL extraction approach (like your working files)
+  // URLs are available immediately when recording stops
 
   /// Toggle recording on/off
   bool _isTogglingRecording = false;
