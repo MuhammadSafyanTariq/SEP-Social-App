@@ -509,49 +509,41 @@ class LiveStreamCtrl extends GetxController {
 
       isRecording.value = true;
 
-      // Step 1: Acquire resource
-      final acquireResult = await AgoraRecordingService.acquire(
-        channelName: channelName,
-        uid: hostAgoraId.toString(),
-      );
+      // Generate recording UID
+      final recordingUid = AgoraRecordingService.generateRecordingUid();
+      AppUtils.log('Generated recording UID: $recordingUid');
 
-      if (!acquireResult.success || acquireResult.resourceId == null) {
-        throw Exception(
-          acquireResult.errorMessage ?? 'Failed to acquire resource',
-        );
+      // Get token from backend (keep backend token generation)
+      final tokenData = await ProfileCtrl.find.getUserAgoraToken(
+        channelName,
+        recordingUid.toString(),
+        false, // Not host for recording
+      );
+      final token = tokenData['token'] as String?;
+
+      if (token == null || token.isEmpty) {
+        throw Exception('Failed to get recording token from backend');
       }
 
-      _recordingResourceId = acquireResult.resourceId;
-      AppUtils.log('═══════════════════════════════════════════════════');
-      AppUtils.log('ACQUIRE SUCCESSFUL');
-      AppUtils.log('ResourceId: $_recordingResourceId');
-      AppUtils.log('Message: ${acquireResult.message}');
-      AppUtils.log('═══════════════════════════════════════════════════');
+      AppUtils.log('Got recording token: ${token.substring(0, 20)}...');
 
-      // Step 2: Start recording
-      AppUtils.log('Calling START recording API...');
-      final startResult = await AgoraRecordingService.start(
+      // Use complete recording workflow
+      final workflowResult = await AgoraRecordingService.startCompleteRecording(
         channelName: channelName,
-        uid: hostAgoraId.toString(),
-        resourceId: _recordingResourceId!,
+        uid: recordingUid,
+        token: token,
+        maxRetries: 2,
       );
+
+      _recordingResourceId = workflowResult['resourceId'];
+      _recordingSid = workflowResult['sid'];
 
       AppUtils.log('═══════════════════════════════════════════════════');
       AppUtils.log('START RECORDING RESULT');
-      AppUtils.log('Success: ${startResult.success}');
-      AppUtils.log('SID: ${startResult.sid}');
-      AppUtils.log('ResourceId: ${startResult.resourceId}');
-      AppUtils.log('Message: ${startResult.message}');
-      AppUtils.log('Error: ${startResult.errorMessage}');
+      AppUtils.log('Workflow completed successfully');
+      AppUtils.log('ResourceId: $_recordingResourceId');
+      AppUtils.log('SID: $_recordingSid');
       AppUtils.log('═══════════════════════════════════════════════════');
-
-      if (!startResult.success || startResult.sid == null) {
-        throw Exception(
-          startResult.errorMessage ?? 'Failed to start recording',
-        );
-      }
-
-      _recordingSid = startResult.sid;
       _recordingStartTime = DateTime.now();
 
       // Start timer to update recording duration
@@ -569,7 +561,7 @@ class LiveStreamCtrl extends GetxController {
       AppUtils.log('Started at: $_recordingStartTime');
       AppUtils.log('═══════════════════════════════════════════════════');
 
-      AppUtils.toast(startResult.message ?? 'Recording started successfully');
+      AppUtils.toast('Recording started successfully');
 
       return true;
     } catch (e) {
