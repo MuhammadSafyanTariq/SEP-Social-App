@@ -14,13 +14,18 @@ class RecordingDiagnosticScreen extends StatefulWidget {
   const RecordingDiagnosticScreen({Key? key}) : super(key: key);
 
   @override
-  State<RecordingDiagnosticScreen> createState() => _RecordingDiagnosticScreenState();
+  State<RecordingDiagnosticScreen> createState() =>
+      _RecordingDiagnosticScreenState();
 }
 
 class _RecordingDiagnosticScreenState extends State<RecordingDiagnosticScreen> {
-  final TextEditingController _channelController = TextEditingController(text: 'test-diagnostic');
-  final TextEditingController _uidController = TextEditingController(text: '123456');
-  
+  final TextEditingController _channelController = TextEditingController(
+    text: 'test-diagnostic',
+  );
+  final TextEditingController _uidController = TextEditingController(
+    text: '123456',
+  );
+
   final List<Map<String, dynamic>> _logs = [];
   String? _resourceId;
   String? _sid;
@@ -56,14 +61,14 @@ class _RecordingDiagnosticScreenState extends State<RecordingDiagnosticScreen> {
   Future<void> _testAcquire() async {
     final channel = _channelController.text.trim();
     final uid = _uidController.text.trim();
-    
+
     if (channel.isEmpty || uid.isEmpty) {
       _addLog('ERROR', {'message': 'Channel and UID are required'});
       return;
     }
 
     setState(() => _isAcquiring = true);
-    
+
     try {
       _addLog('ACQUIRE:REQUEST', {
         'channelName': channel,
@@ -139,10 +144,7 @@ class _RecordingDiagnosticScreenState extends State<RecordingDiagnosticScreen> {
 
       if (result.success && result.sid != null) {
         setState(() => _sid = result.sid);
-        _addLog('START:SUCCESS', {
-          'sid': result.sid,
-          'canStopRecording': true,
-        });
+        _addLog('START:SUCCESS', {'sid': result.sid, 'canStopRecording': true});
       } else {
         _addLog('START:FAILED', {
           'reason': result.errorMessage ?? 'Unknown error',
@@ -213,7 +215,7 @@ class _RecordingDiagnosticScreenState extends State<RecordingDiagnosticScreen> {
 
       if (result.success) {
         setState(() => _fileUrl = result.fileUrl);
-        
+
         if (result.fileUrl != null && result.fileUrl!.isNotEmpty) {
           _addLog('STOP:SUCCESS', {
             'fileUrl': result.fileUrl,
@@ -244,9 +246,9 @@ class _RecordingDiagnosticScreenState extends State<RecordingDiagnosticScreen> {
 
   void _copyToClipboard(String text) {
     Clipboard.setData(ClipboardData(text: text));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Copied to clipboard')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Copied to clipboard')));
   }
 
   @override
@@ -319,9 +321,9 @@ class _RecordingDiagnosticScreenState extends State<RecordingDiagnosticScreen> {
                 ],
               ),
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Input fields
             Row(
               children: [
@@ -359,7 +361,9 @@ class _RecordingDiagnosticScreenState extends State<RecordingDiagnosticScreen> {
                 Expanded(
                   child: AppButton(
                     label: _isAcquiring ? 'Acquiring...' : '1. Acquire',
-                    buttonColor: _resourceId != null ? Colors.green : AppColors.primaryColor,
+                    buttonColor: _resourceId != null
+                        ? Colors.green
+                        : AppColors.primaryColor,
                     onTap: _isAcquiring ? null : _testAcquire,
                   ),
                 ),
@@ -368,7 +372,9 @@ class _RecordingDiagnosticScreenState extends State<RecordingDiagnosticScreen> {
                   child: AppButton(
                     label: _isStarting ? 'Starting...' : '2. Start',
                     buttonColor: _sid != null ? Colors.green : Colors.orange,
-                    onTap: (_isStarting || _resourceId == null) ? null : _testStart,
+                    onTap: (_isStarting || _resourceId == null)
+                        ? null
+                        : _testStart,
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -405,9 +411,16 @@ class _RecordingDiagnosticScreenState extends State<RecordingDiagnosticScreen> {
                     if (_resourceId != null) ...[
                       Row(
                         children: [
-                          const Icon(Icons.check_circle, color: Colors.green, size: 16),
+                          const Icon(
+                            Icons.check_circle,
+                            color: Colors.green,
+                            size: 16,
+                          ),
                           const SizedBox(width: 8),
-                          const Text('Resource ID: ', style: TextStyle(fontWeight: FontWeight.bold)),
+                          const Text(
+                            'Resource ID: ',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
                           Expanded(
                             child: Text(
                               _resourceId!,
@@ -425,9 +438,16 @@ class _RecordingDiagnosticScreenState extends State<RecordingDiagnosticScreen> {
                     if (_sid != null) ...[
                       Row(
                         children: [
-                          const Icon(Icons.check_circle, color: Colors.green, size: 16),
+                          const Icon(
+                            Icons.check_circle,
+                            color: Colors.green,
+                            size: 16,
+                          ),
                           const SizedBox(width: 8),
-                          const Text('SID: ', style: TextStyle(fontWeight: FontWeight.bold)),
+                          const Text(
+                            'SID: ',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
                           Expanded(
                             child: Text(
                               _sid!,
@@ -445,9 +465,16 @@ class _RecordingDiagnosticScreenState extends State<RecordingDiagnosticScreen> {
                     if (_fileUrl != null) ...[
                       Row(
                         children: [
-                          const Icon(Icons.check_circle, color: Colors.green, size: 16),
+                          const Icon(
+                            Icons.check_circle,
+                            color: Colors.green,
+                            size: 16,
+                          ),
                           const SizedBox(width: 8),
-                          const Text('File URL: ', style: TextStyle(fontWeight: FontWeight.bold)),
+                          const Text(
+                            'File URL: ',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
                           Expanded(
                             child: Text(
                               _fileUrl!,
@@ -499,7 +526,9 @@ class _RecordingDiagnosticScreenState extends State<RecordingDiagnosticScreen> {
                           final time = log['time'] as String;
 
                           Color actionColor = Colors.black;
-                          if (action.contains('ERROR') || action.contains('FAILED') || action.contains('EXCEPTION')) {
+                          if (action.contains('ERROR') ||
+                              action.contains('FAILED') ||
+                              action.contains('EXCEPTION')) {
                             actionColor = Colors.red;
                           } else if (action.contains('SUCCESS')) {
                             actionColor = Colors.green;
@@ -524,8 +553,13 @@ class _RecordingDiagnosticScreenState extends State<RecordingDiagnosticScreen> {
                                   ),
                                   const Spacer(),
                                   Text(
-                                    DateTime.parse(time).toLocal().toString().substring(11, 19),
-                                    style: const TextStyle(fontSize: 11, color: Colors.grey),
+                                    DateTime.parse(
+                                      time,
+                                    ).toLocal().toString().substring(11, 19),
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey,
+                                    ),
                                   ),
                                 ],
                               ),
