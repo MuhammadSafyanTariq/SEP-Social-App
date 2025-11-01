@@ -45,9 +45,11 @@ class AgoraRecordingService {
     required String uid,
   }) async {
     try {
+      AppUtils.log('� [ACQUIRE] Starting - Channel: $channelName, UID: $uid');
       AppUtils.log(
-        '🔑 [ACQUIRE] Acquiring resource ID for channel: $channelName, uid: $uid',
+        '🔐 [ACQUIRE] Using Customer ID: ${customerId.substring(0, 8)}...',
       );
+      AppUtils.log('🌐 [ACQUIRE] API URL: $baseUrl/acquire');
 
       final url = Uri.parse('$baseUrl/acquire');
 
@@ -66,14 +68,16 @@ class AgoraRecordingService {
         body: jsonEncode(body),
       );
 
-      AppUtils.log('📞 [ACQUIRE] Response status: ${response.statusCode}');
-      AppUtils.log('📞 [ACQUIRE] Response body: ${response.body}');
+      AppUtils.log('� [ACQUIRE] Response status: ${response.statusCode}');
+      AppUtils.log('� [ACQUIRE] Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final resourceId = data['resourceId'] as String;
 
-        AppUtils.log('✅ [ACQUIRE] Resource ID acquired: $resourceId');
+        AppUtils.log(
+          '✅ [ACQUIRE] SUCCESS - Resource ID: ${resourceId.substring(0, 20)}...',
+        );
         return AgoraRecordingResult.success(
           resourceId: resourceId,
           message: 'Resource acquired successfully',
@@ -82,11 +86,11 @@ class AgoraRecordingService {
         final errorData = jsonDecode(response.body);
         final errorMsg =
             'Failed to acquire resource ID: ${errorData['message'] ?? response.body}';
-        AppUtils.logEr('❌ [ACQUIRE] $errorMsg');
+        AppUtils.logEr('🔴 [ACQUIRE] ERROR: $errorMsg');
         return AgoraRecordingResult.error(errorMsg);
       }
     } catch (e) {
-      AppUtils.logEr('❌ [ACQUIRE] Exception: $e');
+      AppUtils.logEr('🔴 [ACQUIRE] EXCEPTION: $e');
       return AgoraRecordingResult.error('Acquire error: $e');
     }
   }
@@ -99,9 +103,13 @@ class AgoraRecordingService {
     String? token,
   }) async {
     try {
-      AppUtils.log(
-        '🎬 [START] Starting recording for channel: $channelName, uid: $uid',
-      );
+      AppUtils.log('🟡 [START] Starting recording...');
+      AppUtils.log('📺 [START] Channel: $channelName');
+      AppUtils.log('👤 [START] UID: $uid');
+      AppUtils.log('🆔 [START] Resource ID: ${resourceId.substring(0, 20)}...');
+      AppUtils.log('🔑 [START] Token: ${token?.substring(0, 20) ?? 'null'}...');
+      AppUtils.log('🪣 [START] S3 Bucket: $s3Bucket');
+      AppUtils.log('🌍 [START] S3 Region: $s3Region');
 
       final url = Uri.parse('$baseUrl/resourceid/$resourceId/mode/mix/start');
 
@@ -152,14 +160,15 @@ class AgoraRecordingService {
         body: jsonEncode(body),
       );
 
-      AppUtils.log('📞 [START] Response status: ${response.statusCode}');
-      AppUtils.log('📞 [START] Response body: ${response.body}');
+      AppUtils.log('� [START] Response status: ${response.statusCode}');
+      AppUtils.log('� [START] Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final sid = data['sid'] as String;
 
-        AppUtils.log('✅ [START] Recording started with SID: $sid');
+        AppUtils.log('✅ [START] SUCCESS - SID: $sid');
+        AppUtils.log('🎉 [START] Recording is now ACTIVE!');
         return AgoraRecordingResult.success(
           resourceId: resourceId,
           sid: sid,
@@ -170,7 +179,9 @@ class AgoraRecordingService {
         if (response.body.isNotEmpty) {
           try {
             errorData = jsonDecode(response.body);
-            AppUtils.logEr('❌ [START] Error details: ${jsonEncode(errorData)}');
+            AppUtils.logEr(
+              '🔴 [START] Error details: ${jsonEncode(errorData)}',
+            );
           } catch (e) {
             AppUtils.logEr('⚠️ [START] Could not parse error response: $e');
           }
@@ -178,11 +189,11 @@ class AgoraRecordingService {
 
         final errorMsg =
             'Agora API Error ${response.statusCode}: ${errorData['message'] ?? 'Unknown error'}';
-        AppUtils.logEr('❌ [START] $errorMsg');
+        AppUtils.logEr('🔴 [START] ERROR: $errorMsg');
         return AgoraRecordingResult.error(errorMsg);
       }
     } catch (e) {
-      AppUtils.logEr('❌ [START] Exception: $e');
+      AppUtils.logEr('🔴 [START] EXCEPTION: $e');
       return AgoraRecordingResult.error('Start error: $e');
     }
   }
@@ -195,7 +206,11 @@ class AgoraRecordingService {
     required String sid,
   }) async {
     try {
-      AppUtils.log('🛑 [STOP] Stopping recording for SID: $sid');
+      AppUtils.log('� [STOP] Stopping recording...');
+      AppUtils.log('📺 [STOP] Channel: $channelName');
+      AppUtils.log('👤 [STOP] UID: $uid');
+      AppUtils.log('🆔 [STOP] Resource ID: ${resourceId.substring(0, 20)}...');
+      AppUtils.log('🎯 [STOP] SID: $sid');
 
       // Wait briefly before stopping
       await Future.delayed(Duration(seconds: 2));
@@ -215,8 +230,8 @@ class AgoraRecordingService {
         body: jsonEncode(body),
       );
 
-      AppUtils.log('📞 [STOP] Response status: ${response.statusCode}');
-      AppUtils.log('📞 [STOP] Response body: ${response.body}');
+      AppUtils.log('� [STOP] Response status: ${response.statusCode}');
+      AppUtils.log('� [STOP] Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -225,6 +240,7 @@ class AgoraRecordingService {
         String? fileUrl;
         String? mp4Url;
 
+        AppUtils.log('🔍 [STOP] Looking for recording files...');
         if (data['serverResponse'] != null &&
             data['serverResponse']['fileList'] != null) {
           final fileList = data['serverResponse']['fileList'] as List;
@@ -248,15 +264,21 @@ class AgoraRecordingService {
                 // Store for later backend submission
                 lastRecordedVideoUrl = fileUrl;
 
-                AppUtils.log('🎥 [STOP] MP4 URL: $mp4Url');
+                AppUtils.log('🎥 [STOP] Found MP4 URL: $mp4Url');
                 break;
               }
             }
           }
+        } else {
+          AppUtils.log(
+            '⚠️ [STOP] No fileList in serverResponse - recording may still be processing',
+          );
         }
 
-        AppUtils.log('✅ [STOP] Recording stopped successfully');
-        AppUtils.log('🔗 [STOP] File URL: $fileUrl');
+        AppUtils.log('✅ [STOP] SUCCESS - Recording stopped');
+        AppUtils.log(
+          '🔗 [STOP] Final file URL: ${fileUrl ?? 'null (processing)'}',
+        );
 
         return AgoraRecordingResult.success(
           resourceId: resourceId,
@@ -271,19 +293,26 @@ class AgoraRecordingService {
         if (response.body.isNotEmpty) {
           try {
             errorData = jsonDecode(response.body);
-            AppUtils.logEr('❌ [STOP] Error details: ${jsonEncode(errorData)}');
+            AppUtils.logEr('🔴 [STOP] Error details: ${jsonEncode(errorData)}');
+
+            // Check for specific error codes
+            if (errorData['code'] == 2) {
+              AppUtils.logEr(
+                '🔴 [STOP] UID MISMATCH ERROR - The UID used for stop must match the UID used for acquire/start!',
+              );
+            }
           } catch (e) {
             AppUtils.logEr('⚠️ [STOP] Could not parse error response: $e');
           }
         }
 
         final errorMsg =
-            'Stop failed (${response.statusCode}): ${errorData['message'] ?? 'Unknown error'}';
-        AppUtils.logEr('❌ [STOP] $errorMsg');
+            'Stop failed (${response.statusCode}): ${errorData['message'] ?? errorData['reason'] ?? 'Unknown error'}';
+        AppUtils.logEr('🔴 [STOP] ERROR: $errorMsg');
         return AgoraRecordingResult.error(errorMsg);
       }
     } catch (e) {
-      AppUtils.logEr('❌ [STOP] Exception: $e');
+      AppUtils.logEr('🔴 [STOP] EXCEPTION: $e');
       return AgoraRecordingResult.error('Stop error: $e');
     }
   }
@@ -342,8 +371,9 @@ class AgoraRecordingService {
     while (retryCount < maxRetries) {
       try {
         AppUtils.log(
-          '🎯 [WORKFLOW] Starting complete recording workflow for channel: $channelName (attempt ${retryCount + 1}/$maxRetries)',
+          '🎯 [WORKFLOW] Starting complete recording workflow (attempt ${retryCount + 1}/$maxRetries)',
         );
+        AppUtils.log('📺 [WORKFLOW] Channel: $channelName, UID: $uid');
 
         // Step 1: Acquire resource ID
         final acquireResult = await acquire(
@@ -379,8 +409,9 @@ class AgoraRecordingService {
         await Future.delayed(Duration(seconds: 10));
 
         AppUtils.log(
-          '✅ [WORKFLOW] Recording workflow started successfully on attempt ${retryCount + 1}',
+          '✅ [WORKFLOW] SUCCESS - Recording workflow completed on attempt ${retryCount + 1}',
         );
+        AppUtils.log('🎉 [WORKFLOW] Recording is now fully active and ready!');
 
         return {
           'resourceId': acquireResult.resourceId,
@@ -390,13 +421,11 @@ class AgoraRecordingService {
         };
       } catch (e) {
         retryCount++;
-        AppUtils.logEr(
-          '❌ [WORKFLOW] Recording workflow failed on attempt $retryCount: $e',
-        );
+        AppUtils.logEr('🔴 [WORKFLOW] Failed on attempt $retryCount: $e');
 
         if (retryCount >= maxRetries) {
           AppUtils.logEr(
-            '❌ [WORKFLOW] Recording workflow failed after $maxRetries attempts',
+            '🔴 [WORKFLOW] FAILED after $maxRetries attempts - giving up',
           );
           rethrow;
         }

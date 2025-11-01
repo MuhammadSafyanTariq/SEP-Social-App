@@ -206,6 +206,7 @@ class LiveStreamCtrl extends GetxController {
   RxBool isRecording = RxBool(false);
   String? _recordingResourceId;
   String? _recordingSid;
+  int? _recordingUid; // Store the recording UID used for the session
   DateTime? _recordingStartTime;
   String? recordedVideoUrl; // Current recording URL
   Timer? _recordingDurationTimer;
@@ -511,7 +512,8 @@ class LiveStreamCtrl extends GetxController {
 
       // Generate recording UID
       final recordingUid = AgoraRecordingService.generateRecordingUid();
-      AppUtils.log('Generated recording UID: $recordingUid');
+      _recordingUid = recordingUid; // Store for stop operation
+      AppUtils.log('🎯 Generated recording UID: $recordingUid');
 
       // Get token from backend (keep backend token generation)
       final tokenData = await ProfileCtrl.find.getUserAgoraToken(
@@ -525,7 +527,7 @@ class LiveStreamCtrl extends GetxController {
         throw Exception('Failed to get recording token from backend');
       }
 
-      AppUtils.log('Got recording token: ${token.substring(0, 20)}...');
+      AppUtils.log('🔑 Got recording token: ${token.substring(0, 20)}...');
 
       // Use complete recording workflow
       final workflowResult = await AgoraRecordingService.startCompleteRecording(
@@ -571,10 +573,11 @@ class LiveStreamCtrl extends GetxController {
       isRecording.value = false;
       _recordingResourceId = null;
       _recordingSid = null;
+      _recordingUid = null;
       _recordingStartTime = null;
       _stopRecordingDurationTimer();
 
-      AppUtils.logEr('Error starting recording: $e');
+      AppUtils.logEr('❌ Error starting recording: $e');
       AppUtils.toastError('Failed to start recording: $e');
       return false;
     }
@@ -597,10 +600,13 @@ class LiveStreamCtrl extends GetxController {
       return false;
     }
 
-    if (_recordingResourceId == null || _recordingSid == null) {
+    if (_recordingResourceId == null ||
+        _recordingSid == null ||
+        _recordingUid == null) {
       AppUtils.logEr('⚠️ CRITICAL: Recording session data is missing!');
       AppUtils.logEr('ResourceId is null: ${_recordingResourceId == null}');
       AppUtils.logEr('SID is null: ${_recordingSid == null}');
+      AppUtils.logEr('Recording UID is null: ${_recordingUid == null}');
       AppUtils.toastError('Recording session not found');
       isRecording.value = false;
       _stopRecordingDurationTimer();
@@ -615,7 +621,10 @@ class LiveStreamCtrl extends GetxController {
 
     try {
       AppUtils.log(
-        'Stopping recording - Channel: $channelName, SID: $_recordingSid, ResourceID: $_recordingResourceId, UID: ${hostAgoraId.toString()}',
+        '🛑 Stopping recording - Channel: $channelName, SID: $_recordingSid, ResourceID: $_recordingResourceId',
+      );
+      AppUtils.log(
+        '🔧 Host UID: ${hostAgoraId.toString()}, Recording UID: $_recordingUid',
       );
 
       // Show loading with safety check
@@ -648,10 +657,10 @@ class LiveStreamCtrl extends GetxController {
         );
       }
 
-      AppUtils.log('Calling AgoraRecordingService.stop...');
+      AppUtils.log('📞 Calling AgoraRecordingService.stop...');
       final stopResult = await AgoraRecordingService.stop(
         channelName: channelName,
-        uid: hostAgoraId.toString(),
+        uid: _recordingUid.toString(), // Use recording UID, not host UID
         resourceId: _recordingResourceId!,
         sid: _recordingSid!,
       );
@@ -676,15 +685,19 @@ class LiveStreamCtrl extends GetxController {
       isRecording.value = false;
       final tempResourceId = _recordingResourceId;
       final tempSid = _recordingSid;
+      final tempRecordingUid = _recordingUid;
       _recordingResourceId = null;
       _recordingSid = null;
+      _recordingUid = null;
       _recordingStartTime = null;
       _stopRecordingDurationTimer();
 
       if (!stopResult.success) {
         final errorMsg = stopResult.errorMessage ?? 'Failed to stop recording';
-        AppUtils.logEr('Error stopping recording: $errorMsg');
-        AppUtils.logEr('Previous ResourceID: $tempResourceId, SID: $tempSid');
+        AppUtils.logEr('❌ Error stopping recording: $errorMsg');
+        AppUtils.logEr(
+          '📊 Previous ResourceID: $tempResourceId, SID: $tempSid, Recording UID: $tempRecordingUid',
+        );
         AppUtils.toastError(errorMsg);
         return false;
       }
@@ -743,6 +756,7 @@ class LiveStreamCtrl extends GetxController {
       isRecording.value = false;
       _recordingResourceId = null;
       _recordingSid = null;
+      _recordingUid = null;
       _recordingStartTime = null;
       _stopRecordingDurationTimer();
 

@@ -223,22 +223,7 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
           _leftActionButtonsForHost(),
         ],
       ),
-      // Debug button to access recording diagnostic
-      floatingActionButton: ctrl.isHost
-          ? FloatingActionButton(
-              mini: true,
-              backgroundColor: Colors.orange.withOpacity(0.8),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const RecordingDiagnosticScreen(),
-                  ),
-                );
-              },
-              child: const Icon(Icons.bug_report, size: 20),
-            )
-          : null,
+   
       floatingActionButtonLocation: FloatingActionButtonLocation.miniEndTop,
     );
   }
