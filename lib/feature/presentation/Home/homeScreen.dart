@@ -1,9 +1,12 @@
+import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:sep/feature/presentation/Home/searchScreen.dart';
 import 'package:sep/feature/presentation/chatScreens/chatScreen.dart';
+import 'package:sep/feature/presentation/Home/homeScreenComponents/auto_play_video_player.dart';
 
 import 'package:sep/feature/presentation/controller/auth_Controller/profileCtrl.dart';
 import 'package:sep/feature/presentation/SportsProducts/sportsProduct.dart';
@@ -28,6 +31,7 @@ import '../profileScreens/setting/noInternetScreen.dart';
 import '../profileScreens/setting/setting.dart';
 import '../wallet/wallet_screen.dart';
 import 'contentScreen.dart';
+import 'CommonBannerAdWidget.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -58,6 +62,10 @@ class _HomeScreenState extends State<HomeScreen> {
   late var profileimage = Preferences.profile;
   String? imageonly;
 
+  // Ad timer variables
+  Timer? _adTimer;
+  bool _showAd = false;
+
   @override
   void initState() {
     super.initState();
@@ -69,11 +77,57 @@ class _HomeScreenState extends State<HomeScreen> {
       if (stripeId == null || stripeId.isEmpty) {
         stripeCreateAccount();
       }
+
+      // Start ad timer
+      _startAdTimer();
     });
     _connect(() {
       AgoraChatCtrl.find.onLiveStreamChannelList();
       AgoraChatCtrl.find.getLiveStreamChannelList();
     });
+  }
+
+  void _startAdTimer() {
+    // Show ad every 5 minutes
+    _adTimer = Timer.periodic(Duration(minutes: 5), (timer) {
+      setState(() {
+        _showAd = true;
+      });
+
+      // Hide ad after 30 seconds
+      Future.delayed(Duration(seconds: 30), () {
+        if (mounted) {
+          setState(() {
+            _showAd = false;
+          });
+        }
+      });
+    });
+
+    // Show ad immediately on first load
+    Future.delayed(Duration(seconds: 2), () {
+      if (mounted) {
+        setState(() {
+          _showAd = true;
+        });
+
+        // Hide after 30 seconds
+        Future.delayed(Duration(seconds: 30), () {
+          if (mounted) {
+            setState(() {
+              _showAd = false;
+            });
+          }
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _adTimer?.cancel();
+    _pageController.dispose();
+    super.dispose();
   }
 
   bool connectionCallBack = false;
@@ -112,8 +166,23 @@ class _HomeScreenState extends State<HomeScreen> {
   void _navigateToScreen(int index) {
     if (index == 2) {
       // Add button is now at index 2 - Navigate to type selection screen
+      // Pause all videos when navigating away
+      try {
+        VideoControllerManager.find.pauseAll();
+      } catch (e) {
+        AppUtils.log('Error pausing videos: $e');
+      }
       context.pushNavigator(TypeSelectionScreen());
     } else {
+      // Pause videos when leaving home screen (index 0)
+      if (_currentIndex == 0 && index != 0) {
+        try {
+          VideoControllerManager.find.pauseAll();
+        } catch (e) {
+          AppUtils.log('Error pausing videos: $e');
+        }
+      }
+
       setState(() {
         _currentIndex = index;
       });
@@ -210,29 +279,69 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
 
             if (_currentIndex == 0) ...[
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () {
-                      // Navigate to messages screen
-                      context.pushNavigator(ChatScreen());
-                    },
-                    borderRadius: BorderRadius.circular(24),
-                    child: Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(shape: BoxShape.circle),
-                      child: Icon(
-                        Icons.mail_outline_rounded,
-                        size: 24,
-                        color: AppColors.primaryColor,
+              Obx(() {
+                final unreadCount = msgCount;
+                return Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {
+                        // Navigate to messages screen
+                        context.pushNavigator(ChatScreen());
+                      },
+                      borderRadius: BorderRadius.circular(24),
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(shape: BoxShape.circle),
+                            child: Icon(
+                              Icons.mail_outline_rounded,
+                              size: 24,
+                              color: AppColors.primaryColor,
+                            ),
+                          ),
+                          if (unreadCount > 0)
+                            Positioned(
+                              right: -4,
+                              top: -4,
+                              child: Container(
+                                padding: EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: Colors.red,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors.white,
+                                    width: 1.5,
+                                  ),
+                                ),
+                                constraints: BoxConstraints(
+                                  minWidth: 18,
+                                  minHeight: 18,
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    unreadCount > 99
+                                        ? '99+'
+                                        : unreadCount.toString(),
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                   ),
-                ),
-              ),
+                );
+              }),
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                 child: Material(
@@ -307,133 +416,176 @@ class _HomeScreenState extends State<HomeScreen> {
             // ),
           ],
         ),
-        bottomNavigationBar: Stack(
-          clipBehavior: Clip.none,
+        bottomNavigationBar: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              height: 85,
-              decoration: BoxDecoration(
+            // Banner Ad above navigation bar
+            if (_showAd)
+              Container(
                 color: Colors.white,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(20),
-                  topRight: Radius.circular(20),
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: CommonBannerAdWidget(
+                        adUnitId: Platform.isAndroid
+                            ? 'ca-app-pub-3940256099942544/6300978111'
+                            : 'ca-app-pub-3940256099942544/2934735716',
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _showAd = false;
+                        });
+                      },
+                      child: Container(
+                        padding: EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade200,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.close,
+                          size: 16,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
-                    blurRadius: 20,
-                    offset: Offset(0, -5),
-                  ),
-                ],
               ),
-              child: BottomNavigationBar(
-                type: BottomNavigationBarType.fixed,
-                backgroundColor: Colors.transparent,
-                elevation: 0,
-                currentIndex: _currentIndex,
-                selectedItemColor: AppColors.btnColor,
-                unselectedItemColor: Colors.grey.shade400,
-                selectedLabelStyle: TextStyle(
-                  color: AppColors.btnColor,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                ),
-                unselectedLabelStyle: TextStyle(
-                  color: Colors.grey.shade400,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w400,
-                ),
-                onTap: (index) {
-                  _navigateToScreen(index);
-                },
-                items: [
-                  // Home
-                  BottomNavigationBarItem(
-                    icon: Container(
-                      padding: EdgeInsets.all(8),
-                      child: SvgPicture.asset(
-                        AppIcons.homeSvg,
-                        height: 22,
-                        width: 22,
-                        color: _currentIndex == 0
-                            ? AppColors.btnColor
-                            : Colors.grey.shade400,
-                      ),
-                    ),
-                    label: 'Home',
-                  ),
-                  // Shop
-                  BottomNavigationBarItem(
-                    icon: Container(
-                      padding: EdgeInsets.all(8),
-                      child: SvgPicture.asset(
-                        AppIcons.shopSvg,
-                        height: 22,
-                        width: 22,
-                        color: _currentIndex == 1
-                            ? AppColors.btnColor
-                            : Colors.grey.shade400,
-                      ),
-                    ),
-                    label: 'Shop',
-                  ),
-                  // Add (Placeholder - actual button is floating above)
-                  BottomNavigationBarItem(
-                    icon: SizedBox(height: 22, width: 22),
-                    label: '',
-                  ),
-                  // Games
-                  BottomNavigationBarItem(
-                    icon: Container(
-                      padding: EdgeInsets.all(8),
-                      child: SvgPicture.asset(
-                        AppIcons.gameSvg,
-                        height: 22,
-                        width: 22,
-                        color: _currentIndex == 3
-                            ? AppColors.btnColor
-                            : Colors.grey.shade400,
-                      ),
-                    ),
-                    label: 'Games',
-                  ),
-                  // Profile
-                  BottomNavigationBarItem(
-                    icon: Container(
-                      padding: EdgeInsets.all(8),
-                      child: SvgPicture.asset(
-                        AppIcons.profileSvg,
-                        height: 22,
-                        width: 22,
-                        color: _currentIndex == 4
-                            ? AppColors.btnColor
-                            : Colors.grey.shade400,
-                      ),
-                    ),
-                    label: 'Profile',
-                  ),
-                ],
-              ),
-            ),
-            // Floating Add Button
-            Positioned(
-              left: MediaQuery.of(context).size.width / 2 - 40,
-              bottom: 30,
-              child: GestureDetector(
-                onTap: () {
-                  _navigateToScreen(2);
-                },
-                child: Container(
-                  width: 80,
-                  height: 80,
+            // Bottom Navigation Bar
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  height: 85,
                   decoration: BoxDecoration(
-                    color: AppColors.btnColor,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 4),
+                    color: Colors.white,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(20),
+                      topRight: Radius.circular(20),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.08),
+                        blurRadius: 20,
+                        offset: Offset(0, -5),
+                      ),
+                    ],
                   ),
-                  child: Icon(Icons.add, size: 32, color: Colors.white),
+                  child: BottomNavigationBar(
+                    type: BottomNavigationBarType.fixed,
+                    backgroundColor: Colors.transparent,
+                    elevation: 0,
+                    currentIndex: _currentIndex,
+                    selectedItemColor: AppColors.btnColor,
+                    unselectedItemColor: Colors.grey.shade400,
+                    selectedLabelStyle: TextStyle(
+                      color: AppColors.btnColor,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    unselectedLabelStyle: TextStyle(
+                      color: Colors.grey.shade400,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w400,
+                    ),
+                    onTap: (index) {
+                      _navigateToScreen(index);
+                    },
+                    items: [
+                      // Home
+                      BottomNavigationBarItem(
+                        icon: Container(
+                          padding: EdgeInsets.all(8),
+                          child: SvgPicture.asset(
+                            AppIcons.homeSvg,
+                            height: 22,
+                            width: 22,
+                            color: _currentIndex == 0
+                                ? AppColors.btnColor
+                                : Colors.grey.shade400,
+                          ),
+                        ),
+                        label: 'Home',
+                      ),
+                      // Shop
+                      BottomNavigationBarItem(
+                        icon: Container(
+                          padding: EdgeInsets.all(8),
+                          child: SvgPicture.asset(
+                            AppIcons.shopSvg,
+                            height: 22,
+                            width: 22,
+                            color: _currentIndex == 1
+                                ? AppColors.btnColor
+                                : Colors.grey.shade400,
+                          ),
+                        ),
+                        label: 'Shop',
+                      ),
+                      // Add (Placeholder - actual button is floating above)
+                      BottomNavigationBarItem(
+                        icon: SizedBox(height: 22, width: 22),
+                        label: '',
+                      ),
+                      // Games
+                      BottomNavigationBarItem(
+                        icon: Container(
+                          padding: EdgeInsets.all(8),
+                          child: SvgPicture.asset(
+                            AppIcons.gameSvg,
+                            height: 22,
+                            width: 22,
+                            color: _currentIndex == 3
+                                ? AppColors.btnColor
+                                : Colors.grey.shade400,
+                          ),
+                        ),
+                        label: 'Games',
+                      ),
+                      // Profile
+                      BottomNavigationBarItem(
+                        icon: Container(
+                          padding: EdgeInsets.all(8),
+                          child: SvgPicture.asset(
+                            AppIcons.profileSvg,
+                            height: 22,
+                            width: 22,
+                            color: _currentIndex == 4
+                                ? AppColors.btnColor
+                                : Colors.grey.shade400,
+                          ),
+                        ),
+                        label: 'Profile',
+                      ),
+                    ],
+                  ),
                 ),
-              ),
+                // Floating Add Button
+                Positioned(
+                  left: MediaQuery.of(context).size.width / 2 - 40,
+                  bottom: 30,
+                  child: GestureDetector(
+                    onTap: () {
+                      _navigateToScreen(2);
+                    },
+                    child: Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: AppColors.btnColor,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 4),
+                      ),
+                      child: Icon(Icons.add, size: 32, color: Colors.white),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),

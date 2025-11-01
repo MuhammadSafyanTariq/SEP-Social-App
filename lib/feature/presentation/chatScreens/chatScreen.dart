@@ -21,6 +21,7 @@ import '../../../components/styles/appImages.dart';
 import '../../../utils/extensions/dateTimeUtils.dart';
 import '../../data/models/dataModels/recent_chat_model/recent_chat_model.dart';
 import 'Messages_Screen.dart';
+import 'ai_chat_screen.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -95,6 +96,19 @@ class _ChatScreenState extends State<ChatScreen> {
     return Scaffold(
       backgroundColor: AppColors.white,
       resizeToAvoidBottomInset: true,
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const AIChatScreen(chatType: 'inbox'),
+            ),
+          );
+        },
+        backgroundColor: AppColors.btnColor,
+        elevation: 6,
+        child: Image.asset(AppImages.bot, fit: BoxFit.contain),
+      ),
       body: SafeArea(
         child: GestureDetector(
           onTap: () {

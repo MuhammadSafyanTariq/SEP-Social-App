@@ -123,6 +123,7 @@ class _PostImageBrowsingListingState extends State<PostImageBrowsingListing> {
             );
 
             return PostCard(
+              postId: post.id ?? '',
               header: postCardHeader(
                 post,
                 onRemovePostAction: () {

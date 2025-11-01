@@ -8,13 +8,17 @@ import 'package:sep/utils/extensions/contextExtensions.dart';
 import 'package:sep/utils/extensions/extensions.dart';
 import 'package:sep/utils/extensions/size.dart';
 import 'package:sep/utils/extensions/textStyle.dart';
+import 'package:sep/utils/extensions/widget.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../../components/coreComponents/AppButton.dart';
+import '../../../../../components/coreComponents/ImageView.dart';
 import '../../../../../components/styles/appColors.dart';
 import '../../../../../components/styles/app_strings.dart';
+import '../../../../../components/styles/appImages.dart';
 import '../../../../../services/storage/preferences.dart';
 import '../../../controller/auth_Controller/profileCtrl.dart';
+import '../../../chatScreens/ai_chat_screen.dart';
 
 class Contactus extends StatefulWidget {
   const Contactus({super.key});
@@ -67,6 +71,97 @@ class _ContactusState extends State<Contactus> {
             onPrefixTap: () => Navigator.pop(context),
             backgroundColor: Colors.white,
             hasTopSafe: true,
+          ),
+          // AI Assistant Card
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AIChatScreen(chatType: 'contact'),
+                ),
+              );
+            },
+            child: Container(
+              margin: EdgeInsets.all(20.sdp),
+              padding: EdgeInsets.all(16.sdp),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    AppColors.btnColor,
+                    AppColors.btnColor.withOpacity(0.8),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16.sdp),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.btnColor.withOpacity(0.3),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(12.sdp),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12.sdp),
+                    ),
+                    child: ImageView(url: AppImages.bot, size: 40.sdp),
+                  ),
+                  16.width,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '💬 Chat with AI Assistant',
+                          style: 16.txtSBoldBlack.copyWith(color: Colors.white),
+                        ),
+                        4.height,
+                        Text(
+                          'Get instant help about the app',
+                          style: 12.txtRegularWhite.copyWith(
+                            color: Colors.white.withOpacity(0.9),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    Icons.arrow_forward_ios,
+                    color: Colors.white,
+                    size: 20.sdp,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20.sdp),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Divider(color: AppColors.grey.withOpacity(0.3)),
+                ),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 12.sdp),
+                  child: Text('OR', style: 14.txtMediumgrey),
+                ),
+                Expanded(
+                  child: Divider(color: AppColors.grey.withOpacity(0.3)),
+                ),
+              ],
+            ),
+          ),
+          16.height,
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20.sdp),
+            child: Text('Send us a message', style: 16.txtSBoldprimary),
           ),
           Expanded(
             child: SingleChildScrollView(

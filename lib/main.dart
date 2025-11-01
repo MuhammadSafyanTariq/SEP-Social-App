@@ -1,5 +1,6 @@
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:get/get.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -20,6 +21,14 @@ final GlobalKey<NavigatorState> navState = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Load environment variables
+  try {
+    await dotenv.load(fileName: ".env");
+    debugPrint('Environment variables loaded successfully');
+  } catch (e) {
+    debugPrint('Failed to load .env file: $e');
+  }
 
   await Preferences.createInstance();
   await Get.putAsync(() async => ProfileCtrl());
@@ -100,7 +109,6 @@ class MyApp extends StatelessWidget {
               Locale('zh', ''),
               Locale('bn', ''),
             ],
-
             locale: languageController.locale,
             localeResolutionCallback: (locale, supportedLocales) {
               for (var supportedLocale in supportedLocales) {

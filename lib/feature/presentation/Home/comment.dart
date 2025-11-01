@@ -19,7 +19,7 @@ import '../../../components/coreComponents/editProfileImage.dart';
 import '../../../components/styles/appColors.dart';
 import '../../../components/styles/appImages.dart';
 import '../controller/auth_Controller/profileCtrl.dart';
-import 'homeScreenComponents/postVideo.dart';
+import 'homeScreenComponents/auto_play_video_player.dart';
 
 class CommentScreen extends StatefulWidget {
   final String postId;
@@ -85,7 +85,7 @@ class _CommentScreenState extends State<CommentScreen> {
 
     await profileCtrl
         .commentsPost(
-          postId: widget.postId ,
+          postId: widget.postId,
           content: msg,
           mediaFile: file,
           fileType: fileType,
@@ -179,9 +179,7 @@ class _CommentScreenState extends State<CommentScreen> {
                                 style: 12.txtshare,
                               ),
                               TextSpan(
-                                text:
-                                    '${comment.content}.' ??
-                                    'No content available',
+                                text: comment.content ?? 'No content available',
                                 style: 12.txtRegularprimary,
                               ),
                               TextSpan(
@@ -241,12 +239,13 @@ class _CommentScreenState extends State<CommentScreen> {
                                       ),
                                     )
                                   : SizedBox(
-                                      height: 80,
-                                      child: VideoCardPlayer(
+                                      height: 150,
+                                      child: AutoPlayVideoPlayer(
                                         videoUrl:
                                             '$baseUrl${comment.files?[0].file ?? ''}',
-                                        // videoUrl: '$baseUrl${'/public/uploads/2.mp4'}',
-                                        postId: widget.postId,
+                                        postId:
+                                            '${widget.postId}_comment_${comment.id}',
+                                        aspectRatio: 16 / 9,
                                       ),
                                     ))
                             : null,

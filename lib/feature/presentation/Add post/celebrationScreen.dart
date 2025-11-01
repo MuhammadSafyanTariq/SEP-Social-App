@@ -16,6 +16,29 @@ import '../../data/models/dataModels/Createpost/getcategory_model.dart';
 import '../Home/homeScreen.dart';
 import '../controller/auth_Controller/get_stripe_ctrl.dart';
 
+// Template model class
+class CelebrationTemplate {
+  final String id;
+  final String name;
+  final String assetPath;
+  final double textTopPosition; // Position from top as ratio (0.0 to 1.0)
+  final double? textBottomPosition; // Optional: Position from bottom
+  final double textLeftPadding; // Left padding
+  final double textRightPadding; // Right padding
+  final Alignment textAlignment; // Horizontal alignment
+
+  CelebrationTemplate({
+    required this.id,
+    required this.name,
+    required this.assetPath,
+    this.textTopPosition = 0.45, // Default center position
+    this.textBottomPosition,
+    this.textLeftPadding = 20,
+    this.textRightPadding = 20,
+    this.textAlignment = Alignment.center, // Default center alignment
+  });
+}
+
 class CelebrationScreen extends StatefulWidget {
   const CelebrationScreen({super.key});
 
@@ -29,6 +52,119 @@ class _CelebrationScreenState extends State<CelebrationScreen> {
 
   List<Categories> categories = [];
   Categories? selectedCategory;
+
+  // Template selection
+  int selectedTemplateIndex = 0;
+
+  // Text color selection
+  int selectedColorIndex = 2;
+  final List<Color> textColorPresets = [
+    Color(0xFF4CAF50), // Green (default)
+    Colors.white,
+    Colors.black,
+    Color(0xFFFF5722), // Orange
+    Color(0xFFF44336), // Red
+    Color(0xFF2196F3), // Blue
+    Color(0xFFFFEB3B), // Yellow
+    Color(0xFF9C27B0), // Purple
+    Color(0xFFFF4081), // Pink
+    Color(0xFF00BCD4), // Cyan
+  ];
+
+  // Draggable text position (as ratio 0.0 to 1.0)
+  double textPositionX = 0.5; // Center horizontally
+  double textPositionY = 0.5; // Center vertically
+
+  final List<CelebrationTemplate> templates = [
+    CelebrationTemplate(
+      id: 'default',
+      name: 'Default',
+      assetPath: AppImages.celebrateBack,
+      textTopPosition: 0.45,
+      textAlignment: Alignment.center,
+    ),
+    CelebrationTemplate(
+      id: 'template1',
+      name: 'Template 1',
+      assetPath: AppImages.celebrateTemplate1,
+      textTopPosition: 0.15,
+      textLeftPadding: 220,
+      textRightPadding: 20,
+      textAlignment: Alignment.center,
+    ),
+    CelebrationTemplate(
+      id: 'template2',
+      name: 'Template 2',
+      assetPath: AppImages.celebrateTemplate2,
+      textTopPosition: 0.29,
+      textLeftPadding: 60,
+      textRightPadding: 60,
+      textAlignment: Alignment.center,
+    ),
+    CelebrationTemplate(
+      id: 'template3',
+      name: 'Template 3',
+      assetPath: AppImages.celebrateTemplate3,
+      textTopPosition: 0.12,
+      textLeftPadding: 40,
+      textRightPadding: 40,
+      textAlignment: Alignment.center,
+    ),
+    CelebrationTemplate(
+      id: 'template4',
+      name: 'Template 4',
+      assetPath: AppImages.celebrateTemplate4,
+      textTopPosition: 0.275,
+      textLeftPadding: 50,
+      textRightPadding: 100,
+      textAlignment: Alignment.center,
+    ),
+    CelebrationTemplate(
+      id: 'template5',
+      name: 'Template 5',
+      assetPath: AppImages.celebrateTemplate5,
+      textTopPosition: 0.32,
+      textLeftPadding: 30,
+      textRightPadding: 30,
+      textAlignment: Alignment.center,
+    ),
+    CelebrationTemplate(
+      id: 'template6',
+      name: 'Template 6',
+      assetPath: AppImages.celebrateTemplate6,
+      textTopPosition: 0.2,
+      textLeftPadding: 20,
+      textRightPadding: 20,
+      textAlignment: Alignment.center,
+    ),
+    CelebrationTemplate(
+      id: 'template7',
+      name: 'Template 7',
+      assetPath: AppImages.celebrateTemplate7,
+      textTopPosition: 0.15,
+      textLeftPadding: 80,
+      textRightPadding: 20,
+      textAlignment: Alignment.center,
+    ),
+    CelebrationTemplate(
+      id: 'template8',
+      name: 'Template 8',
+      assetPath: AppImages.celebrateTemplate8,
+      textTopPosition: 0.55,
+      textLeftPadding: 20,
+      textRightPadding: 20,
+      textAlignment: Alignment.center,
+    ),
+    CelebrationTemplate(
+      id: 'template9',
+      name: 'Template 9',
+      assetPath: AppImages.celebrateTemplate9,
+      textTopPosition: 0.38,
+      textLeftPadding: 30,
+      textRightPadding: 30,
+      textAlignment: Alignment.center,
+    ),
+  ];
 
   // Advertisement category tracking
   bool showAdvertisementWarning = false;
@@ -304,14 +440,24 @@ class _CelebrationScreenState extends State<CelebrationScreen> {
 
     try {
       // Format the caption with special identifier for celebration posts
+      // Include template ID, color, and position: SEP#Celebrate+[templateId]+[colorHex]+[posX]+[posY]+[message]
+      String templateId = templates[selectedTemplateIndex].id;
+      String colorHex = textColorPresets[selectedColorIndex].value
+          .toRadixString(16)
+          .padLeft(8, '0');
+      String posX = textPositionX.toStringAsFixed(3);
+      String posY = textPositionY.toStringAsFixed(3);
       String celebrationCaption =
-          "SEP#Celebrate+${_textController.text.trim()}";
+          "SEP#Celebrate+$templateId+$colorHex+$posX+$posY+${_textController.text.trim()}";
 
       // Debug logging
       AppUtils.log("=== CELEBRATION POST DEBUG ===");
       AppUtils.log("User ID: ${Preferences.uid ?? 'NULL'}");
       AppUtils.log("Category ID: ${selectedCategory!.id ?? 'NULL'}");
       AppUtils.log("Category Name: ${selectedCategory!.name ?? 'NULL'}");
+      AppUtils.log("Template ID: $templateId");
+      AppUtils.log("Text Color: $colorHex");
+      AppUtils.log("Text Position: X=$posX, Y=$posY");
       AppUtils.log("Original Caption: ${_textController.text.trim()}");
       AppUtils.log("Formatted Caption: $celebrationCaption");
       AppUtils.log("Caption Length: ${celebrationCaption.length}");
@@ -548,12 +694,199 @@ class _CelebrationScreenState extends State<CelebrationScreen> {
 
             SizedBox(height: 24),
 
+            // Template Selection
+            TextView(
+              text: "Choose Template",
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: Colors.black87,
+              ),
+            ),
+            SizedBox(height: 12),
+            Container(
+              height: 100,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: templates.length,
+                itemBuilder: (context, index) {
+                  final isSelected = selectedTemplateIndex == index;
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        selectedTemplateIndex = index;
+                      });
+                    },
+                    child: Container(
+                      width: 140,
+                      margin: EdgeInsets.only(right: 12),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isSelected
+                              ? AppColors.greenlight
+                              : Colors.grey[300]!,
+                          width: isSelected ? 3 : 1,
+                        ),
+                        boxShadow: isSelected
+                            ? [
+                                BoxShadow(
+                                  color: AppColors.greenlight.withOpacity(0.3),
+                                  blurRadius: 8,
+                                  spreadRadius: 2,
+                                ),
+                              ]
+                            : [],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Stack(
+                          children: [
+                            Image.asset(
+                              templates[index].assetPath,
+                              fit: BoxFit.cover,
+                              width: 160,
+                              height: 100,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  color: Colors.grey[200],
+                                  child: Icon(
+                                    Icons.image_not_supported,
+                                    color: Colors.grey[400],
+                                  ),
+                                );
+                              },
+                            ),
+                            if (isSelected)
+                              Positioned(
+                                top: 4,
+                                right: 4,
+                                child: Container(
+                                  padding: EdgeInsets.all(2),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.greenlight,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    Icons.check,
+                                    size: 16,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            Positioned(
+                              bottom: 0,
+                              left: 0,
+                              right: 0,
+                              child: Container(
+                                padding: EdgeInsets.symmetric(
+                                  vertical: 4,
+                                  horizontal: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withOpacity(0.6),
+                                  borderRadius: BorderRadius.only(
+                                    bottomLeft: Radius.circular(12),
+                                    bottomRight: Radius.circular(12),
+                                  ),
+                                ),
+                                child: Text(
+                                  templates[index].name,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+
+            SizedBox(height: 24),
+
+            // Text Color Selection
+            TextView(
+              text: "Text Color",
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: Colors.black87,
+              ),
+            ),
+            SizedBox(height: 12),
+            Container(
+              height: 50,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: textColorPresets.length,
+                itemBuilder: (context, index) {
+                  final isSelected = selectedColorIndex == index;
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        selectedColorIndex = index;
+                      });
+                    },
+                    child: Container(
+                      width: 50,
+                      height: 50,
+                      margin: EdgeInsets.only(right: 12),
+                      decoration: BoxDecoration(
+                        color: textColorPresets[index],
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: isSelected
+                              ? AppColors.greenlight
+                              : Colors.grey[300]!,
+                          width: isSelected ? 3 : 1,
+                        ),
+                        boxShadow: isSelected
+                            ? [
+                                BoxShadow(
+                                  color: textColorPresets[index].withOpacity(
+                                    0.4,
+                                  ),
+                                  blurRadius: 8,
+                                  spreadRadius: 2,
+                                ),
+                              ]
+                            : [],
+                      ),
+                      child: isSelected
+                          ? Icon(
+                              Icons.check,
+                              color:
+                                  textColorPresets[index].computeLuminance() >
+                                      0.5
+                                  ? Colors.black
+                                  : Colors.white,
+                              size: 24,
+                            )
+                          : null,
+                    ),
+                  );
+                },
+              ),
+            ),
+
+            SizedBox(height: 24),
+
             // Celebration Image with Text Overlay
             Container(
               width: double.infinity,
-              height: MediaQuery.of(
-                context,
-              ).size.width, // Responsive height based on width
+              height:
+                  MediaQuery.of(context).size.width *
+                  0.6, // 4:3 aspect ratio (rectangular)
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
@@ -573,7 +906,7 @@ class _CelebrationScreenState extends State<CelebrationScreen> {
                       width: double.infinity,
                       height: double.infinity,
                       child: Image.asset(
-                        'assets/images/celebrateBack.png',
+                        templates[selectedTemplateIndex].assetPath,
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) {
                           AppUtils.log(
@@ -647,59 +980,133 @@ class _CelebrationScreenState extends State<CelebrationScreen> {
                       ),
                     ),
 
-                    // Text Overlay in Fixed Position (center)
+                    // Draggable Text Overlay
                     Positioned(
-                      left: 20,
-                      right: 20,
+                      left:
+                          MediaQuery.of(context).size.width * textPositionX -
+                          150,
                       top:
                           MediaQuery.of(context).size.width *
-                          0.6, // Responsive positioning
-                      child: Container(
-                        padding: EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.3),
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        child: TextField(
-                          controller: _textController,
-                          maxLength: _maxCharacters,
-                          maxLines: 5,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: AppColors.greenlight,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            shadows: [
-                              Shadow(
-                                color: Colors.black.withValues(alpha: 0.8),
-                                offset: Offset(1, 1),
-                                blurRadius: 2,
+                              0.6 *
+                              textPositionY -
+                          60,
+                      child: Draggable(
+                        feedback: Material(
+                          color: Colors.transparent,
+                          child: Container(
+                            width: 300,
+                            height: 120,
+                            padding: EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                color: Colors.white.withOpacity(0.5),
+                                width: 2,
                               ),
-                            ],
-                          ),
-                          decoration: InputDecoration(
-                            hintText: "What are you celebrating?",
-                            hintStyle: TextStyle(
-                              color: AppColors.greenlight,
-                              fontSize: 12,
+                              borderRadius: BorderRadius.circular(8),
                             ),
-                            border: InputBorder.none,
-                            counterText: "", // Hide the default counter
+                            child: Text(
+                              _textController.text.isEmpty
+                                  ? "What are you celebrating?"
+                                  : _textController.text,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: textColorPresets[selectedColorIndex],
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ),
-                          onChanged: (value) {
-                            // Enforce character limit by preventing input beyond limit
-                            if (value.length > _maxCharacters) {
-                              _textController.text = value.substring(
-                                0,
-                                _maxCharacters,
-                              );
-                              _textController.selection =
-                                  TextSelection.fromPosition(
-                                    TextPosition(offset: _maxCharacters),
-                                  );
-                            }
-                            setState(() {}); // Refresh to update button state
-                          },
+                        ),
+                        childWhenDragging: Opacity(
+                          opacity: 0.3,
+                          child: Container(
+                            width: 300,
+                            height: 120,
+                            padding: EdgeInsets.all(16),
+                            child: TextField(
+                              controller: _textController,
+                              maxLength: _maxCharacters,
+                              maxLines: 5,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: textColorPresets[selectedColorIndex],
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              decoration: InputDecoration(
+                                hintText: "What are you celebrating?",
+                                hintStyle: TextStyle(
+                                  color: textColorPresets[selectedColorIndex]
+                                      .withOpacity(0.6),
+                                  fontSize: 12,
+                                ),
+                                border: InputBorder.none,
+                                counterText: "",
+                              ),
+                            ),
+                          ),
+                        ),
+                        onDragEnd: (details) {
+                          setState(() {
+                            // Calculate position as ratio (0.0 to 1.0) relative to container
+                            final containerWidth = MediaQuery.of(
+                              context,
+                            ).size.width;
+                            final containerHeight = containerWidth * 0.6;
+
+                            // Get the drag position and clamp to container bounds
+                            double newX =
+                                (details.offset.dx + 150) / containerWidth;
+                            double newY =
+                                (details.offset.dy + 60) / containerHeight;
+
+                            // Clamp values between 0.1 and 0.9 to keep text visible
+                            textPositionX = newX.clamp(0.1, 0.9);
+                            textPositionY = newY.clamp(0.1, 0.9);
+
+                            AppUtils.log(
+                              "Text position updated: X=$textPositionX, Y=$textPositionY",
+                            );
+                          });
+                        },
+                        child: Container(
+                          width: 300,
+                          height: 120,
+                          padding: EdgeInsets.all(16),
+                          child: TextField(
+                            controller: _textController,
+                            maxLength: _maxCharacters,
+                            maxLines: 5,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: textColorPresets[selectedColorIndex],
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            decoration: InputDecoration(
+                              hintText: "What are you celebrating?",
+                              hintStyle: TextStyle(
+                                color: textColorPresets[selectedColorIndex]
+                                    .withOpacity(0.6),
+                                fontSize: 12,
+                              ),
+                              border: InputBorder.none,
+                              counterText: "",
+                            ),
+                            onChanged: (value) {
+                              if (value.length > _maxCharacters) {
+                                _textController.text = value.substring(
+                                  0,
+                                  _maxCharacters,
+                                );
+                                _textController.selection =
+                                    TextSelection.fromPosition(
+                                      TextPosition(offset: _maxCharacters),
+                                    );
+                              }
+                              setState(() {});
+                            },
+                          ),
                         ),
                       ),
                     ),

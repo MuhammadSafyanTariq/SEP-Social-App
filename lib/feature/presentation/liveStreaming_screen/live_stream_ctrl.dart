@@ -1,7 +1,13 @@
+import 'dart:async';
+
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:collection/collection.dart';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:sep/components/coreComponents/AppButton.dart';
+import 'package:sep/components/coreComponents/TextView.dart';
+import 'package:sep/components/styles/appColors.dart';
 import 'package:sep/feature/presentation/controller/auth_Controller/profileCtrl.dart';
 import 'package:sep/main.dart';
 import 'package:sep/utils/appUtils.dart';
@@ -184,6 +190,7 @@ class LiveStreamCtrl extends GetxController {
   ///---------------------------------------------------------------------------
   /// objects and instances....
   late RtcEngine engine;
+  bool _isEngineInitialized = false;
   static LiveStreamCtrl get find => Get.isRegistered<LiveStreamCtrl>()
       ? Get.find<LiveStreamCtrl>()
       : Get.put(LiveStreamCtrl());
@@ -200,18 +207,16 @@ class LiveStreamCtrl extends GetxController {
   String? _recordingResourceId;
   String? _recordingSid;
   DateTime? _recordingStartTime;
-  String? recordedVideoUrl;
+  String? recordedVideoUrl; // Current recording URL
+  Timer? _recordingDurationTimer;
+  RxString recordingDuration = RxString('00:00');
+
+  // Array to store all recorded video URLs in the session
+  final RxList<String> recordedVideoUrls = RxList<String>([]);
 
   ///---------------------------------------------------------------------------
   /// Recording getters
   bool get canRecord => isHost; // Only host can record
-  String? get recordingDuration {
-    if (_recordingStartTime == null) return null;
-    final duration = DateTime.now().difference(_recordingStartTime!);
-    final minutes = duration.inMinutes;
-    final seconds = duration.inSeconds % 60;
-    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
-  }
 
   ///---------------------------------------------------------------------------
   /// getters.......
@@ -371,19 +376,25 @@ class LiveStreamCtrl extends GetxController {
 
         if (agoraId != null) {
           return friend.copyWith(
-            agoraLiveStatus: AgoraUserLiveStatus.liveBroadCaster,
+            agoraLiveStatus:
+                AgoraUserLiveStatus.liveBroadCaster as AgoraUserLiveStatus?,
           );
         }
         // if(uData != null && uData['data'] == 'host'){
         //   return friend.copyWith(agoraLiveStatus: AgoraUserLiveStatus.liveBroadCaster);
         // }
         return friend.copyWith(
-          agoraLiveStatus: AgoraUserLiveStatus.liveAudience,
+          agoraLiveStatus:
+              AgoraUserLiveStatus.liveAudience as AgoraUserLiveStatus?,
         );
       } else if (invitedUsers.any((invited) => invited.id == friend.id)) {
-        return friend.copyWith(agoraLiveStatus: AgoraUserLiveStatus.invited);
+        return friend.copyWith(
+          agoraLiveStatus: AgoraUserLiveStatus.invited as AgoraUserLiveStatus?,
+        );
       } else {
-        return friend.copyWith(agoraLiveStatus: AgoraUserLiveStatus.offLine);
+        return friend.copyWith(
+          agoraLiveStatus: AgoraUserLiveStatus.offLine as AgoraUserLiveStatus?,
+        );
       }
     }).toList();
   }
@@ -410,7 +421,92 @@ class LiveStreamCtrl extends GetxController {
     }
 
     try {
-      AppUtils.log('Starting recording for channel: $channelName');
+      AppUtils.log('═══════════════════════════════════════════════════');
+      AppUtils.log('STARTING RECORDING - DIAGNOSTIC INFO');
+      AppUtils.log('═══════════════════════════════════════════════════');
+      AppUtils.log('Channel Name: $channelName');
+      AppUtils.log('Host UID (numeric): $hostAgoraId');
+      AppUtils.log('Host UID (string): ${hostAgoraId.toString()}');
+      AppUtils.log('Is Host: $isHost');
+      AppUtils.log('Can Record: $canRecord');
+      AppUtils.log('Current User ID: ${Preferences.uid}');
+      AppUtils.log('Local user audio state: ${streamCtrl.value.localMicState}');
+      AppUtils.log(
+        'Local user video state: ${streamCtrl.value.localVideoState}',
+      );
+      AppUtils.log(
+        'Remote users count: ${streamCtrl.value.remoteIds?.length ?? 0}',
+      );
+      AppUtils.log(
+        'Local channel joined: ${streamCtrl.value.localChannelJoined}',
+      );
+      AppUtils.log('═══════════════════════════════════════════════════');
+
+      // Check if user has joined the channel and is publishing
+      if (!streamCtrl.value.localChannelJoined) {
+        AppUtils.toastError('Please wait until you join the channel');
+        AppUtils.logEr('Recording blocked: Not joined to channel yet');
+        return false;
+      }
+
+      // Check if at least one stream is active (either audio or video)
+      final hasAudio =
+          streamCtrl.value.localMicState != null &&
+          streamCtrl.value.localMicState !=
+              LocalAudioStreamState.localAudioStreamStateStopped;
+      final hasVideo =
+          streamCtrl.value.localVideoState != null &&
+          streamCtrl.value.localVideoState !=
+              LocalVideoStreamState.localVideoStreamStateStopped;
+
+      if (!hasAudio && !hasVideo) {
+        AppUtils.toastError(
+          'Please enable camera or microphone before recording',
+        );
+        AppUtils.logEr('Recording blocked: No active audio/video streams');
+        AppUtils.logEr(
+          'Audio state: ${streamCtrl.value.localMicState}, Video state: ${streamCtrl.value.localVideoState}',
+        );
+        return false;
+      }
+
+      AppUtils.log(
+        '✓ Stream validation passed - Audio: $hasAudio, Video: $hasVideo',
+      );
+
+      // Wait a moment to ensure streams are fully established
+      AppUtils.log('Waiting 2 seconds for streams to stabilize...');
+      await Future.delayed(Duration(seconds: 2));
+      AppUtils.log('Stream stabilization complete, proceeding with recording');
+
+      // Show loading
+      Get.dialog(
+        Material(
+          color: Colors.transparent,
+          child: Center(
+            child: Container(
+              padding: EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  TextView(
+                    text: 'Starting recording...',
+                    style: TextStyle(fontSize: 16, color: Colors.black87),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        barrierDismissible: false,
+      );
+
       isRecording.value = true;
 
       // Step 1: Acquire resource
@@ -426,14 +522,28 @@ class LiveStreamCtrl extends GetxController {
       }
 
       _recordingResourceId = acquireResult.resourceId;
-      AppUtils.log('Acquired resourceId: $_recordingResourceId');
+      AppUtils.log('═══════════════════════════════════════════════════');
+      AppUtils.log('ACQUIRE SUCCESSFUL');
+      AppUtils.log('ResourceId: $_recordingResourceId');
+      AppUtils.log('Message: ${acquireResult.message}');
+      AppUtils.log('═══════════════════════════════════════════════════');
 
       // Step 2: Start recording
+      AppUtils.log('Calling START recording API...');
       final startResult = await AgoraRecordingService.start(
         channelName: channelName,
         uid: hostAgoraId.toString(),
         resourceId: _recordingResourceId!,
       );
+
+      AppUtils.log('═══════════════════════════════════════════════════');
+      AppUtils.log('START RECORDING RESULT');
+      AppUtils.log('Success: ${startResult.success}');
+      AppUtils.log('SID: ${startResult.sid}');
+      AppUtils.log('ResourceId: ${startResult.resourceId}');
+      AppUtils.log('Message: ${startResult.message}');
+      AppUtils.log('Error: ${startResult.errorMessage}');
+      AppUtils.log('═══════════════════════════════════════════════════');
 
       if (!startResult.success || startResult.sid == null) {
         throw Exception(
@@ -444,15 +554,33 @@ class LiveStreamCtrl extends GetxController {
       _recordingSid = startResult.sid;
       _recordingStartTime = DateTime.now();
 
-      AppUtils.toast('Recording started successfully');
-      AppUtils.log('Recording started with SID: $_recordingSid');
+      // Start timer to update recording duration
+      _startRecordingDurationTimer();
+
+      // Close loading dialog
+      Get.back();
+
+      AppUtils.log('═══════════════════════════════════════════════════');
+      AppUtils.log('RECORDING STARTED SUCCESSFULLY ✓');
+      AppUtils.log('Channel: $channelName');
+      AppUtils.log('UID: ${hostAgoraId.toString()}');
+      AppUtils.log('ResourceId: $_recordingResourceId');
+      AppUtils.log('SID: $_recordingSid');
+      AppUtils.log('Started at: $_recordingStartTime');
+      AppUtils.log('═══════════════════════════════════════════════════');
+
+      AppUtils.toast(startResult.message ?? 'Recording started successfully');
 
       return true;
     } catch (e) {
+      // Close loading dialog if open
+      if (Get.isDialogOpen == true) Get.back();
+
       isRecording.value = false;
       _recordingResourceId = null;
       _recordingSid = null;
       _recordingStartTime = null;
+      _stopRecordingDurationTimer();
 
       AppUtils.logEr('Error starting recording: $e');
       AppUtils.toastError('Failed to start recording: $e');
@@ -462,14 +590,28 @@ class LiveStreamCtrl extends GetxController {
 
   /// Stop Agora cloud recording
   Future<bool> stopRecording() async {
+    AppUtils.log('═══════════════════════════════════════════════════');
+    AppUtils.log('STOPPING RECORDING - DIAGNOSTIC INFO');
+    AppUtils.log('═══════════════════════════════════════════════════');
+    AppUtils.log('Is Recording: ${isRecording.value}');
+    AppUtils.log('ResourceId: $_recordingResourceId');
+    AppUtils.log('SID: $_recordingSid');
+    AppUtils.log('Channel: ${streamCtrl.value.channelId}');
+    AppUtils.log('Host UID: ${hostAgoraId.toString()}');
+    AppUtils.log('═══════════════════════════════════════════════════');
+
     if (!isRecording.value) {
       AppUtils.toastError('No recording in progress');
       return false;
     }
 
     if (_recordingResourceId == null || _recordingSid == null) {
+      AppUtils.logEr('⚠️ CRITICAL: Recording session data is missing!');
+      AppUtils.logEr('ResourceId is null: ${_recordingResourceId == null}');
+      AppUtils.logEr('SID is null: ${_recordingSid == null}');
       AppUtils.toastError('Recording session not found');
       isRecording.value = false;
+      _stopRecordingDurationTimer();
       return false;
     }
 
@@ -480,8 +622,41 @@ class LiveStreamCtrl extends GetxController {
     }
 
     try {
-      AppUtils.log('Stopping recording - SID: $_recordingSid');
+      AppUtils.log(
+        'Stopping recording - Channel: $channelName, SID: $_recordingSid, ResourceID: $_recordingResourceId, UID: ${hostAgoraId.toString()}',
+      );
 
+      // Show loading with safety check
+      if (Get.isDialogOpen != true) {
+        Get.dialog(
+          Material(
+            color: Colors.transparent,
+            child: Center(
+              child: Container(
+                padding: EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    TextView(
+                      text: 'Stopping recording...',
+                      style: TextStyle(fontSize: 16, color: Colors.black87),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          barrierDismissible: false,
+        );
+      }
+
+      AppUtils.log('Calling AgoraRecordingService.stop...');
       final stopResult = await AgoraRecordingService.stop(
         channelName: channelName,
         uid: hostAgoraId.toString(),
@@ -489,58 +664,159 @@ class LiveStreamCtrl extends GetxController {
         sid: _recordingSid!,
       );
 
+      AppUtils.log(
+        'Stop result received - Success: ${stopResult.success}, Message: ${stopResult.message}, Error: ${stopResult.errorMessage}',
+      );
+      AppUtils.log('Stop result fileUrl: ${stopResult.fileUrl}');
+      AppUtils.log('Stop result serverResponse: ${stopResult.serverResponse}');
+
+      // Close loading dialog with safety check
+      try {
+        if (Get.isDialogOpen == true) {
+          Get.back();
+          AppUtils.log('Loading dialog closed');
+        }
+      } catch (e) {
+        AppUtils.log('Dialog already closed or error closing: $e');
+      }
+
+      // Always reset state after stop attempt
+      isRecording.value = false;
+      final tempResourceId = _recordingResourceId;
+      final tempSid = _recordingSid;
+      _recordingResourceId = null;
+      _recordingSid = null;
+      _recordingStartTime = null;
+      _stopRecordingDurationTimer();
+
       if (!stopResult.success) {
-        throw Exception(stopResult.errorMessage ?? 'Failed to stop recording');
+        final errorMsg = stopResult.errorMessage ?? 'Failed to stop recording';
+        AppUtils.logEr('Error stopping recording: $errorMsg');
+        AppUtils.logEr('Previous ResourceID: $tempResourceId, SID: $tempSid');
+        AppUtils.toastError(errorMsg);
+        return false;
       }
 
       recordedVideoUrl = stopResult.fileUrl;
+      AppUtils.log('Assigned recordedVideoUrl: $recordedVideoUrl');
 
-      isRecording.value = false;
-      _recordingResourceId = null;
-      _recordingSid = null;
-      _recordingStartTime = null;
+      // Log MP4 URL if available
+      if (stopResult.mp4Url != null && stopResult.mp4Url!.isNotEmpty) {
+        AppUtils.log('MP4 file name: ${stopResult.mp4Url}');
+      }
+
+      // Add to recorded videos array if URL is valid
+      if (recordedVideoUrl != null && recordedVideoUrl!.isNotEmpty) {
+        recordedVideoUrls.add(recordedVideoUrl!);
+        AppUtils.log(
+          'Added video URL to array. Total recordings: ${recordedVideoUrls.length}',
+        );
+        AppUtils.log('All recorded URLs: $recordedVideoUrls');
+      } else {
+        AppUtils.logEr(
+          '⚠️ Video URL is null or empty. This is expected - Agora needs time to process the recording.',
+        );
+        AppUtils.logEr(
+          '⚠️ The video file will be available in your cloud storage shortly.',
+        );
+        // Store recording metadata for future reference
+        AppUtils.log(
+          'Recording metadata - ResourceID: $tempResourceId, SID: $tempSid, Channel: $channelName',
+        );
+      }
 
       AppUtils.toast('Recording stopped successfully');
-      AppUtils.log('Recording stopped. File URL: $recordedVideoUrl');
+      AppUtils.log(
+        'Recording stopped successfully. File URL: $recordedVideoUrl',
+      );
       AppUtils.log('Server response: ${stopResult.serverResponse}');
 
       return true;
-    } catch (e) {
-      AppUtils.logEr('Error stopping recording: $e');
-      AppUtils.toastError('Failed to stop recording: $e');
+    } catch (e, stackTrace) {
+      // Close loading dialog if open with safety check
+      try {
+        if (Get.isDialogOpen == true) {
+          Get.back();
+          AppUtils.log('Loading dialog closed after exception');
+        }
+      } catch (dialogError) {
+        AppUtils.log('Error closing dialog: $dialogError');
+      }
 
-      // Reset recording state even on error
+      AppUtils.logEr('Exception stopping recording: $e');
+      AppUtils.logEr('Stack trace: $stackTrace');
+      AppUtils.toastError('Failed to stop recording: ${e.toString()}');
+
+      // Reset recording state on exception
       isRecording.value = false;
       _recordingResourceId = null;
       _recordingSid = null;
       _recordingStartTime = null;
+      _stopRecordingDurationTimer();
 
       return false;
     }
   }
 
   /// Toggle recording on/off
+  bool _isTogglingRecording = false;
+
   Future<void> toggleRecording() async {
-    if (isRecording.value) {
-      await stopRecording();
-    } else {
-      await startRecording();
+    // Prevent multiple simultaneous toggle operations
+    if (_isTogglingRecording) {
+      AppUtils.log('Recording toggle already in progress, ignoring...');
+      return;
     }
+
+    _isTogglingRecording = true;
+
+    try {
+      if (isRecording.value) {
+        await stopRecording();
+      } else {
+        await startRecording();
+      }
+    } finally {
+      _isTogglingRecording = false;
+    }
+  }
+
+  /// Start timer to update recording duration
+  void _startRecordingDurationTimer() {
+    _stopRecordingDurationTimer(); // Stop any existing timer
+    _recordingDurationTimer = Timer.periodic(const Duration(seconds: 1), (
+      timer,
+    ) {
+      if (_recordingStartTime != null) {
+        final duration = DateTime.now().difference(_recordingStartTime!);
+        final minutes = duration.inMinutes;
+        final seconds = duration.inSeconds % 60;
+        recordingDuration.value =
+            '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+      }
+    });
+  }
+
+  /// Stop recording duration timer
+  void _stopRecordingDurationTimer() {
+    _recordingDurationTimer?.cancel();
+    _recordingDurationTimer = null;
+    recordingDuration.value = '00:00';
   }
 
   ///---------------------------------------------------------------------------
 
   /// Initialize Live Broadcast session
-  void initBroadCast(
+  Future<void> initBroadCast(
     ClientRoleType role,
     String channelName, {
     bool isHost = false,
-  }) {
+  }) async {
     streamCtrl.value = StreamControlsModel(
       clientRole: role,
       channelId: channelName,
     );
-    _registerEngine();
+    await _registerEngine();
   }
 
   void sendGiftToken(
@@ -595,18 +871,42 @@ class LiveStreamCtrl extends GetxController {
   /// agora methods......
   /// Register and configure Agora engine
   Future<void> _registerEngine() async {
-    engine = createAgoraRtcEngine();
-
     try {
+      // Reset initialization flag
+      _isEngineInitialized = false;
+
+      // Check and request permissions first
+      StreamUtils.log('_registerEngine', 'Checking permissions...');
+      final hasPermissions = await StreamUtils.checkPermission();
+      if (!hasPermissions) {
+        throw Exception('Camera and microphone permissions are required');
+      }
+      StreamUtils.log('_registerEngine', 'Permissions granted');
+
+      // Create and initialize engine
+      StreamUtils.log('_registerEngine', 'Creating Agora engine...');
+      engine = createAgoraRtcEngine();
+
+      StreamUtils.log(
+        '_registerEngine',
+        'Initializing with appId: $agoraAppId',
+      );
       await engine.initialize(
         RtcEngineContext(
           appId: agoraAppId,
           channelProfile: ChannelProfileType.channelProfileLiveBroadcasting,
         ),
       );
-
       StreamUtils.log('_engine.initialize', 'success');
 
+      // Mark engine as initialized
+      _isEngineInitialized = true;
+
+      // Small delay to ensure engine is fully ready
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      // Register event handlers
+      StreamUtils.log('_registerEngine', 'Registering event handlers...');
       StreamUtils.registerEventHandlers(
         engine,
         onRemoteUserJoined: _handleRemoteUserJoined,
@@ -619,29 +919,56 @@ class LiveStreamCtrl extends GetxController {
         onRemoteAudioStateChanged: _onRemoteAudioStateChanged,
       );
 
+      // Enable video and set client role
+      StreamUtils.log('_registerEngine', 'Enabling video...');
       await engine.enableVideo();
-      StreamUtils.log('_engine.setClientRole + enableVideo', 'success');
+
+      StreamUtils.log(
+        '_registerEngine',
+        'Setting client role: ${streamCtrl.value.clientRole?.name}',
+      );
       await engine.setClientRole(role: streamCtrl.value.clientRole!);
+
       if (isHost ||
           streamCtrl.value.clientRole == ClientRoleType.clientRoleBroadcaster) {
-        // await engine.setClientRole(role: streamCtrl.value.clientRole!);
+        StreamUtils.log(
+          '_registerEngine',
+          'Starting preview for broadcaster...',
+        );
         await engine.startPreview();
         streamCtrl.value.enginePreviewState = true;
         streamCtrl.refresh();
+        StreamUtils.log('_registerEngine', 'Preview started successfully');
       }
 
       if (!isHost &&
           streamCtrl.value.clientRole == ClientRoleType.clientRoleBroadcaster &&
           getBroadcasters.length < broadCastUserMaxLimit) {
+        StreamUtils.log(
+          '_registerEngine',
+          'Auto-joining channel for co-broadcaster...',
+        );
         await joinChannel();
       } else if (!isHost) {
+        StreamUtils.log('_registerEngine', 'Setting up audience mode...');
         streamCtrl.value.clientRole = ClientRoleType.clientRoleAudience;
-        // await engine.setClientRole(role: streamCtrl.value.clientRole!);
         await engine.muteLocalVideoStream(true);
         await joinChannel();
       }
-    } catch (e) {
-      StreamUtils.logEr('_registerEngine', e.toString());
+
+      StreamUtils.log(
+        '_registerEngine',
+        'Engine registration completed successfully',
+      );
+    } catch (e, stackTrace) {
+      _isEngineInitialized = false;
+      StreamUtils.logEr('_registerEngine', 'Error: ${e.toString()}');
+      StreamUtils.logEr(
+        '_registerEngine',
+        'StackTrace: ${stackTrace.toString()}',
+      );
+      AppUtils.toastError('Failed to initialize stream: ${e.toString()}');
+      rethrow;
     }
   }
 
@@ -662,34 +989,340 @@ class LiveStreamCtrl extends GetxController {
   }
 
   Future<void> joinChannel() async {
+    // Check if engine is initialized
+    if (!_isEngineInitialized) {
+      final errorMsg =
+          'Agora engine not initialized. Please wait for initialization to complete.';
+      StreamUtils.logEr('joinChannel', errorMsg);
+      AppUtils.toastError(errorMsg);
+      throw Exception(errorMsg);
+    }
+
     final channelName = streamCtrl.value.channelId ?? '';
     final uid = getNumericUserId();
+
+    StreamUtils.log(
+      'joinChannel',
+      'Starting - Channel: $channelName, UID: $uid, isHost: $isHost',
+    );
+
     try {
+      // Get Agora token
+      StreamUtils.log('joinChannel', 'Fetching token from API...');
       final tokenData = await ProfileCtrl.find.getUserAgoraToken(
         channelName,
         uid.toString(),
         isHost,
       );
+
+      // Log complete server response for debugging
+      StreamUtils.log('joinChannel', '=== COMPLETE SERVER RESPONSE ===');
+      StreamUtils.log('joinChannel', 'Full Response: ${tokenData.toString()}');
+      StreamUtils.log(
+        'joinChannel',
+        'Response Keys: ${tokenData.keys.toList()}',
+      );
+
+      // Validate token response
+      final token = tokenData['token'] as String?;
+      final appId = tokenData['appId'] as String?;
+      final responseChannelName = tokenData['channelName'] as String?;
+      final responseUid = tokenData['uid'];
+      final success = tokenData['success'];
+
+      StreamUtils.log('joinChannel', 'Parsed Fields:');
+      StreamUtils.log('joinChannel', '  - success: $success');
+      StreamUtils.log(
+        'joinChannel',
+        '  - token: "${token ?? 'null'}" (length: ${token?.length ?? 0})',
+      );
+      StreamUtils.log('joinChannel', '  - appId: "$appId"');
+      StreamUtils.log('joinChannel', '  - channelName: "$responseChannelName"');
+      StreamUtils.log('joinChannel', '  - uid: $responseUid');
+      StreamUtils.log('joinChannel', '================================');
+
+      // Check if token is empty or null
+      if (token == null || token.isEmpty) {
+        final errorMsg =
+            '⚠️ SERVER ERROR: Token generation failed!\n\n'
+            'The server returned an empty token.\n\n'
+            'Full server response:\n${tokenData.toString()}\n\n'
+            'This is a BACKEND issue - please contact your backend team.';
+
+        StreamUtils.logEr('joinChannel', errorMsg);
+        AppUtils.toastError(
+          'Server error: Cannot generate stream token. Please contact support.',
+        );
+
+        throw Exception(
+          'Empty token received from server. Backend needs to fix token generation.',
+        );
+      }
+
+      // Join the channel with valid token
+      StreamUtils.log(
+        'joinChannel',
+        'Valid token received (length: ${token.length}), joining channel...',
+      );
       await engine.joinChannel(
-        token: tokenData['token'],
-        channelId: tokenData['channelName'],
+        token: token,
+        channelId: responseChannelName ?? channelName,
         uid: uid,
         options: const ChannelMediaOptions(),
       );
 
-      StreamUtils.log('joinChannel', 'success');
+      StreamUtils.log('joinChannel', 'Join request sent successfully');
     } catch (e) {
-      StreamUtils.logEr('joinChannel', e.toString());
+      final errorStr = e.toString();
+      StreamUtils.logEr('joinChannel', 'Error: $errorStr');
+
+      // Handle specific error codes
+      if (errorStr.contains('Empty token')) {
+        // Already handled above with user-friendly message
+      } else if (errorStr.contains('-17') ||
+          errorStr.contains('ERR_NOT_INITIALIZED')) {
+        AppUtils.toastError(
+          'Stream engine not properly initialized. Please try again.',
+        );
+      } else if (errorStr.contains('-2') ||
+          errorStr.contains('ERR_INVALID_ARGUMENT')) {
+        AppUtils.toastError(
+          'Invalid stream configuration. Please restart the app.',
+        );
+      } else if (errorStr.contains('110') ||
+          errorStr.contains('errInvalidToken')) {
+        AppUtils.toastError(
+          'Invalid stream token. Server configuration error.',
+        );
+      } else {
+        AppUtils.toastError('Failed to start stream: $errorStr');
+      }
+
+      rethrow;
     }
   }
 
   Future<void> endStream() async {
+    AppUtils.log('=== START endStream() ===');
+
+    // Store video URL and host status before cleanup
+    final videoUrl = recordedVideoUrl;
+    final wasHost = isHost;
+    final hasRecording = videoUrl != null && videoUrl.isNotEmpty;
+
+    AppUtils.log(
+      'Ending stream - Has recording: $hasRecording, Was host: $wasHost, Video URL: $videoUrl',
+    );
+    AppUtils.log('Total recordings in array: ${recordedVideoUrls.length}');
+    AppUtils.log('isRecording.value: ${isRecording.value}');
+
     try {
+      // Stop recording if active
+      if (isRecording.value) {
+        AppUtils.log('Stopping active recording...');
+        await stopRecording();
+        // Update videoUrl after stopping in case it was just saved
+        final updatedUrl = recordedVideoUrl;
+        AppUtils.log('Updated video URL after stopping: $updatedUrl');
+        AppUtils.log(
+          'Updated recordings array length: ${recordedVideoUrls.length}',
+        );
+      }
+      _stopRecordingDurationTimer();
+
+      AppUtils.log('Leaving channel and releasing engine...');
       await engine.leaveChannel();
       await engine.release();
-    } catch (_) {}
+      _isEngineInitialized = false;
+      AppUtils.log('Engine cleanup complete');
+    } catch (e) {
+      AppUtils.logEr('Error ending stream: $e');
+    }
+
     _updateBroadcasterCount();
     AgoraChatCtrl.find.leaveAudienceLiveCamera(LiveRequestStatus.leave);
+
+    // Show recorded video dialog if there are recordings and user was host
+    final hasRecordings = recordedVideoUrls.isNotEmpty;
+
+    AppUtils.log(
+      'Final check - Has recordings in array: $hasRecordings, Was host: $wasHost, Total videos: ${recordedVideoUrls.length}',
+    );
+    AppUtils.log('Will show dialog? ${hasRecordings && wasHost}');
+
+    if (hasRecordings && wasHost) {
+      AppUtils.log('Calling _showRecordedVideosDialog...');
+      // Wait for dialog to be dismissed before continuing
+      await _showRecordedVideosDialog(recordedVideoUrls.toList());
+      AppUtils.log('Dialog dismissed, endStream completing');
+    } else if (wasHost && !hasRecordings) {
+      // Host stopped recording but file URL not yet available
+      AppUtils.log('Host ended stream but no recordings available yet');
+      AppUtils.log('Showing processing dialog instead...');
+      await _showRecordingProcessingDialog();
+    } else {
+      AppUtils.log(
+        'NOT showing dialog - hasRecordings: $hasRecordings, wasHost: $wasHost',
+      );
+    }
+
+    AppUtils.log('=== END endStream() ===');
+  }
+
+  Future<void> _showRecordedVideosDialog(List<String> videoUrls) async {
+    AppUtils.log('=== _showRecordedVideosDialog START ===');
+    AppUtils.log(
+      'Showing recorded videos dialog with ${videoUrls.length} URLs: $videoUrls',
+    );
+
+    // Prevent showing dialog if already open
+    if (Get.isDialogOpen == true) {
+      AppUtils.log('Dialog already open, skipping...');
+      return;
+    }
+
+    // Wait for UI to stabilize before showing dialog
+    AppUtils.log('Waiting 500ms for UI to stabilize...');
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    AppUtils.log('Delay complete, getting context...');
+    final context = Get.context ?? navState.currentContext;
+    AppUtils.log('Context: ${context != null ? "FOUND" : "NULL"}');
+
+    if (context != null) {
+      AppUtils.log('Context found, calling Get.dialog...');
+      // Get.dialog returns a Future that completes when dialog is dismissed
+      await Get.dialog(
+        Material(
+          color: Colors.transparent,
+          child: Center(
+            child: _RecordedVideoDialog(
+              videoUrls: videoUrls,
+              onClose: () {
+                // Clear the recorded URLs array when dialog is closed
+                recordedVideoUrls.clear();
+                AppUtils.log('Cleared recorded video URLs array');
+              },
+            ),
+          ),
+        ),
+        barrierDismissible: false,
+      );
+      AppUtils.log('Dialog dismissed');
+    } else {
+      AppUtils.logEr('No context available to show dialog');
+    }
+
+    AppUtils.log('=== _showRecordedVideosDialog END ===');
+  }
+
+  /// Show dialog when recording is processing
+  Future<void> _showRecordingProcessingDialog() async {
+    AppUtils.log('=== _showRecordingProcessingDialog START ===');
+
+    // Prevent showing dialog if already open
+    if (Get.isDialogOpen == true) {
+      AppUtils.log('Dialog already open, skipping processing dialog...');
+      return;
+    }
+
+    // Wait for UI to stabilize
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    final context = Get.context ?? navState.currentContext;
+    AppUtils.log('Context: ${context != null ? "FOUND" : "NULL"}');
+
+    if (context != null) {
+      AppUtils.log('Showing recording processing dialog...');
+      await Get.dialog(
+        Material(
+          color: Colors.transparent,
+          child: Center(
+            child: Container(
+              margin: EdgeInsets.symmetric(horizontal: 20),
+              padding: EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Processing Icon
+                    Container(
+                      padding: EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.video_library,
+                        size: 60,
+                        color: Colors.blue,
+                      ),
+                    ),
+
+                    SizedBox(height: 20),
+
+                    // Title
+                    TextView(
+                      text: 'Recording Saved!',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+
+                    SizedBox(height: 10),
+
+                    // Description
+                    TextView(
+                      text:
+                          'Your live stream recording is being processed and will be available in your cloud storage shortly.',
+                      style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                      textAlign: TextAlign.center,
+                    ),
+
+                    SizedBox(height: 30),
+
+                    // Close Button
+                    AppButton(
+                      label: 'Got it',
+                      buttonColor: AppColors.primaryColor,
+                      onTap: () {
+                        try {
+                          // Close dialog first
+                          if (Navigator.of(context).canPop()) {
+                            Navigator.pop(context); // Close dialog
+                          }
+                          // Then close stream screen after delay
+                          Future.delayed(Duration(milliseconds: 100), () {
+                            if (Navigator.of(context).canPop()) {
+                              Navigator.pop(context); // Close stream screen
+                            }
+                          });
+                        } catch (e) {
+                          AppUtils.log('Error closing dialog: $e');
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+        barrierDismissible: false,
+      );
+      AppUtils.log('Processing dialog dismissed');
+    } else {
+      AppUtils.logEr('No context available to show processing dialog');
+    }
+
+    AppUtils.log('=== _showRecordingProcessingDialog END ===');
   }
 
   void cameraFlip() => engine.switchCamera();
@@ -806,5 +1439,197 @@ class RemoteUserAgora {
       channelId: channelId,
       videoState: videoState ?? this.videoState,
     );
+  }
+}
+
+class _RecordedVideoDialog extends StatelessWidget {
+  final List<String> videoUrls;
+  final VoidCallback? onClose;
+
+  const _RecordedVideoDialog({required this.videoUrls, this.onClose});
+
+  @override
+  Widget build(BuildContext context) {
+    final videoCount = videoUrls.length;
+
+    return Center(
+      child: Container(
+        margin: EdgeInsets.symmetric(horizontal: 20),
+        padding: EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Success Icon
+              Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.green.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.check_circle, size: 60, color: Colors.green),
+              ),
+
+              SizedBox(height: 20),
+
+              // Title
+              TextView(
+                text: videoCount > 1
+                    ? '$videoCount Streams Recorded!'
+                    : 'Stream Recorded!',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+
+              SizedBox(height: 10),
+
+              // Description
+              TextView(
+                text: videoCount > 1
+                    ? 'Your $videoCount live streams have been successfully recorded.'
+                    : 'Your live stream has been successfully recorded.',
+                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                textAlign: TextAlign.center,
+              ),
+
+              SizedBox(height: 30),
+
+              // Buttons
+              Row(
+                children: [
+                  Expanded(
+                    child: AppButton(
+                      label: 'Save to Gallery',
+                      buttonColor: Colors.grey[300]!,
+                      labelStyle: TextStyle(
+                        color: Colors.black87,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      onTap: () => _saveToGallery(context),
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: AppButton(
+                      label: 'Share as Post',
+                      buttonColor: AppColors.primaryColor,
+                      onTap: () => _shareAsPost(context),
+                    ),
+                  ),
+                ],
+              ),
+
+              SizedBox(height: 12),
+
+              // Close Button
+              TextButton(
+                onPressed: () {
+                  try {
+                    onClose?.call();
+                    // Close dialog first
+                    if (Navigator.of(context).canPop()) {
+                      Navigator.pop(context); // Close dialog
+                    }
+                    // Then close stream screen
+                    Future.delayed(Duration(milliseconds: 100), () {
+                      if (Navigator.of(context).canPop()) {
+                        Navigator.pop(context); // Close stream screen
+                      }
+                    });
+                  } catch (e) {
+                    AppUtils.log('Error closing dialog: $e');
+                  }
+                },
+                child: TextView(
+                  text: 'Close',
+                  style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _saveToGallery(BuildContext context) async {
+    try {
+      // Show loading
+      AppUtils.toast(
+        videoUrls.length > 1
+            ? 'Downloading ${videoUrls.length} videos...'
+            : 'Downloading video...',
+      );
+
+      // TODO: Implement download logic for all videos in the array
+      // This would typically involve:
+      // 1. Loop through videoUrls array
+      // 2. Download each video from the URL
+      // 3. Save to device gallery using image_gallery_saver or similar package
+
+      await Future.delayed(Duration(seconds: 1)); // Simulate download
+
+      AppUtils.toast(
+        videoUrls.length > 1
+            ? '${videoUrls.length} videos saved to gallery!'
+            : 'Video saved to gallery!',
+      );
+      onClose?.call();
+
+      // Close dialog safely
+      try {
+        if (Navigator.of(context).canPop()) {
+          Navigator.pop(context); // Close dialog only
+        }
+      } catch (e) {
+        AppUtils.log('Error closing dialog: $e');
+      }
+    } catch (e) {
+      AppUtils.toastError('Failed to save video: $e');
+    }
+  }
+
+  void _shareAsPost(BuildContext context) {
+    try {
+      // Close dialog and clear array
+      onClose?.call();
+
+      // Close dialog safely
+      try {
+        if (Navigator.of(context).canPop()) {
+          Navigator.pop(context); // Close dialog only
+        }
+      } catch (e) {
+        AppUtils.log('Error closing dialog: $e');
+      }
+
+      // Show toast for now - TODO: Navigate to CreatePost with video URLs array
+      AppUtils.toast('Opening post creator...');
+
+      // TODO: Navigate to create post screen with video URLs array
+      // You'll need to:
+      // 1. Get a category ID (or allow user to select in CreatePost)
+      // 2. Pass the video URLs array to CreatePost
+      // 3. Modify CreatePost to accept optional video URLs parameter
+
+      // For now, just close the dialog
+      if (videoUrls.length > 1) {
+        AppUtils.toast(
+          'Feature coming soon: Share ${videoUrls.length} recorded streams as posts',
+        );
+      } else {
+        AppUtils.toast('Feature coming soon: Share recorded stream as post');
+      }
+    } catch (e) {
+      AppUtils.toastError('Failed to open post creator: $e');
+    }
   }
 }

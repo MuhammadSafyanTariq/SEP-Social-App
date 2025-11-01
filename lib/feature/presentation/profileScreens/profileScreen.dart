@@ -5,21 +5,28 @@ import 'package:get/get.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:sep/components/coreComponents/AppButton.dart';
 import 'package:sep/components/coreComponents/ImageView.dart';
+import 'package:video_thumbnail/video_thumbnail.dart';
+import 'package:path_provider/path_provider.dart';
 
 import 'package:sep/components/coreComponents/TextView.dart';
 import 'package:sep/components/styles/appColors.dart';
 import 'package:sep/components/styles/appImages.dart';
 import 'package:sep/feature/data/models/dataModels/post_data.dart';
 import 'package:sep/feature/presentation/liveStreaming_screen/broad_cast_video.dart';
+import 'package:sep/feature/presentation/liveStreaming_screen/live_stream_ctrl.dart';
 import 'package:sep/utils/extensions/contextExtensions.dart';
 import 'package:sep/utils/extensions/extensions.dart';
 
 import '../../../services/storage/preferences.dart';
 import '../../../utils/appUtils.dart';
 import '../../data/models/dataModels/profile_data/profile_data_model.dart';
+import '../Home/homeScreenComponents/pollCard.dart';
+import '../Home/homeScreenComponents/post_components.dart';
 import '../Home/video.dart';
 import '../controller/auth_Controller/profileCtrl.dart';
 import '../screens/post_browsing_listing.dart';
+import 'followers.dart';
+import 'setting/following.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -41,6 +48,9 @@ class _ProfileScreenState extends State<ProfileScreen>
   String? imageonly;
   String? name;
   String? namee;
+
+  // Cache for video thumbnails
+  final Map<String, String?> _thumbnailCache = {};
 
   List<String> get tabsss => ["IMAGES", "VIDEOS", "POLLS"];
 
@@ -293,7 +303,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _buildStatItem('${profileData.postCount ?? 0}', 'Posts'),
+              _buildStatItem('${profileData.postCount ?? 0}', 'Posts', null),
               Container(
                 height: 30,
                 width: 1,
@@ -303,6 +313,9 @@ class _ProfileScreenState extends State<ProfileScreen>
               _buildStatItem(
                 '${(profileData.followers ?? []).length}',
                 'Linked Me',
+                () {
+                  context.pushNavigator(MyFollowersListScreen());
+                },
               ),
               Container(
                 height: 30,
@@ -313,6 +326,9 @@ class _ProfileScreenState extends State<ProfileScreen>
               _buildStatItem(
                 '${(profileData.following ?? []).length}',
                 'Link Ups',
+                () {
+                  context.pushNavigator(MyFollowingListScreen());
+                },
               ),
             ],
           ),
@@ -321,8 +337,8 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  Widget _buildStatItem(String count, String label) {
-    return Column(
+  Widget _buildStatItem(String count, String label, [VoidCallback? onTap]) {
+    Widget statContent = Column(
       children: [
         TextView(
           text: count,
@@ -339,6 +355,12 @@ class _ProfileScreenState extends State<ProfileScreen>
         ),
       ],
     );
+
+    if (onTap != null) {
+      return GestureDetector(onTap: onTap, child: statContent);
+    }
+
+    return statContent;
   }
 
   Widget _buildEditProfileButton() {
@@ -368,7 +390,18 @@ class _ProfileScreenState extends State<ProfileScreen>
               borderRadius: BorderRadius.circular(20),
               child: InkWell(
                 borderRadius: BorderRadius.circular(20),
-                onTap: () {
+                onTap: () async {
+                  // Check permissions before starting live stream
+                  final hasPermissions = await StreamUtils.checkPermission();
+
+                  if (!hasPermissions) {
+                    // Show error message if permissions not granted
+                    AppUtils.toastError(
+                      'Camera and Microphone permissions are required to go live',
+                    );
+                    return;
+                  }
+
                   if (Platform.isIOS && kDebugMode) {
                     context.pushNavigator(
                       BroadCastVideo(
@@ -377,16 +410,12 @@ class _ProfileScreenState extends State<ProfileScreen>
                       ),
                     );
                   } else {
-                    // StreamUtils.checkPermission().then((value) {
-                    //   if (value) {
                     context.pushNavigator(
                       BroadCastVideo(
                         clientRole: ClientRoleType.clientRoleBroadcaster,
                         isHost: true,
                       ),
                     );
-                    //   }
-                    // });
                   }
                 },
                 child: Icon(
@@ -528,7 +557,9 @@ class _ProfileScreenState extends State<ProfileScreen>
         padding: EdgeInsets.symmetric(horizontal: 20),
         child: tabIndex.value == 0
             ? _buildStaggeredImagesGrid(filteredPosts)
-            : _buildRegularGrid(filteredPosts),
+            : tabIndex.value == 1
+            ? _buildVideosGrid(filteredPosts)
+            : _buildPollsList(filteredPosts),
       );
     });
   }
@@ -554,16 +585,16 @@ class _ProfileScreenState extends State<ProfileScreen>
       itemCount: posts.length,
       itemBuilder: (context, index) {
         final post = posts[index];
-        return _buildGridItem(post, 1.0);
+        return _buildImageGridItem(post, index);
       },
     );
   }
 
-  Widget _buildRegularGrid(List<PostData> posts) {
+  Widget _buildVideosGrid(List<PostData> posts) {
     if (posts.isEmpty) {
       return Center(
         child: TextView(
-          text: "No post available",
+          text: "No videos available",
           style: TextStyle(fontSize: 16, color: Colors.grey[600]),
         ),
       );
@@ -576,17 +607,84 @@ class _ProfileScreenState extends State<ProfileScreen>
         crossAxisCount: 2,
         crossAxisSpacing: 10,
         mainAxisSpacing: 10,
+        childAspectRatio: 1.0,
       ),
       itemCount: posts.length,
       itemBuilder: (context, index) {
         final post = posts[index];
-        return _buildGridItem(post, 1.0);
+        return _buildVideoGridItem(post, index);
       },
     );
   }
 
-  // Simple and direct profile post card
-  Widget _buildGridItem(PostData post, double aspectRatio) {
+  Widget _buildPollsList(List<PostData> posts) {
+    if (posts.isEmpty) {
+      return Center(
+        child: TextView(
+          text: "No polls available",
+          style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+        ),
+      );
+    }
+
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: posts.length,
+      separatorBuilder: (context, index) => SizedBox(height: 10),
+      itemBuilder: (context, index) {
+        final post = posts[index];
+        return PollCard(
+          data: post,
+          header: postCardHeader(
+            post,
+            onRemovePostAction: () {
+              profileCtrl.profilePollPostList.removeAt(index);
+              profileCtrl.profilePollPostList.refresh();
+            },
+          ),
+          question: post.content ?? '',
+          options: post.options,
+          onPollAction: (String optionId) {
+            profileCtrl.givePollToHomePost(post, optionId).applyLoader;
+          },
+          footer: postFooter(
+            context: context,
+            item: post,
+            postLiker: (value) async {
+              await profileCtrl.likeposts(post.id ?? '');
+              final data = profileCtrl.profilePollPostList[index];
+              final count = data.likeCount ?? 0;
+              final status = data.isLikedByUser ?? false;
+              profileCtrl.profilePollPostList[index] = data.copyWith(
+                isLikedByUser: !status,
+                likeCount: status ? count - 1 : count + 1,
+              );
+              profileCtrl.profilePollPostList.refresh();
+            },
+            updateCommentCount: (value) {},
+            updatePostOnAction: (commentCount) {
+              final postId = post.id!;
+              profileCtrl.getSinglePostData(postId).then((value) {
+                final idx = profileCtrl.profilePollPostList.indexWhere(
+                  (element) => element.id == postId,
+                );
+                if (idx > -1) {
+                  profileCtrl.profilePollPostList[idx] = value.copyWith(
+                    user: profileCtrl.profilePollPostList[idx].user,
+                    commentCount: commentCount,
+                  );
+                  profileCtrl.profilePollPostList.refresh();
+                }
+              });
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildImageGridItem(PostData post, int index) {
     final firstFile = post.files.isNotEmpty ? post.files.first : null;
     String? imageUrl;
 
@@ -595,7 +693,16 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
 
     return GestureDetector(
-      onTap: () => _handlePostTap(post, firstFile, 0),
+      onTap: () {
+        context.pushNavigator(
+          PostImageBrowsingListing(
+            initialIndex: profileCtrl.profileImagePostList.indexWhere(
+              (p) => p.id == post.id,
+            ),
+            onRemovePost: (index) {},
+          ),
+        );
+      },
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
@@ -603,149 +710,185 @@ class _ProfileScreenState extends State<ProfileScreen>
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(20),
-          child: _buildPostCardContent(imageUrl, post),
+          child: imageUrl?.isNotEmpty == true
+              ? Image.network(
+                  imageUrl!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      color: Colors.grey[300],
+                      child: Center(
+                        child: Icon(
+                          Icons.broken_image,
+                          color: Colors.grey[500],
+                          size: 40,
+                        ),
+                      ),
+                    );
+                  },
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Container(
+                      color: Colors.grey[200],
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          value: loadingProgress.expectedTotalBytes != null
+                              ? loadingProgress.cumulativeBytesLoaded /
+                                    loadingProgress.expectedTotalBytes!
+                              : null,
+                        ),
+                      ),
+                    );
+                  },
+                )
+              : Container(
+                  color: Colors.grey[300],
+                  child: Center(
+                    child: Icon(
+                      Icons.image_outlined,
+                      color: Colors.grey[500],
+                      size: 40,
+                    ),
+                  ),
+                ),
         ),
       ),
     );
   }
 
-  Widget _buildPostCardContent(String? imageUrl, PostData post) {
-    if (imageUrl?.isNotEmpty == true) {
-      return Stack(
-        fit: StackFit.expand,
-        children: [
-          // Image that fills the container
-          Image.network(
-            imageUrl!,
-            fit: BoxFit.cover,
-            width: double.infinity,
-            height: double.infinity,
-            errorBuilder: (context, error, stackTrace) {
-              return Container(
-                color: Colors.grey[300],
-                child: Center(
-                  child: Icon(
-                    Icons.broken_image,
-                    color: Colors.grey[500],
-                    size: 40,
-                  ),
-                ),
-              );
-            },
-            loadingBuilder: (context, child, loadingProgress) {
-              if (loadingProgress == null) return child;
-              return Container(
-                color: Colors.grey[200],
-                child: Center(
-                  child: CircularProgressIndicator(
-                    value: loadingProgress.expectedTotalBytes != null
-                        ? loadingProgress.cumulativeBytesLoaded /
-                              loadingProgress.expectedTotalBytes!
-                        : null,
-                  ),
-                ),
-              );
-            },
-          ),
-          // Video overlay
-          if (post.fileType == 'video')
-            Positioned(
-              bottom: 8,
-              right: 8,
-              child: Container(
-                padding: EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.7),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Icon(Icons.play_arrow, color: Colors.white, size: 20),
-              ),
-            ),
-        ],
-      );
-    } else if (post.fileType == 'poll') {
-      return Container(
-        width: double.infinity,
-        height: double.infinity,
+  Widget _buildVideoGridItem(PostData post, int index) {
+    final firstFile = post.files.isNotEmpty ? post.files.first : null;
+    final videoUrl = firstFile?.file?.isNotEmpty == true
+        ? AppUtils.configImageUrl(firstFile!.file!)
+        : null;
+
+    return GestureDetector(
+      onTap: () {
+        if (videoUrl != null) {
+          context.pushNavigator(
+            VideoScreen(videoUrls: [videoUrl], initialIndex: 0),
+          );
+        }
+      },
+      child: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              AppColors.primaryColor.withOpacity(0.1),
-              AppColors.primaryColor.withOpacity(0.2),
-            ],
-          ),
+          borderRadius: BorderRadius.circular(20),
+          color: Colors.grey[200],
         ),
-        child: Stack(
-          children: [
-            Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.poll_outlined,
-                    color: AppColors.primaryColor,
-                    size: 40,
-                  ),
-                  SizedBox(height: 8),
-                  TextView(
-                    text: 'Poll',
-                    style: TextStyle(
-                      color: AppColors.primaryColor,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
-    } else {
-      return Container(
-        width: double.infinity,
-        height: double.infinity,
-        color: Colors.grey[300],
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: Stack(
+            fit: StackFit.expand,
             children: [
-              Icon(Icons.image_outlined, color: Colors.grey[500], size: 40),
-              SizedBox(height: 8),
-              TextView(
-                text: 'No Image',
-                style: TextStyle(color: Colors.grey[500], fontSize: 12),
+              if (videoUrl != null)
+                FutureBuilder<String?>(
+                  key: ValueKey('video_thumb_$videoUrl'),
+                  future: _getCachedThumbnail(videoUrl),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return Container(
+                        color: Colors.grey[300],
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.primaryColor,
+                          ),
+                        ),
+                      );
+                    }
+
+                    if (snapshot.hasData && snapshot.data != null) {
+                      final file = File(snapshot.data!);
+                      if (file.existsSync()) {
+                        return Image.file(
+                          file,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            AppUtils.log('Image.file error: $error');
+                            return _buildVideoPlaceholder();
+                          },
+                        );
+                      }
+                    }
+
+                    return _buildVideoPlaceholder();
+                  },
+                )
+              else
+                _buildVideoPlaceholder(),
+              // Video play overlay
+              Center(
+                child: Container(
+                  padding: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.6),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.play_arrow, color: Colors.white, size: 32),
+                ),
               ),
             ],
           ),
         ),
-      );
-    }
+      ),
+    );
   }
 
-  // Enhanced overlay with better visual effects
-
-  void _handlePostTap(PostData post, FileElement? firstFile, int index) {
-    if (post.fileType == 'image') {
-      context.pushNavigator(
-        PostImageBrowsingListing(
-          initialIndex: profileCtrl.profileImagePostList.indexWhere(
-            (p) => p.id == post.id,
-          ),
-          onRemovePost: (index) {},
+  Widget _buildVideoPlaceholder() {
+    return Container(
+      color: Colors.grey[300],
+      child: Center(
+        child: Icon(
+          Icons.video_library_outlined,
+          color: Colors.grey[500],
+          size: 40,
         ),
-      );
-    } else if (post.fileType == 'video') {
-      final videoUrl = AppUtils.configImageUrl(firstFile?.file ?? '');
+      ),
+    );
+  }
 
-      context.pushNavigator(
-        VideoScreen(videoUrls: [videoUrl], initialIndex: 0),
+  Future<String?> _getCachedThumbnail(String videoUrl) async {
+    // Check cache first
+    if (_thumbnailCache.containsKey(videoUrl)) {
+      final cachedPath = _thumbnailCache[videoUrl];
+      if (cachedPath != null && File(cachedPath).existsSync()) {
+        AppUtils.log('Using cached thumbnail for: $videoUrl');
+        return cachedPath;
+      }
+    }
+
+    // Generate new thumbnail
+    final thumbnailPath = await _generateVideoThumbnail(videoUrl);
+    if (thumbnailPath != null) {
+      _thumbnailCache[videoUrl] = thumbnailPath;
+    }
+    return thumbnailPath;
+  }
+
+  Future<String?> _generateVideoThumbnail(String videoUrl) async {
+    try {
+      AppUtils.log('Generating thumbnail for: $videoUrl');
+
+      final tempDir = await getTemporaryDirectory();
+      final thumbnailPath = await VideoThumbnail.thumbnailFile(
+        video: videoUrl,
+        thumbnailPath: tempDir.path,
+        imageFormat: ImageFormat.JPEG,
+        maxWidth: 400,
+        quality: 75,
       );
-    } else if (post.fileType == 'poll') {
-      // Handle poll tap - could open poll detail screen
-      AppUtils.log("Poll tapped: ${post.content}");
+
+      if (thumbnailPath != null) {
+        AppUtils.log('Thumbnail generated successfully: $thumbnailPath');
+      } else {
+        AppUtils.log('Thumbnail generation returned null');
+      }
+
+      return thumbnailPath;
+    } catch (e, stackTrace) {
+      AppUtils.log('Error generating thumbnail: $e');
+      AppUtils.log('Stack trace: $stackTrace');
+      return null;
     }
   }
 }

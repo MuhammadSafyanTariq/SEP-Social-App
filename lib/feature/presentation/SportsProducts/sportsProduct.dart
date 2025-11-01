@@ -1,16 +1,23 @@
+import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:pull_to_refresh/pull_to_refresh.dart';
 import 'package:sep/components/coreComponents/ImageView.dart';
 import 'package:sep/components/coreComponents/TextView.dart';
-
 import 'package:sep/components/coreComponents/editText.dart';
 import 'package:sep/components/styles/appColors.dart';
 import 'package:sep/components/styles/appImages.dart';
 import 'package:sep/components/styles/app_strings.dart';
 import 'package:sep/components/styles/textStyles.dart';
 import 'package:sep/feature/presentation/SportsProducts/productDetailScreen.dart';
+import 'package:sep/feature/presentation/products/product_details_screen.dart';
+import 'package:sep/feature/data/models/dataModels/user_product_model.dart';
+import 'package:sep/feature/presentation/store/store_view_screen.dart';
+import 'package:sep/feature/presentation/orders/order_history_screen.dart';
+import 'package:sep/services/networking/apiMethods.dart';
+import 'package:sep/services/networking/urls.dart';
+import 'package:sep/services/storage/preferences.dart';
 import 'package:sep/utils/appUtils.dart';
 import 'package:sep/utils/extensions/contextExtensions.dart';
 import 'package:sep/utils/extensions/extensions.dart';
@@ -28,27 +35,221 @@ class SportsProduct extends StatefulWidget {
   State<SportsProduct> createState() => _SportsProductState();
 }
 
-class _SportsProductState extends State<SportsProduct> {
+class _SportsProductState extends State<SportsProduct>
+    with SingleTickerProviderStateMixin {
   final ProductCtrl ctrl = ProductCtrl.find;
   final _refreshCtrl = RefreshController(initialRefresh: false);
+  final _communityRefreshCtrl = RefreshController(initialRefresh: false);
   final _search = TextEditingController();
+  final _communitySearch = TextEditingController();
+  final IApiMethod _apiMethod = IApiMethod();
+
   int pageNo = 1;
+  int communityPageNo = 1;
+  late TabController _tabController;
+
+  final RxList<UserProductModel> communityProducts = RxList([]);
+  final RxList<UserProductModel> allCommunityProducts = RxList(
+    [],
+  ); // Store all products for filtering
+  final RxBool isLoadingCommunity = RxBool(false);
+  String? myShopId; // Store user's shop ID to filter out their shop's products
+
+  Timer? _debounce;
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (_tabController.index == 1 && communityProducts.isEmpty) {
+        loadCommunityProducts(isRefresh: true);
+      }
+    });
+    _fetchMyShopId(); // Fetch user's shop ID
     WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
       loadData(isRefresh: true).applyLoader;
     });
   }
 
+  Future<void> _fetchMyShopId() async {
+    try {
+      final token = Preferences.authToken;
+      final response = await _apiMethod.get(
+        url: Urls.getMyShop,
+        authToken: token,
+        headers: {},
+      );
+
+      AppUtils.log("Fetch my shop response: ${response.data}");
+
+      if (response.isSuccess && response.data?['data'] != null) {
+        final shopData = response.data!['data'];
+        myShopId = shopData['_id'] as String?;
+        AppUtils.log("My shop ID loaded: $myShopId");
+      } else {
+        AppUtils.log("No shop found or failed to fetch: ${response.getError}");
+        myShopId = null;
+      }
+    } catch (e) {
+      AppUtils.log("Error fetching my shop ID: $e");
+      myShopId = null;
+    }
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _tabController.dispose();
+    _search.dispose();
+    _communitySearch.dispose();
+    _refreshCtrl.dispose();
+    _communityRefreshCtrl.dispose();
+    super.dispose();
+  }
+
   Future loadData({bool isRefresh = false, bool isLoadMore = false}) async {
+    if (isRefresh) {
+      pageNo = 1;
+    } else if (isLoadMore) {
+      pageNo = pageNo + 1;
+    }
+
     await ctrl.getProducts(
       page: pageNo,
       isLoadMore: isLoadMore,
       isRefresh: isRefresh,
       search: _search.getText,
     );
+  }
+
+  Future<void> loadCommunityProducts({
+    bool isRefresh = false,
+    bool isLoadMore = false,
+  }) async {
+    if (isLoadingCommunity.value) return;
+
+    // Ensure we have the user's shop ID before filtering
+    if (myShopId == null) {
+      await _fetchMyShopId();
+    }
+
+    isLoadingCommunity.value = true;
+
+    try {
+      int page = communityPageNo;
+      if (isRefresh) page = 1;
+      if (isLoadMore) page = communityPageNo + 1;
+
+      final token = Preferences.authToken;
+      final response = await _apiMethod.get(
+        url: Urls.getAllUserProducts,
+        authToken: token,
+        query: {'page': page.toString(), 'limit': '10'},
+        headers: {},
+      );
+
+      if (response.isSuccess) {
+        final data = response.data?['data'];
+        final productsJson = data?['products'] as List?;
+
+        if (productsJson != null) {
+          final products = productsJson
+              .map((json) => UserProductModel.fromJson(json))
+              .toList();
+
+          AppUtils.log(
+            "Before filtering - Total products from API: ${products.length}",
+          );
+          AppUtils.log("My shop ID to filter: $myShopId");
+
+          // Filter out products from user's own shop by checking shopId
+          final filteredProducts = products.where((product) {
+            final productShopId = _extractShopId(product.shopId);
+            AppUtils.log(
+              "Checking product: ${product.name} (Shop ID: $productShopId)",
+            );
+
+            if (myShopId != null && productShopId != null) {
+              final isMyShop = myShopId == productShopId;
+              AppUtils.log("  - Is from my shop? $isMyShop");
+              if (isMyShop) {
+                AppUtils.log(
+                  "  ✓ FILTERING OUT product from my shop: ${product.name} (Shop ID: $productShopId)",
+                );
+              }
+              return !isMyShop; // Exclude products from user's own shop
+            }
+            AppUtils.log(
+              "  - Shop ID is null or unknown, including by default",
+            );
+            return true; // Include product if we can't determine shop ID
+          }).toList();
+
+          AppUtils.log(
+            "After filtering - Total: ${products.length}, Filtered (excluding my shop): ${filteredProducts.length}, My shop ID: $myShopId",
+          );
+
+          if (isRefresh) {
+            allCommunityProducts.assignAll(filteredProducts);
+            communityProducts.assignAll(filteredProducts);
+          } else {
+            allCommunityProducts.addAll(filteredProducts);
+            communityProducts.addAll(filteredProducts);
+          }
+
+          // Apply search filter if search text is not empty
+          if (_communitySearch.text.isNotEmpty) {
+            _filterCommunityProducts();
+          }
+
+          if (filteredProducts.isNotEmpty) {
+            communityPageNo = page;
+          }
+        }
+      } else {
+        AppUtils.toastError(response.getError ?? "Failed to load products");
+      }
+    } catch (e) {
+      AppUtils.toastError("Error: ${e.toString()}");
+    } finally {
+      isLoadingCommunity.value = false;
+    }
+  }
+
+  // Filter community products based on search query in product title
+  void _filterCommunityProducts() {
+    final searchQuery = _communitySearch.text.toLowerCase().trim();
+
+    if (searchQuery.isEmpty) {
+      // If search is empty, show all products
+      communityProducts.assignAll(allCommunityProducts);
+    } else {
+      // Filter products where title contains the search query
+      final filtered = allCommunityProducts.where((product) {
+        final productName = product.name?.toLowerCase() ?? '';
+        return productName.contains(searchQuery);
+      }).toList();
+
+      communityProducts.assignAll(filtered);
+
+      AppUtils.log(
+        "Search filter applied - Query: '$searchQuery', Results: ${filtered.length}/${allCommunityProducts.length}",
+      );
+    }
+  }
+
+  // Helper method to extract shop ID from dynamic shopId field
+  String? _extractShopId(dynamic shopId) {
+    if (shopId == null) return null;
+
+    if (shopId is String) {
+      return shopId;
+    } else if (shopId is Map) {
+      return shopId['_id'] as String?;
+    }
+
+    return null;
   }
 
   @override
@@ -58,118 +259,43 @@ class _SportsProductState extends State<SportsProduct> {
       body: SafeArea(
         child: Column(
           children: [
-            // Custom AppBar2
-            Expanded(
-              child: Padding(
-                padding: 12.all,
-                child: Column(
-                  children: [
-                    EditText(
-                      controller: _search,
-                      hint: AppStrings.search.tr,
-                      radius: 20.sdp,
-                      prefixIcon: Icon(Icons.search, color: AppColors.grey),
-                      onChange: (value) {
-                        // Optional: implement real-time search
-                      },
-                    ),
-                    20.height,
-                    Expanded(
-                      child: SmartRefresher(
-                        // physics: NeverScrollableScrollPhysics(),
-                        controller: _refreshCtrl,
-                        enablePullDown: true,
-                        enablePullUp: true,
-                        onLoading: () => loadData().then((value) {
-                          _refreshCtrl.loadComplete();
-                        }),
-                        onRefresh: () => loadData().then((value) {
-                          _refreshCtrl.refreshCompleted();
-                        }),
-                        footer: CustomFooter(
-                          builder: (context, mode) {
-                            Widget? body;
-
-                            if (mode == LoadStatus.loading) {
-                              body = CupertinoActivityIndicator();
-                              return Container(
-                                height: 55.0,
-                                child: Center(child: body),
-                              );
-                            }
-                            return SizedBox();
-                            // else if(mode == LoadStatus.failed){
-                            //   body = Text("Load Failed!Click retry!");
-                            // }
-                            // else if(mode == LoadStatus.canLoading){
-                            //   body = Text("release to load more");
-                            // }
-                            // else{
-                            //   body = Text("No more Data");
-                            // }
-                            // return Container(
-                            //   height: 55.0,
-                            //   child: Center(child:body),
-                            // );
-                          },
-                        ),
-                        child: Obx(
-                          () => ctrl.productListing.isEmpty
-                              ? Center(
-                                  child: TextView(
-                                    text: 'Not Product found',
-                                    style: 16.txtBoldBlack,
-                                  ),
-                                )
-                              : GridView.builder(
-                                  gridDelegate:
-                                      const SliverGridDelegateWithFixedCrossAxisCount(
-                                        crossAxisCount: 2,
-                                        crossAxisSpacing: 10,
-                                        mainAxisSpacing: 10,
-                                        childAspectRatio: 0.8,
-                                        mainAxisExtent: 330,
-                                      ),
-                                  itemCount: ctrl.productListing.length,
-
-                                  itemBuilder: (context, index) {
-                                    final product = ctrl.productListing[index];
-
-                                    final hasImage =
-                                        product.images != null &&
-                                        product.images!.isNotEmpty &&
-                                        product.images![0].isNotEmpty;
-
-                                    final imageUrl = hasImage
-                                        ? product.images![0]
-                                        : AppImages.dummyProfile;
-
-                                    AppUtils.log("image>>>>>>${imageUrl}");
-                                    final imageType = hasImage
-                                        ? ImageType.network
-                                        : ImageType.asset;
-
-                                    return ProductCard(
-                                      link: product.checkouturl ?? "",
-                                      title: product.title ?? '',
-                                      image: imageUrl,
-                                      imageType: imageType,
-                                      price: product.price ?? '',
-                                      desc: product.description ?? '',
-                                      type: product.shippingType ?? "",
-                                      onTap: () {
-                                        context.pushNavigator(
-                                          Productdetailscreen(data: product),
-                                        );
-                                      },
-                                    );
-                                  },
-                                ),
-                        ),
-                      ),
-                    ),
-                  ],
+            // Tab Bar
+            Container(
+              margin: EdgeInsets.all(16.sdp),
+              decoration: BoxDecoration(
+                color: AppColors.grey.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(25.sdp),
+              ),
+              child: TabBar(
+                controller: _tabController,
+                indicator: BoxDecoration(
+                  borderRadius: BorderRadius.circular(25.sdp),
+                  color: AppColors.btnColor,
                 ),
+                labelColor: Colors.white,
+                unselectedLabelColor: AppColors.grey,
+                labelStyle: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+                unselectedLabelStyle: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+                indicatorSize: TabBarIndicatorSize.tab,
+                dividerColor: Colors.transparent,
+                tabs: const [
+                  Tab(text: "SEP Shop"),
+                  Tab(text: "Community Shops"),
+                ],
+              ),
+            ),
+
+            // Tab Content
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [_buildSEPShopTab(), _buildComingSoonTab()],
               ),
             ),
           ],
@@ -177,17 +303,331 @@ class _SportsProductState extends State<SportsProduct> {
       ),
     );
   }
+
+  Widget _buildSEPShopTab() {
+    return Padding(
+      padding: 12.all,
+      child: Column(
+        children: [
+          EditText(
+            controller: _search,
+            hint: AppStrings.search.tr,
+            radius: 20.sdp,
+            prefixIcon: Icon(Icons.search, color: AppColors.grey),
+            onChange: (value) {
+              // Debounce search to avoid too many API calls
+              if (_debounce?.isActive ?? false) _debounce!.cancel();
+              _debounce = Timer(const Duration(milliseconds: 500), () {
+                loadData(isRefresh: true);
+              });
+            },
+          ),
+          20.height,
+          Expanded(
+            child: SmartRefresher(
+              // physics: NeverScrollableScrollPhysics(),
+              controller: _refreshCtrl,
+              enablePullDown: true,
+              enablePullUp: true,
+              onLoading: () => loadData(isLoadMore: true).then((value) {
+                _refreshCtrl.loadComplete();
+              }),
+              onRefresh: () => loadData(isRefresh: true).then((value) {
+                _refreshCtrl.refreshCompleted();
+              }),
+              footer: CustomFooter(
+                builder: (context, mode) {
+                  Widget? body;
+
+                  if (mode == LoadStatus.loading) {
+                    body = CupertinoActivityIndicator();
+                    return Container(height: 55.0, child: Center(child: body));
+                  }
+                  return SizedBox();
+                },
+              ),
+              child: Obx(
+                () => ctrl.productListing.isEmpty
+                    ? Center(
+                        child: TextView(
+                          text: 'Not Product found',
+                          style: 16.txtBoldBlack,
+                        ),
+                      )
+                    : GridView.builder(
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              crossAxisSpacing: 10,
+                              mainAxisSpacing: 10,
+                              childAspectRatio: 0.8,
+                              mainAxisExtent: 330,
+                            ),
+                        itemCount: ctrl.productListing.length,
+
+                        itemBuilder: (context, index) {
+                          final product = ctrl.productListing[index];
+
+                          final hasImage =
+                              product.images != null &&
+                              product.images!.isNotEmpty &&
+                              product.images![0].isNotEmpty;
+
+                          final imageUrl = hasImage
+                              ? product.images![0]
+                              : AppImages.dummyProfile;
+
+                          AppUtils.log("image>>>>>>${imageUrl}");
+                          final imageType = hasImage
+                              ? ImageType.network
+                              : ImageType.asset;
+
+                          return ProductCard(
+                            link: product.checkouturl ?? "",
+                            title: product.title ?? '',
+                            image: imageUrl,
+                            imageType: imageType,
+                            price: product.price ?? '',
+                            desc: product.description ?? '',
+                            type: product.shippingType ?? "",
+                            onTap: () {
+                              context.pushNavigator(
+                                Productdetailscreen(data: product),
+                              );
+                            },
+                          );
+                        },
+                      ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildComingSoonTab() {
+    return Padding(
+      padding: 16.all,
+      child: Column(
+        children: [
+          // My Store and Order History Buttons in Row
+          Row(
+            children: [
+              // My Store Button
+              Expanded(
+                child: SizedBox(
+                  height: 50.sdp,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => StoreViewScreen(),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.btnColor,
+                      foregroundColor: Colors.white,
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12.sdp),
+                      ),
+                    ),
+                    icon: Icon(Icons.store, size: 24.sdp),
+                    label: TextView(
+                      text: "My Store",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              12.width,
+
+              // Order History Icon Button
+              SizedBox(
+                height: 50.sdp,
+                width: 50.sdp,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const OrderHistoryScreen(),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: AppColors.btnColor,
+                    elevation: 2,
+                    padding: EdgeInsets.zero,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12.sdp),
+                      side: BorderSide(color: AppColors.btnColor, width: 1.5),
+                    ),
+                  ),
+                  child: Icon(
+                    Icons.history,
+                    size: 24.sdp,
+                    color: AppColors.btnColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          16.height,
+
+          // Search Bar
+          EditText(
+            controller: _communitySearch,
+            hint: "Search community products...",
+            radius: 20.sdp,
+            prefixIcon: Icon(Icons.search, color: AppColors.grey),
+            onChange: (value) {
+              // Filter products locally based on search query
+              _filterCommunityProducts();
+            },
+          ),
+          16.height,
+
+          // Products Grid
+          Expanded(
+            child: SmartRefresher(
+              controller: _communityRefreshCtrl,
+              enablePullDown: true,
+              enablePullUp: true,
+              onLoading: () =>
+                  loadCommunityProducts(isLoadMore: true).then((value) {
+                    _communityRefreshCtrl.loadComplete();
+                  }),
+              onRefresh: () =>
+                  loadCommunityProducts(isRefresh: true).then((value) {
+                    _communityRefreshCtrl.refreshCompleted();
+                  }),
+              footer: CustomFooter(
+                builder: (context, mode) {
+                  if (mode == LoadStatus.loading) {
+                    return Container(
+                      height: 55.0,
+                      child: Center(child: CupertinoActivityIndicator()),
+                    );
+                  }
+                  return SizedBox();
+                },
+              ),
+              child: Obx(() {
+                if (isLoadingCommunity.value && communityProducts.isEmpty) {
+                  return Center(
+                    child: CircularProgressIndicator(color: AppColors.btnColor),
+                  );
+                }
+
+                if (communityProducts.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.shopping_bag_outlined,
+                          size: 60.sdp,
+                          color: AppColors.grey,
+                        ),
+                        16.height,
+                        TextView(
+                          text: 'No community products found',
+                          style: TextStyle(fontSize: 16, color: AppColors.grey),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                return GridView.builder(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 10,
+                    mainAxisSpacing: 10,
+                    childAspectRatio: 0.52,
+                  ),
+                  itemCount: communityProducts.length,
+                  itemBuilder: (context, index) {
+                    final product = communityProducts[index];
+                    final hasImage =
+                        product.mediaUrls != null &&
+                        product.mediaUrls!.isNotEmpty;
+                    String imageUrl = hasImage ? product.mediaUrls!.first : '';
+
+                    // Convert relative URL to full URL if needed
+                    if (imageUrl.isNotEmpty && !imageUrl.startsWith('http')) {
+                      imageUrl = '${Urls.appApiBaseUrl}$imageUrl';
+                    }
+
+                    // Extract category (before '+' symbol)
+                    String category = product.category ?? '';
+                    if (category.contains('+')) {
+                      category = category.split('+')[0];
+                    }
+
+                    return ProductCard(
+                      title: product.name ?? 'Product',
+                      type: category,
+                      link: '',
+                      image: imageUrl,
+                      price: '${product.price?.toStringAsFixed(2) ?? '0.00'}',
+                      desc: product.description ?? '',
+                      imageType: ImageType.network,
+                      productType: 'user-product',
+                      showOwnerActions: false,
+                      onTap: () {
+                        Get.to(
+                          () => ProductDetailsScreen(
+                            productId: product.id ?? '',
+                            productType: 'user-product',
+                          ),
+                        );
+                      },
+                      onBuyNow: () {
+                        // Navigate to product details screen on "Buy Now" button click
+                        Get.to(
+                          () => ProductDetailsScreen(
+                            productId: product.id ?? '',
+                            productType: 'user-product',
+                          ),
+                        );
+                      },
+                    );
+                  },
+                );
+              }),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class ProductCard extends StatelessWidget {
   final String title;
-  final String type;
+  final String type; // Shipping type
   final String link;
   final String image;
   final String price;
   final String desc;
   final VoidCallback onTap;
   final ImageType imageType;
+  final String?
+  productType; // Product source type: 'user-product', 'dropship', etc.
+  final bool showOwnerActions; // Show edit/delete instead of buy now
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
+  final VoidCallback? onBuyNow; // Custom buy now action
 
   const ProductCard({
     super.key,
@@ -199,6 +639,11 @@ class ProductCard extends StatelessWidget {
     required this.onTap,
     required this.desc,
     required this.imageType,
+    this.productType,
+    this.showOwnerActions = false,
+    this.onEdit,
+    this.onDelete,
+    this.onBuyNow,
   });
 
   @override
@@ -279,7 +724,7 @@ class ProductCard extends StatelessWidget {
 
             // Shipping Type
             TextView(
-              text: "Shipping: ${type.isNotEmpty ? type : 'Standard'}",
+              text: "${type.isNotEmpty ? type : 'Standard'}",
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
@@ -305,48 +750,107 @@ class ProductCard extends StatelessWidget {
 
             SizedBox(height: 8.sdp),
 
-            // Buy Now Button - More Rounded
-            SizedBox(
-              width: double.infinity,
-              height: 40.sdp,
-              child: ElevatedButton.icon(
-                onPressed: () async {
-                  if (link.isEmpty || !link.startsWith('http')) {
-                    debugPrint('Invalid URL: $link');
-                    return;
-                  }
-
-                  final url = Uri.parse(link);
-                  if (await canLaunchUrl(url)) {
-                    await launchUrl(url, mode: LaunchMode.inAppWebView);
-                  } else {
-                    await launchUrl(url, mode: LaunchMode.externalApplication);
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.greenlight,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20.sdp), // More rounded
+            // Buy Now Button or Edit/Delete Buttons
+            if (showOwnerActions)
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 40.sdp,
+                      child: ElevatedButton(
+                        onPressed: onEdit,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.btnColor,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20.sdp),
+                          ),
+                          padding: EdgeInsets.zero,
+                        ),
+                        child: Icon(
+                          Icons.edit_outlined,
+                          size: 20.sdp,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
                   ),
-                  padding: EdgeInsets.symmetric(horizontal: 16.sdp),
-                ),
-                icon: Icon(
-                  Icons.shopping_bag_outlined,
-                  size: 18.sdp,
-                  color: Colors.white,
-                ),
-                label: TextView(
-                  text: "Buy Now",
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
+                  SizedBox(width: 8.sdp),
+                  Expanded(
+                    child: SizedBox(
+                      height: 40.sdp,
+                      child: ElevatedButton(
+                        onPressed: onDelete,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20.sdp),
+                          ),
+                          padding: EdgeInsets.zero,
+                        ),
+                        child: Icon(
+                          Icons.delete_outline,
+                          size: 20.sdp,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            else
+              // Buy Now Button - More Rounded
+              SizedBox(
+                width: double.infinity,
+                height: 40.sdp,
+                child: ElevatedButton.icon(
+                  onPressed:
+                      onBuyNow ??
+                      () async {
+                        if (link.isEmpty || !link.startsWith('http')) {
+                          debugPrint('Invalid URL: $link');
+                          return;
+                        }
+
+                        final url = Uri.parse(link);
+                        if (await canLaunchUrl(url)) {
+                          await launchUrl(url, mode: LaunchMode.inAppWebView);
+                        } else {
+                          await launchUrl(
+                            url,
+                            mode: LaunchMode.externalApplication,
+                          );
+                        }
+                      },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.greenlight,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(
+                        20.sdp,
+                      ), // More rounded
+                    ),
+                    padding: EdgeInsets.symmetric(horizontal: 16.sdp),
+                  ),
+                  icon: Icon(
+                    Icons.shopping_bag_outlined,
+                    size: 18.sdp,
                     color: Colors.white,
+                  ),
+                  label: TextView(
+                    text: "Buy Now",
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
-            ),
           ],
         ),
       ),

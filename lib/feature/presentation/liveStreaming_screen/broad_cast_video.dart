@@ -14,7 +14,13 @@ class BroadCastVideo extends StatefulWidget {
   final ClientRoleType clientRole;
   final bool isHost;
 
-  const BroadCastVideo({super.key, required this.clientRole, this.hostId, this.hostName,  this.isHost = false});
+  const BroadCastVideo({
+    super.key,
+    required this.clientRole,
+    this.hostId,
+    this.hostName,
+    this.isHost = false,
+  });
 
   @override
   State<BroadCastVideo> createState() => _BroadCastVideoState();
@@ -22,29 +28,43 @@ class BroadCastVideo extends StatefulWidget {
 
 class _BroadCastVideoState extends State<BroadCastVideo> {
   final ctrl = LiveStreamCtrl.find;
+  bool _isInitializing = true;
 
   @override
   void initState() {
     super.initState();
+    _initializeBroadcast();
+  }
+
+  Future<void> _initializeBroadcast() async {
     WakelockPlus.enable();
     AgoraChatCtrl.find.chatConnection = false;
-    ctrl.initBroadCast(widget.clientRole, widget.hostId ?? Preferences.uid ?? '', isHost: widget.isHost);
+
+    // Wait for engine initialization to complete
+    await ctrl.initBroadCast(
+      widget.clientRole,
+      widget.hostId ?? Preferences.uid ?? '',
+      isHost: widget.isHost,
+    );
+
+    setState(() {
+      _isInitializing = false;
+    });
+
     // if(widget.clientRole == ClientRoleType.clientRoleAudience || (widget.hostId ?? '') == Preferences.uid ){
-    if(!widget.isHost){
+    if (!widget.isHost) {
       AppUtils.log('testing step 1111   ${widget.isHost}');
       _createChatConnection();
     }
   }
 
-  void _createChatConnection(){
+  void _createChatConnection() {
     print('calll for data.....');
     AgoraChatCtrl.find.connectAndJoin(
       widget.hostId ?? Preferences.uid ?? '',
       Preferences.profile?.name ?? 'Guest',
     );
   }
-
-
 
   @override
   void dispose() {
@@ -58,10 +78,17 @@ class _BroadCastVideoState extends State<BroadCastVideo> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isInitializing) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(child: CircularProgressIndicator(color: Colors.white)),
+      );
+    }
+
     return InstagramLiveFrame(
       hostName: widget.hostName,
-        clientRole: widget.clientRole,
-      connectChatOnStartLive: widget.isHost ?_createChatConnection : null,
+      clientRole: widget.clientRole,
+      connectChatOnStartLive: widget.isHost ? _createChatConnection : null,
     );
   }
 }

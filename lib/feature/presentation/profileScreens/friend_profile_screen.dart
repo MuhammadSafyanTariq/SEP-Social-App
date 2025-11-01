@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get/get_state_manager/src/rx_flutter/rx_obx_widget.dart';
@@ -22,6 +23,8 @@ import 'package:sep/utils/extensions/extensions.dart';
 import 'package:sep/utils/extensions/loaderUtils.dart';
 import 'package:sep/utils/extensions/size.dart';
 import 'package:sep/utils/extensions/widget.dart';
+import 'package:video_thumbnail/video_thumbnail.dart';
+import 'package:path_provider/path_provider.dart';
 import '../../../utils/appUtils.dart';
 import '../Home/homeScreenComponents/pollCard.dart';
 import '../Home/homeScreenComponents/post_components.dart';
@@ -49,6 +52,9 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
   RxDouble collapseHeight = RxDouble(120);
   String? name;
   String? namee;
+
+  // Cache for video thumbnails
+  final Map<String, String?> _thumbnailCache = {};
 
   List<String> get tabsss => ["IMAGES", "VIDEOS", "POLLS"];
 
@@ -1103,13 +1109,17 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
 
   Widget _buildVideoGridItem(PostData post, int index) {
     final firstFile = post.files.isNotEmpty ? post.files.first : null;
+    final videoUrl = firstFile?.file?.isNotEmpty == true
+        ? AppUtils.configImageUrl(firstFile!.file!)
+        : null;
 
     return GestureDetector(
       onTap: () {
-        final videoUrl = AppUtils.configImageUrl(firstFile?.file ?? '');
-        context.pushNavigator(
-          VideoScreen(videoUrls: [videoUrl], initialIndex: 0),
-        );
+        if (videoUrl != null) {
+          context.pushNavigator(
+            VideoScreen(videoUrls: [videoUrl], initialIndex: 0),
+          );
+        }
       },
       child: Container(
         decoration: BoxDecoration(
@@ -1121,45 +1131,51 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
           child: Stack(
             fit: StackFit.expand,
             children: [
-              if (firstFile?.file?.isNotEmpty == true)
-                Image.network(
-                  AppUtils.configImageUrl(firstFile!.file!),
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      color: Colors.grey[300],
-                      child: Center(
-                        child: Icon(
-                          Icons.broken_image,
-                          color: Colors.grey[500],
-                          size: 40,
+              if (videoUrl != null)
+                FutureBuilder<String?>(
+                  key: ValueKey('video_thumb_$videoUrl'),
+                  future: _getCachedThumbnail(videoUrl),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return Container(
+                        color: Colors.grey[300],
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.primaryColor,
+                          ),
                         ),
-                      ),
-                    );
+                      );
+                    }
+
+                    if (snapshot.hasData && snapshot.data != null) {
+                      final file = File(snapshot.data!);
+                      if (file.existsSync()) {
+                        return Image.file(
+                          file,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            AppUtils.log('Image.file error: $error');
+                            return _buildVideoPlaceholder();
+                          },
+                        );
+                      }
+                    }
+
+                    return _buildVideoPlaceholder();
                   },
                 )
               else
-                Container(
-                  color: Colors.grey[300],
-                  child: Center(
-                    child: Icon(
-                      Icons.video_library_outlined,
-                      color: Colors.grey[500],
-                      size: 40,
-                    ),
-                  ),
-                ),
-              // Video overlay
-              Positioned(
-                bottom: 8,
-                right: 8,
+                _buildVideoPlaceholder(),
+              // Video play overlay
+              Center(
                 child: Container(
-                  padding: EdgeInsets.all(6),
+                  padding: EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.7),
-                    borderRadius: BorderRadius.circular(20),
+                    color: Colors.black.withOpacity(0.6),
+                    shape: BoxShape.circle,
                   ),
-                  child: Icon(Icons.play_arrow, color: Colors.white, size: 20),
+                  child: Icon(Icons.play_arrow, color: Colors.white, size: 32),
                 ),
               ),
             ],
@@ -1167,6 +1183,64 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
         ),
       ),
     );
+  }
+
+  Future<String?> _getCachedThumbnail(String videoUrl) async {
+    // Check cache first
+    if (_thumbnailCache.containsKey(videoUrl)) {
+      final cachedPath = _thumbnailCache[videoUrl];
+      if (cachedPath != null && File(cachedPath).existsSync()) {
+        AppUtils.log('Using cached thumbnail for: $videoUrl');
+        return cachedPath;
+      }
+    }
+
+    // Generate new thumbnail
+    final thumbnailPath = await _generateVideoThumbnail(videoUrl);
+    if (thumbnailPath != null) {
+      _thumbnailCache[videoUrl] = thumbnailPath;
+    }
+    return thumbnailPath;
+  }
+
+  Widget _buildVideoPlaceholder() {
+    return Container(
+      color: Colors.grey[300],
+      child: Center(
+        child: Icon(
+          Icons.video_library_outlined,
+          color: Colors.grey[500],
+          size: 40,
+        ),
+      ),
+    );
+  }
+
+  Future<String?> _generateVideoThumbnail(String videoUrl) async {
+    try {
+      AppUtils.log('Generating thumbnail for: $videoUrl');
+
+      final tempDir = await getTemporaryDirectory();
+      final thumbnailPath = await VideoThumbnail.thumbnailFile(
+        video: videoUrl,
+        thumbnailPath: tempDir.path,
+        imageFormat: ImageFormat.JPEG,
+        maxWidth: 400,
+        quality: 75,
+      );
+
+      if (thumbnailPath != null) {
+        AppUtils.log('Thumbnail generated successfully: $thumbnailPath');
+      } else {
+        AppUtils.log('Thumbnail generation returned null');
+      }
+
+      return thumbnailPath;
+    } catch (e, stackTrace) {
+      AppUtils.log('Error generating thumbnail: $e');
+      AppUtils.log('Stack trace: $stackTrace');
+      return null;
+    }
   }
 
   Widget _buildOldGridView(

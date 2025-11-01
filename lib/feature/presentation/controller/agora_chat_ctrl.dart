@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:sep/components/appLoader.dart';
 import 'package:sep/feature/data/repository/i_agora_chat_repo.dart';
 import 'package:sep/feature/domain/respository/agora_chat_repo.dart';
+import 'package:sep/feature/presentation/liveStreaming_screen/live_stream_ctrl.dart';
 import 'package:sep/main.dart';
 import 'package:sep/services/socket/socket_helper.dart';
 import 'package:sep/services/storage/preferences.dart';
@@ -15,7 +16,6 @@ import 'package:sep/utils/extensions/extensions.dart';
 import '../../../services/networking/urls.dart';
 import '../../data/models/dataModels/live_stream_message_model/live_stream_message_model.dart';
 import '../liveStreaming_screen/broad_cast_video.dart';
-import '../liveStreaming_screen/live_stream_ctrl.dart';
 
 bool _showLog = true;
 
@@ -27,7 +27,7 @@ enum LiveRequestStatus {
   leave,
   end,
   removeByHost,
-  inviteForLive
+  inviteForLive,
 }
 
 enum GiftTokenEnum { giftToken }
@@ -60,9 +60,7 @@ class AgoraChatCtrl extends GetxController {
 
   ClientRoleType? get role => LiveStreamCtrl.find.streamCtrl.value.clientRole;
 
-  final AgoraChatRepo _repo = IAgoraChatRepo(
-    SocketHelper(connectUrl: baseUrl),
-  );
+  final AgoraChatRepo _repo = IAgoraChatRepo(SocketHelper(connectUrl: baseUrl));
 
   // RxList<ChatMsgModel> liveChatMessages = <ChatMsgModel>[].obs;
 
@@ -80,10 +78,7 @@ class AgoraChatCtrl extends GetxController {
     }
   }
 
-  void connectAndJoin(
-    String hostId,
-    String username,
-  ) {
+  void connectAndJoin(String hostId, String username) {
     // _chatConnection = false;
     connect(() {
       if (chatConnection) {
@@ -103,18 +98,23 @@ class AgoraChatCtrl extends GetxController {
   void hitParticipantsList(String roomId) =>
       _repo.getParticipantsList(roomId, hostId!);
 
-  void updateLiveBroadCasterCountByHost(int broadcasters) => roomId != null &&
-          hostId != null
+  void updateLiveBroadCasterCountByHost(int broadcasters) =>
+      roomId != null && hostId != null
       ? _repo.checkRoomExist(roomId!, hostId!, broadCasterCount: broadcasters)
       : null;
 
   void checkIfRoomExist(
-      String roomId, String hostId, Function(bool, int) call) {
+    String roomId,
+    String hostId,
+    Function(bool, int) call,
+  ) {
     _repo.onRoomExistCheckResult((data) {
       AppUtils.log(data);
       final broadcasters = data?['data']?['data']?['broadcastCount'];
-      call((data['code'] ?? 400) == 200,
-          (broadcasters ?? 0) == 0 ? 1 : broadcasters);
+      call(
+        (data['code'] ?? 400) == 200,
+        (broadcasters ?? 0) == 0 ? 1 : broadcasters,
+      );
 
       // flutter: │ 🐛 {
       // flutter: │ 🐛   "code": 400,
@@ -134,10 +134,7 @@ class AgoraChatCtrl extends GetxController {
   }
 
   void sendLiveRequestToFriendByHost(String uid) {
-    _repo.sendLiveRequestToFriendByHost({
-      'sentTo': uid,
-      'channelId': roomId,
-    });
+    _repo.sendLiveRequestToFriendByHost({'sentTo': uid, 'channelId': roomId});
   }
 
   RxList<LiveStreamChannelModel> liveStreamChannels = RxList([]);
@@ -148,8 +145,10 @@ class AgoraChatCtrl extends GetxController {
       AppUtils.log(data);
       if (data['code'] == 200) {
         final list = List<LiveStreamChannelModel>.from(
-            (data['data']?['liveFollowers'] ?? [])
-                .map((json) => LiveStreamChannelModel.fromJson(json)));
+          (data['data']?['liveFollowers'] ?? []).map(
+            (json) => LiveStreamChannelModel.fromJson(json),
+          ),
+        );
         liveStreamChannels.assignAll(list);
       }
 
@@ -172,10 +171,17 @@ class AgoraChatCtrl extends GetxController {
         -1;
   }
 
-  void joinLiveChannel(LiveStreamChannelModel data, ClientRoleType? role,
-      bool isConnected, Function(dynamic) call) {
-    void navigateIfRoomExists() {
-      checkIfRoomExist(data.channelId!, data.hostId!, (exists, broadcasters) {
+  void joinLiveChannel(
+    LiveStreamChannelModel data,
+    ClientRoleType? role,
+    bool isConnected,
+    Function(dynamic) call,
+  ) {
+    void navigateIfRoomExists() async {
+      checkIfRoomExist(data.channelId!, data.hostId!, (
+        exists,
+        broadcasters,
+      ) async {
         if (exists) {
           final newRole = broadcasters < broadCastUserMaxLimit
               ? (role ?? ClientRoleType.clientRoleAudience)
@@ -184,8 +190,18 @@ class AgoraChatCtrl extends GetxController {
           AppUtils.log({
             'newRole ': newRole.name,
             'live': broadcasters,
-            'max': broadCastUserMaxLimit
+            'max': broadCastUserMaxLimit,
           });
+
+          // Check permissions before joining live stream
+          final hasPermissions = await StreamUtils.checkPermission();
+          if (!hasPermissions) {
+            AppUtils.toastError(
+              'Camera and Microphone permissions are required to join live stream',
+            );
+            return;
+          }
+
           navState.currentContext!
               .pushNavigator(
                 BroadCastVideo(
@@ -294,24 +310,24 @@ class AgoraChatCtrl extends GetxController {
     _sendMsg({
       "message": LiveRequestStatus.requested.name,
       "type": 'liveRequest',
-      "roomId": roomId
+      "roomId": roomId,
     });
   }
-  
-  
-  
 
   void giftTokenEmitter({required String token, required String hostId}) {
     _sendMsg({
       "message": token,
       "type": GiftTokenEnum.giftToken.name,
       "roomId": roomId,
-      'hostId': hostId
+      'hostId': hostId,
     });
   }
 
   void hostRequestActive(
-      LiveRequestStatus status, String msgId, String userId) {
+    LiveRequestStatus status,
+    String msgId,
+    String userId,
+  ) {
     // message:allowed
     // "type": 'liveRequest'
 
@@ -319,7 +335,7 @@ class AgoraChatCtrl extends GetxController {
       "msgId": msgId,
       "message": status.name,
       "type": 'liveRequest',
-      "roomId": roomId
+      "roomId": roomId,
     }, userId: userId);
   }
 
@@ -328,21 +344,22 @@ class AgoraChatCtrl extends GetxController {
       // "msgId": msgId,
       "message": LiveRequestStatus.removeByHost.name,
       "type": 'liveRequest',
-      "roomId": roomId
+      "roomId": roomId,
     }, userId: userId);
   }
 
   void leaveAudienceLiveCamera(LiveRequestStatus status) {
     if (liveStreamCtrl.isHost) return;
-    final index = chatList.indexWhere((element) =>
-        element.type == 'liveRequest' &&
-        element.message == LiveRequestStatus.allowed.name);
+    final index = chatList.indexWhere(
+      (element) =>
+          element.type == 'liveRequest' &&
+          element.message == LiveRequestStatus.allowed.name,
+    );
     if (index > -1) {
       final data = chatList[index];
       hostRequestActive(status, data.id!, Preferences.uid!);
     }
   }
-
 
   late StreamController<LiveStreamMessageModel>
   _incomingLiveRequestToHostController =
@@ -362,7 +379,6 @@ class AgoraChatCtrl extends GetxController {
             msgData.message == LiveRequestStatus.removeByHost.name) {
           liveStreamCtrl.changeRole();
         }
-        
       }
 
       // flutter: │ 🐛 {
@@ -387,7 +403,8 @@ class AgoraChatCtrl extends GetxController {
         AppUtils.log(msgData);
 
         if (_incomingLiveRequestToHostController.isClosed) {
-          _incomingLiveRequestToHostController=  StreamController<LiveStreamMessageModel>.broadcast();
+          _incomingLiveRequestToHostController =
+              StreamController<LiveStreamMessageModel>.broadcast();
         }
         _incomingLiveRequestToHostController.add(msgData);
       }
@@ -414,21 +431,22 @@ class AgoraChatCtrl extends GetxController {
         chatList.add(msgData);
       }
       chatList.refresh();
-      AppUtils.log({'channel': 'onMessageReceive', 'data': data},
-          show: _showLog);
+      AppUtils.log({
+        'channel': 'onMessageReceive',
+        'data': data,
+      }, show: _showLog);
       _repo.unsubscribe(SocketKey.chatError);
 
-
-      if(msgData.type == 'liveRequest' &&
-          !liveStreamCtrl.isHost){
-        final data = chatList.firstWhereOrNull((element)=> element.message == LiveRequestStatus.requested.name && element.userId == Preferences.uid);
+      if (msgData.type == 'liveRequest' && !liveStreamCtrl.isHost) {
+        final data = chatList.firstWhereOrNull(
+          (element) =>
+              element.message == LiveRequestStatus.requested.name &&
+              element.userId == Preferences.uid,
+        );
         liveStreamCtrl.videoRequestButtonEnable.value = data == null;
         liveStreamCtrl.videoRequestButtonEnable.refresh();
       }
     });
-
-
-
 
     // flutter: │ 🐛 {
     // flutter: │ 🐛   "type": "LISTENER Socket",
@@ -444,11 +462,6 @@ class AgoraChatCtrl extends GetxController {
     // flutter: │ 🐛     "participantCount": 2
     // flutter: │ 🐛   }
     // flutter: │ 🐛 }
-    
-    
-    
-    
-    
   }
 
   void _updateHostOnJoin(Map<String, dynamic> data) {
@@ -457,8 +470,9 @@ class AgoraChatCtrl extends GetxController {
     AppUtils.log('_updateHostOnJoin');
     roomId = data['roomId'];
     AppUtils.log({'channel': 'onLiveJoined', 'data': data}, show: _showLog);
-    final participants =
-        List<Map<String, dynamic>>.from(data['participants'] ?? []);
+    final participants = List<Map<String, dynamic>>.from(
+      data['participants'] ?? [],
+    );
     _addUsersToMappingList(participants);
     _liveCount.value = data['participantCount'] ?? 0;
   }
@@ -469,7 +483,6 @@ class AgoraChatCtrl extends GetxController {
       _updateHostOnJoin(data);
       AppUtils.logg('onLiveJoined');
       AppUtils.logg(data);
-
     });
     _repo.onLiveStart((data) {
       AppUtils.logg('onLiveStart');
@@ -495,14 +508,15 @@ class AgoraChatCtrl extends GetxController {
   }
 
   void leaveRoom() {
-    if(liveStreamCtrl.videoRequestButtonEnable.isFalse){
-      final data = chatList.firstWhereOrNull((element)=>
-      element.userId == Preferences.uid && element.message == LiveRequestStatus.requested.name && element.type == 'liveRequest');
-      if(data != null){
-        hostRequestActive(
-            LiveRequestStatus.leave,
-            data.id!,
-            data.userId!);
+    if (liveStreamCtrl.videoRequestButtonEnable.isFalse) {
+      final data = chatList.firstWhereOrNull(
+        (element) =>
+            element.userId == Preferences.uid &&
+            element.message == LiveRequestStatus.requested.name &&
+            element.type == 'liveRequest',
+      );
+      if (data != null) {
+        hostRequestActive(LiveRequestStatus.leave, data.id!, data.userId!);
       }
     }
     hostGiftAmountTotal.value = 0;
@@ -512,12 +526,12 @@ class AgoraChatCtrl extends GetxController {
     _incomingLiveRequestToHostController.close();
   }
 
-
-
   void _onUserJoinedLive() {
     _repo.onUserJoinedLive((data) {
-      AppUtils.log({'channel': 'onUserJoinedLive', 'data': data},
-          show: _showLog);
+      AppUtils.log({
+        'channel': 'onUserJoinedLive',
+        'data': data,
+      }, show: _showLog);
       // flutter: │ 🐛 {
       // flutter: │ 🐛   "channel": "onUserJoinedLive",
       // flutter: │ 🐛   "data": {
@@ -537,8 +551,9 @@ class AgoraChatCtrl extends GetxController {
     _repo.onUserLeftLive((data) {
       AppUtils.log({'channel': 'onUserLeftLive', 'data': data}, show: _showLog);
 
-      liveStreamCtrl.liveUsers
-          .removeWhere((element) => element['userId'] == data['userId']);
+      liveStreamCtrl.liveUsers.removeWhere(
+        (element) => element['userId'] == data['userId'],
+      );
 
       // flutter: │ 🐛 {
       // flutter: │ 🐛   "channel": "onUserLeftLive",
@@ -584,8 +599,6 @@ class AgoraChatCtrl extends GetxController {
       AppUtils.logg(data);
       _liveCount.value = data['participantCount'] ?? _liveCount.value;
 
-
-
       // List<Map<String,dynamic>> list = data['participants']  ?? <Map<String,dynamic>>[] ;
       // final participants = (data['participants'] as List)
       //     .map((e) => e as Map<String, dynamic>)
@@ -594,9 +607,8 @@ class AgoraChatCtrl extends GetxController {
       List<Map<String, dynamic>> list =
           (data['participants'] as List<dynamic>?)
               ?.map((e) => e as Map<String, dynamic>)
-              .toList()
-              ?? <Map<String, dynamic>>[];
-
+              .toList() ??
+          <Map<String, dynamic>>[];
 
       _addUsersToMappingList(list);
 
@@ -634,15 +646,18 @@ class AgoraChatCtrl extends GetxController {
       liveStreamCtrl.addUserIdToMappingList(user['id'], json: user);
     }
 
-    final hostEntry = list.firstWhereOrNull((e) =>
-    e['role'] == 'host' &&
-        e['id'] == liveStreamCtrl.streamCtrl.value.channelId);
+    final hostEntry = list.firstWhereOrNull(
+      (e) =>
+          e['role'] == 'host' &&
+          e['id'] == liveStreamCtrl.streamCtrl.value.channelId,
+    );
 
     if (hostEntry != null) {
       final updatedHost = liveStreamCtrl.hostProfileData.value.copyWith(
-          name: hostEntry['name'] ?? '',
-          id: hostEntry['id'] ?? '',
-          image: hostEntry['image']);
+        name: hostEntry['name'] ?? '',
+        id: hostEntry['id'] ?? '',
+        image: hostEntry['image'],
+      );
 
       liveStreamCtrl.hostProfileData.value = updatedHost;
       liveStreamCtrl.hostProfileData.refresh();
@@ -675,13 +690,18 @@ class LiveStreamChannelModel {
   // flutter: │ 🐛         "hasSocket": false
   // flutter: │ 🐛       }
 
-  LiveStreamChannelModel(
-      {this.channelId, this.hostName, this.hostId, this.hostImage});
+  LiveStreamChannelModel({
+    this.channelId,
+    this.hostName,
+    this.hostId,
+    this.hostImage,
+  });
 
   factory LiveStreamChannelModel.fromJson(Map<String, dynamic> json) =>
       LiveStreamChannelModel(
-          hostId: json['userId'],
-          hostName: json['name'],
-          channelId: json['roomId'],
-          hostImage: json['image']);
+        hostId: json['userId'],
+        hostName: json['name'],
+        channelId: json['roomId'],
+        hostImage: json['image'],
+      );
 }

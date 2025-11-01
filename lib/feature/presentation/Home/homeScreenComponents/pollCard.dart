@@ -11,7 +11,6 @@ import 'package:sep/utils/extensions/contextExtensions.dart';
 import 'package:sep/utils/extensions/extensions.dart';
 import 'package:sep/utils/extensions/size.dart';
 import 'package:sep/utils/extensions/textStyle.dart';
-import 'package:sep/utils/extensions/widget.dart';
 import 'package:sep/components/styles/textStyles.dart';
 import 'package:sep/feature/presentation/Home/homeScreenComponents/post_card_header.dart';
 import 'package:sep/feature/presentation/Home/homeScreenComponents/read_more_text.dart';
@@ -217,6 +216,15 @@ class _PollCardState extends State<PollCard> {
                 Obx(() {
                   final ended =
                       pollState.value == PollState.complete || isPollEndedNow;
+
+                  // Find the option with the highest vote count
+                  int maxVoteCount = widget.data.options.fold(
+                    0,
+                    (max, option) => (option.voteCount ?? 0) > max
+                        ? (option.voteCount ?? 0)
+                        : max,
+                  );
+
                   return ListView.separated(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
@@ -230,6 +238,10 @@ class _PollCardState extends State<PollCard> {
                       data: widget.data.options[index],
                       totalVoteCounts: totalCounts,
                       isPollEnded: ended,
+                      isLeading:
+                          (widget.data.options[index].voteCount ?? 0) ==
+                              maxVoteCount &&
+                          maxVoteCount > 0,
                     ),
                     separatorBuilder: (context, index) =>
                         const SizedBox(height: 10),
@@ -268,9 +280,9 @@ class _PollCardState extends State<PollCard> {
                           maintainState: true,
                           child: ImageView(
                             url: AppImages.poll,
-                            tintColor: AppColors.btnColor,
+                            tintColor: AppColors.greynew,
                             size: 30,
-                            margin: const EdgeInsets.only(right: 25),
+                            margin: const EdgeInsets.only(left: 5, right: 20),
                             onTap: () {
                               context.pushNavigator(ShowPollScreen());
                             },
@@ -341,9 +353,9 @@ class _PollCardState extends State<PollCard> {
                                       visible: widget.showPollButton,
                                       child: ImageView(
                                         url: AppImages.poll,
-                                        tintColor: AppColors.btnColor,
+                                        tintColor: AppColors.greynew,
                                         size: 25,
-                                        margin: 15.right,
+                                        margin: 10.right,
                                         onTap: () {
                                           context.pushNavigator(
                                             ShowPollScreen(),
@@ -413,7 +425,7 @@ class _PollCardState extends State<PollCard> {
                                           visible: widget.showPollButton,
                                           child: ImageView(
                                             url: AppImages.poll,
-                                            tintColor: AppColors.btnColor,
+                                            tintColor: AppColors.greynew,
                                             size: 25,
                                             margin: 15.right,
                                             onTap: () {
@@ -466,6 +478,7 @@ class PollOptionCard extends StatelessWidget {
   final int totalVoteCounts;
   final Function(String)? onPollAction;
   final bool isPollEnded;
+  final bool isLeading;
 
   const PollOptionCard({
     Key? key,
@@ -474,6 +487,7 @@ class PollOptionCard extends StatelessWidget {
     required this.onPollAction,
     required this.voteList,
     required this.isPollEnded,
+    this.isLeading = false,
   }) : super(key: key);
 
   bool get isSelected {
@@ -487,7 +501,15 @@ class PollOptionCard extends StatelessWidget {
     return false;
   }
 
-  Color get color => isSelected ? AppColors.btnColor : AppColors.greynew;
+  Color get color {
+    if (isLeading && isPollEnded) {
+      return AppColors.greenlight; // Green for leading option when poll ended
+    } else if (isSelected) {
+      return AppColors.btnColor; // Selected color for user's choice
+    } else {
+      return AppColors.greynew; // Default grey
+    }
+  }
 
   BoxDecoration decoration(Color bgColor, Color borderColor) => BoxDecoration(
     borderRadius: BorderRadius.circular(12),
@@ -502,6 +524,8 @@ class PollOptionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final percentage = (getPercentage * 100).toStringAsFixed(1);
+
     return GestureDetector(
       onTap: !isPollEnded
           ? () {
@@ -513,131 +537,116 @@ class PollOptionCard extends StatelessWidget {
               onPollAction?.call(data.id!);
             }
           : null,
-      child: Stack(
-        children: [
-          Container(
-            decoration: decoration(Colors.white, color),
-            clipBehavior: Clip.hardEdge,
-            child: LinearProgressIndicator(
-              value: getPercentage,
-              minHeight: 60,
-              valueColor: AlwaysStoppedAnimation<Color>(color),
-            ),
-          ),
-          Positioned.fill(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: decoration(Colors.transparent, color),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  GestureDetector(
-                    onTap: () {
-                      showDialog(
-                        context: context,
-                        barrierColor: Colors.black87,
-                        builder: (context) {
-                          return Dialog(
-                            backgroundColor: Colors.transparent,
-                            insetPadding: const EdgeInsets.all(10),
-                            child: GestureDetector(
-                              onTap: () => Navigator.pop(context),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: PhotoView(
-                                  imageProvider: NetworkImage(
-                                    data.image?.isNotEmpty == true
-                                        ? '$baseUrl${data.image}'
-                                        : '',
-                                  ),
-                                  backgroundDecoration: const BoxDecoration(
-                                    color: Colors.transparent,
-                                  ),
+      child: Container(
+        decoration: decoration(Colors.white, color),
+        padding: const EdgeInsets.all(10),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                GestureDetector(
+                  onTap: () {
+                    showDialog(
+                      context: context,
+                      barrierColor: Colors.black87,
+                      builder: (context) {
+                        return Dialog(
+                          backgroundColor: Colors.transparent,
+                          insetPadding: const EdgeInsets.all(10),
+                          child: GestureDetector(
+                            onTap: () => Navigator.pop(context),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: PhotoView(
+                                imageProvider: NetworkImage(
+                                  data.image?.isNotEmpty == true
+                                      ? '$baseUrl${data.image}'
+                                      : '',
+                                ),
+                                backgroundDecoration: const BoxDecoration(
+                                  color: Colors.transparent,
                                 ),
                               ),
                             ),
-                          );
-                        },
-                      );
-                    },
-                    child: ImageView(
-                      url: "$baseUrl${data.image}".isNotEmpty
-                          ? '$baseUrl${data.image}'
-                          : '',
-                      fit: BoxFit.cover,
-                      radius: 10,
-                      fastLoading: true,
-                      imageType: ImageType.network,
-                      size: 50,
-                      margin: const EdgeInsets.only(right: 10),
-                    ),
-                  ),
-
-                  // ImageView(
-                  //   url: data.image?.isNotEmpty == true
-                  //       ? '$baseUrl${data.image}'
-                  //       : '',
-                  //   fit: BoxFit.cover,
-                  //   radius: 10,
-                  //   fastLoading: true,
-                  //   imageType: ImageType.network,
-                  //   size: 50,
-                  //   margin: const EdgeInsets.only(right: 10),
-                  // ),
-                  Expanded(
-                    child: Text(
-                      data.name ?? '',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
-                  if (!isPollEnded)
-                    Container(
-                      height: 40,
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? Colors.grey.shade400
-                            : AppColors.greenlight,
-                        borderRadius: BorderRadius.circular(8),
-                        boxShadow: [
-                          BoxShadow(
-                            color:
-                                (isSelected
-                                        ? Colors.grey.shade400
-                                        : AppColors.greenlight)
-                                    .withOpacity(0.3),
-                            blurRadius: 4,
-                            offset: Offset(0, 2),
                           ),
-                        ],
-                      ),
-                      child: Center(
-                        child: Text(
-                          'Vote',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
-                            color: Colors.white,
-                          ),
+                        );
+                      },
+                    );
+                  },
+                  child: ImageView(
+                    url: "$baseUrl${data.image}".isNotEmpty
+                        ? '$baseUrl${data.image}'
+                        : '',
+                    fit: BoxFit.cover,
+                    radius: 10,
+                    fastLoading: true,
+                    imageType: ImageType.network,
+                    size: 50,
+                    margin: const EdgeInsets.only(right: 10),
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    data.name ?? '',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                ),
+                if (!isPollEnded)
+                  Container(
+                    height: 40,
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? Colors.grey.shade400
+                          : AppColors.greenlight,
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                          color:
+                              (isSelected
+                                      ? Colors.grey.shade400
+                                      : AppColors.greenlight)
+                                  .withOpacity(0.3),
+                          blurRadius: 4,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: Text(
+                        'Vote',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                          color: Colors.white,
                         ),
                       ),
                     ),
-                  20.width,
-                  Text(
-                    '${data.voteCount ?? 0}',
-                    style: TextStyle(color: Colors.black, fontSize: 16),
                   ),
-                ],
+                SizedBox(width: 10),
+                Text(
+                  '$percentage%',
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: LinearProgressIndicator(
+                value: getPercentage,
+                minHeight: 8,
+                backgroundColor: Colors.grey.shade200,
+                valueColor: AlwaysStoppedAnimation<Color>(color),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

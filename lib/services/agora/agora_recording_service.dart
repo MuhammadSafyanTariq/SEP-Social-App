@@ -31,18 +31,28 @@ class AgoraRecordingService {
 
       final url = Uri.parse('${baseUrl}${Urls.agoraRecordingAcquire}');
 
+      final requestBody = {'channelName': channelName, 'uid': uid};
+
+      AppUtils.log('Agora Recording - Acquire request body: $requestBody');
+
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
-        body: json.encode({'channelName': channelName, 'uid': uid}),
+        body: json.encode(requestBody),
       );
 
       AppUtils.log(
-        'Agora Recording - Acquire response: ${response.statusCode}',
+        'Agora Recording - Acquire response status: ${response.statusCode}',
       );
+      AppUtils.log('Agora Recording - Acquire response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+
+        // Print complete server response
+        AppUtils.log('acquireRecording:response');
+        AppUtils.log('${DateTime.now()}');
+        AppUtils.log(jsonEncode(data));
 
         if (data['success'] == true && data['resourceId'] != null) {
           AppUtils.log(
@@ -53,15 +63,24 @@ class AgoraRecordingService {
             message: data['message'],
           );
         } else {
-          return AgoraRecordingResult.error(
-            'Acquire failed: ${data['message'] ?? 'Unknown error'}',
-          );
+          final errorMsg =
+              'Acquire failed: ${data['message'] ?? 'Unknown error'}';
+          AppUtils.logEr('Agora Recording - $errorMsg');
+          return AgoraRecordingResult.error(errorMsg);
         }
       } else {
-        final error = json.decode(response.body);
-        return AgoraRecordingResult.error(
-          'Acquire failed (${response.statusCode}): ${error['message'] ?? response.body}',
-        );
+        try {
+          final error = json.decode(response.body);
+          final errorMsg =
+              'Acquire failed (${response.statusCode}): ${error['message'] ?? response.body}';
+          AppUtils.logEr('Agora Recording - $errorMsg');
+          return AgoraRecordingResult.error(errorMsg);
+        } catch (e) {
+          final errorMsg =
+              'Acquire failed (${response.statusCode}): ${response.body}';
+          AppUtils.logEr('Agora Recording - $errorMsg');
+          return AgoraRecordingResult.error(errorMsg);
+        }
       }
     } catch (e) {
       AppUtils.logEr('Agora Recording - Acquire error: $e');
@@ -92,45 +111,72 @@ class AgoraRecordingService {
   }) async {
     try {
       AppUtils.log(
-        'Agora Recording - Start recording for channel: $channelName, resourceId: $resourceId',
+        'Agora Recording - Start recording for channel: $channelName, uid: $uid, resourceId: $resourceId',
       );
 
       final url = Uri.parse('${baseUrl}${Urls.agoraRecordingStart}');
 
+      final requestBody = {
+        'channelName': channelName,
+        'uid': uid,
+        'resourceId': resourceId,
+      };
+
+      AppUtils.log('Agora Recording - Start request body: $requestBody');
+
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'channelName': channelName,
-          'uid': uid,
-          'resourceId': resourceId,
-        }),
+        body: json.encode(requestBody),
       );
 
-      AppUtils.log('Agora Recording - Start response: ${response.statusCode}');
+      AppUtils.log(
+        'Agora Recording - Start response status: ${response.statusCode}',
+      );
+      AppUtils.log('Agora Recording - Start response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+
+        // Print complete server response
+        AppUtils.log('startRecording:response');
+        AppUtils.log('${DateTime.now()}');
+        AppUtils.log(jsonEncode(data));
 
         if (data['success'] == true && data['sid'] != null) {
           AppUtils.log(
             'Agora Recording - Started successfully. SID: ${data['sid']}',
           );
+          AppUtils.log('Agora Recording - ResourceId: ${data['resourceId']}');
+
           return AgoraRecordingResult.success(
             resourceId: data['resourceId'],
             sid: data['sid'],
             message: data['message'],
           );
         } else {
-          return AgoraRecordingResult.error(
-            'Start failed: ${data['message'] ?? 'Unknown error'}',
+          final errorMsg =
+              'Start failed: ${data['message'] ?? 'Unknown error'}';
+          AppUtils.logEr('Agora Recording - $errorMsg');
+          AppUtils.logEr(
+            'Agora Recording - Full response: ${jsonEncode(data)}',
           );
+          return AgoraRecordingResult.error(errorMsg);
         }
       } else {
-        final error = json.decode(response.body);
-        return AgoraRecordingResult.error(
-          'Start failed (${response.statusCode}): ${error['message'] ?? response.body}',
-        );
+        try {
+          final error = json.decode(response.body);
+          final errorMsg =
+              'Start failed (${response.statusCode}): ${error['message'] ?? response.body}';
+          AppUtils.logEr('Agora Recording - $errorMsg');
+          AppUtils.logEr('Agora Recording - Error response: ${response.body}');
+          return AgoraRecordingResult.error(errorMsg);
+        } catch (e) {
+          final errorMsg =
+              'Start failed (${response.statusCode}): ${response.body}';
+          AppUtils.logEr('Agora Recording - $errorMsg');
+          return AgoraRecordingResult.error(errorMsg);
+        }
       }
     } catch (e) {
       AppUtils.logEr('Agora Recording - Start error: $e');
@@ -164,46 +210,86 @@ class AgoraRecordingService {
   }) async {
     try {
       AppUtils.log(
-        'Agora Recording - Stop recording for channel: $channelName, sid: $sid',
+        'Agora Recording - Stop recording for channel: $channelName, uid: $uid, sid: $sid, resourceId: $resourceId',
       );
 
       final url = Uri.parse('${baseUrl}${Urls.agoraRecordingStop}');
 
+      final requestBody = {
+        'channelName': channelName,
+        'uid': uid,
+        'resourceId': resourceId,
+        'sid': sid,
+      };
+
+      AppUtils.log('Agora Recording - Request URL: $url');
+      AppUtils.log('Agora Recording - Request body: $requestBody');
+
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'channelName': channelName,
-          'uid': uid,
-          'resourceId': resourceId,
-          'sid': sid,
-        }),
+        body: json.encode(requestBody),
       );
 
-      AppUtils.log('Agora Recording - Stop response: ${response.statusCode}');
+      AppUtils.log(
+        'Agora Recording - Stop response status: ${response.statusCode}',
+      );
+      AppUtils.log('Agora Recording - Stop response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
 
+        // Print complete server response
+        AppUtils.log('stopRecording:response');
+        AppUtils.log('${DateTime.now()}');
+        AppUtils.log(jsonEncode(data));
+
         if (data['success'] == true) {
           AppUtils.log('Agora Recording - Stopped successfully');
+          AppUtils.log('Agora Recording - File URL: ${data['fileUrl']}');
+
+          // Extract MP4 URL from fileList if available
+          String? mp4Url;
+          if (data['serverResponse'] != null &&
+              data['serverResponse']['fileList'] != null) {
+            final fileList = data['serverResponse']['fileList'] as List;
+            // Find the first MP4 file in the list
+            final mp4File = fileList.firstWhere(
+              (file) => file['fileName']?.toString().endsWith('.mp4') ?? false,
+              orElse: () => null,
+            );
+            if (mp4File != null) {
+              mp4Url = mp4File['fileName'];
+              AppUtils.log('Agora Recording - MP4 file: $mp4Url');
+            }
+          }
+
           return AgoraRecordingResult.success(
             resourceId: data['resourceId'],
             sid: data['sid'],
             message: data['message'],
             serverResponse: data['serverResponse'],
             fileUrl: data['fileUrl'],
+            mp4Url: mp4Url,
           );
         } else {
-          return AgoraRecordingResult.error(
-            'Stop failed: ${data['message'] ?? 'Unknown error'}',
-          );
+          final errorMsg = 'Stop failed: ${data['message'] ?? 'Unknown error'}';
+          AppUtils.logEr('Agora Recording - $errorMsg');
+          return AgoraRecordingResult.error(errorMsg);
         }
       } else {
-        final error = json.decode(response.body);
-        return AgoraRecordingResult.error(
-          'Stop failed (${response.statusCode}): ${error['message'] ?? response.body}',
-        );
+        try {
+          final error = json.decode(response.body);
+          final errorMsg =
+              'Stop failed (${response.statusCode}): ${error['message'] ?? response.body}';
+          AppUtils.logEr('Agora Recording - $errorMsg');
+          return AgoraRecordingResult.error(errorMsg);
+        } catch (e) {
+          final errorMsg =
+              'Stop failed (${response.statusCode}): ${response.body}';
+          AppUtils.logEr('Agora Recording - $errorMsg');
+          return AgoraRecordingResult.error(errorMsg);
+        }
       }
     } catch (e) {
       AppUtils.logEr('Agora Recording - Stop error: $e');
@@ -249,6 +335,7 @@ class AgoraRecordingResult {
   final String? message;
   final String? errorMessage;
   final String? fileUrl;
+  final String? mp4Url;
   final Map<String, dynamic>? serverResponse;
 
   AgoraRecordingResult({
@@ -258,6 +345,7 @@ class AgoraRecordingResult {
     this.message,
     this.errorMessage,
     this.fileUrl,
+    this.mp4Url,
     this.serverResponse,
   });
 
@@ -266,6 +354,7 @@ class AgoraRecordingResult {
     String? sid,
     String? message,
     String? fileUrl,
+    String? mp4Url,
     Map<String, dynamic>? serverResponse,
   }) {
     return AgoraRecordingResult(
@@ -274,6 +363,7 @@ class AgoraRecordingResult {
       sid: sid,
       message: message,
       fileUrl: fileUrl,
+      mp4Url: mp4Url,
       serverResponse: serverResponse,
     );
   }
@@ -285,7 +375,7 @@ class AgoraRecordingResult {
   @override
   String toString() {
     if (success) {
-      return 'AgoraRecordingResult(success: true, resourceId: $resourceId, sid: $sid, message: $message)';
+      return 'AgoraRecordingResult(success: true, resourceId: $resourceId, sid: $sid, message: $message, fileUrl: $fileUrl, mp4Url: $mp4Url)';
     } else {
       return 'AgoraRecordingResult(success: false, error: $errorMessage)';
     }

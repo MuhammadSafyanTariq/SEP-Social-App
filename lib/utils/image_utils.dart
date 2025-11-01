@@ -9,9 +9,8 @@ import 'package:video_thumbnail/video_thumbnail.dart';
 
 final _manager = DefaultCacheManager();
 
-
 Future<ui.Size> getNetworkImageSize(String url) async {
-  try{
+  try {
     final file = await _manager.getSingleFile(url);
     final bytes = await file.readAsBytes();
     final codec = await ui.instantiateImageCodec(bytes);
@@ -19,12 +18,10 @@ Future<ui.Size> getNetworkImageSize(String url) async {
     final image = frame.image;
     _manager.removeFile(url);
     return ui.Size(image.width.toDouble(), image.height.toDouble());
-  }catch(e){
-
+  } catch (e) {
     AppUtils.log(url);
     throw 'issuee with image....';
   }
-
 }
 
 class SizedImage extends StatelessWidget {
@@ -43,29 +40,26 @@ class SizedImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    double finalWidth;
-    double finalHeight;
+    // Always fit to width first to use full available width
+    double finalWidth = maxWidth;
+    double finalHeight = (size.height / size.width) * maxWidth;
 
-    if (size.width > size.height) {
-      // Width-dominant image → fit to screen width
-      finalWidth = maxWidth;
-      finalHeight = (size.height / size.width) * maxWidth;
-    } else if (size.height > size.width) {
-      // Height-dominant image → fit to screen height
+    // Only constrain height if it's excessively tall (more than maxHeight)
+    // This allows long images to display properly
+    if (finalHeight > maxHeight) {
       finalHeight = maxHeight;
       finalWidth = (size.width / size.height) * maxHeight;
-    } else {
-      // Square
-      finalWidth = maxWidth;
-      finalHeight = maxWidth;
     }
 
     return Center(
-      child: ImageView(url: url, width: finalWidth, height: finalHeight, fit: BoxFit.fill,
-      imageType: ImageType.network,
+      child: ImageView(
+        url: url,
+        width: finalWidth,
+        height: finalHeight,
+        fit: BoxFit.contain,
+        imageType: ImageType.network,
       ),
     );
-
 
     //   Image.network(
     //   url,
@@ -76,17 +70,14 @@ class SizedImage extends StatelessWidget {
   }
 }
 
-Future<Uint8List?> getThumbnail(String file
-    // , double height, double width
-    ) async{
+Future<Uint8List?> getThumbnail(
+  String file,
+  // , double height, double width
+) async {
   final uint8list = await VideoThumbnail.thumbnailData(
     video: file,
     quality: 100,
     imageFormat: ImageFormat.JPEG,
-
   );
   return uint8list;
 }
-
-
-

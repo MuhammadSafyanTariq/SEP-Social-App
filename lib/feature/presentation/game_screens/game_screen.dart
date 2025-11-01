@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:sep/components/coreComponents/appBar2.dart';
 import 'package:sep/components/coreComponents/TextView.dart';
 import 'package:sep/components/styles/appColors.dart';
 import 'package:sep/components/styles/appImages.dart';
 import 'package:sep/components/styles/app_strings.dart';
 import 'package:sep/feature/presentation/game_screens/gun_firing_game/gun_firing_Screen.dart';
+import 'package:sep/feature/presentation/game_screens/fruit_ninja_game/fruit_ninja_screen.dart';
 import 'package:sep/utils/extensions/contextExtensions.dart';
 import 'package:sep/utils/extensions/size.dart';
 import 'package:sep/utils/extensions/widget.dart';
@@ -95,6 +95,16 @@ class _GameScreenState extends State<GameScreen> {
                             context.pushNavigator(GunFiringScreen());
                           },
                         ),
+                        _buildEnhancedGameCard(
+                          context,
+                          title: 'Fruit Ninja',
+                          subtitle: '',
+                          imagePath: AppImages.fruitNinja,
+                          backgroundColor: AppColors.white,
+                          onTap: () {
+                            context.pushNavigator(FruitNinjaScreen());
+                          },
+                        ),
                       ],
                     ),
 
@@ -170,7 +180,7 @@ class _GameScreenState extends State<GameScreen> {
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.primaryColor
+                  color: AppColors.primaryColor,
                 ),
                 textAlign: TextAlign.center,
                 maxlines: 2,

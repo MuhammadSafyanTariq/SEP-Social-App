@@ -113,6 +113,18 @@ class AppImages {
   static const String poll = '${_path}poll.png';
   static const String celebrate = '${_path}celebrate.png';
   static const String celebrateBack = '${_path}celebrateBack.png';
+
+  // Celebration Templates
+  static const String celebrateTemplate1 = '${_path}Template 1.jpg';
+  static const String celebrateTemplate2 = '${_path}Template 2.jpg';
+  static const String celebrateTemplate3 = '${_path}Template 3.jpg';
+  static const String celebrateTemplate4 = '${_path}Template 4.jpg';
+  static const String celebrateTemplate5 = '${_path}Template 5.jpg';
+  static const String celebrateTemplate6 = '${_path}Template 6.jpg';
+  static const String celebrateTemplate7 = '${_path}Template 7.jpg';
+  static const String celebrateTemplate8 = '${_path}Template 8.jpg';
+  static const String celebrateTemplate9 = '${_path}Template 9.jpg';
+
   static const String videoicon = '${_path}videoicon.png';
   static const String videoImage = '${_path}videoImage.png';
   static const String heartfillImage = '${_path}heartfillImage.png';
@@ -129,6 +141,7 @@ class AppImages {
   static const String gameIcon = '${_path}gameIcon.png';
   static const String flappyBird = '${_path}flappyBird.png';
   static const String shootinggameImag = '${_path}shootinggameImag.webp';
+  static const String fruitNinja = '${_path}fruitNinja.png';
   static const String snakeImg = '${_path}snakeImg.jpeg';
   static const String sportImg = '${_path}sportImg.webp';
   static const String walletImg = '${_path}walletImg.png';
@@ -163,4 +176,5 @@ class AppImages {
 
   static const liveScreen = '${_path}liveScreen.jpeg';
   static const tokenImg = '${_path}tokenImg.png';
+  static const bot = '${_path}bot.png';
 }

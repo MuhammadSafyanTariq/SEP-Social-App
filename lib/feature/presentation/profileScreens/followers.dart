@@ -1,4 +1,3 @@
-
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -20,7 +19,6 @@ import '../../../../../components/coreComponents/AppButton.dart';
 import '../../../../../components/styles/appImages.dart';
 import '../../../../../components/styles/app_strings.dart';
 
-
 class MyFollowersListScreen extends StatefulWidget {
   const MyFollowersListScreen({super.key});
 
@@ -29,34 +27,46 @@ class MyFollowersListScreen extends StatefulWidget {
 }
 
 class _MyFollowersListScreenState extends State<MyFollowersListScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Load followers when screen opens
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ProfileCtrl.find.getMyFollowers();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Obx(()=>_FollowerScreen(list: ProfileCtrl.find.myFollowersList.value,
-      onRemove: (value){
-        ProfileCtrl.find.removeFollower(value).applyLoader.then((value){
-          if(value != null){
+    return _FollowerScreen(
+      list: ProfileCtrl.find.myFollowersList,
+      onRemove: (value) {
+        ProfileCtrl.find.removeFollower(value).applyLoader.then((value) {
+          if (value != null) {
             ProfileCtrl.find.profileData.value = value;
-          }else{
+          } else {
             ProfileCtrl.find.getProfileDetails();
           }
           ProfileCtrl.find.getMyFollowers();
         });
       },
       isMyList: true,
-
-    ));
+    );
   }
 }
-
 
 class FriendFollowersListScreen extends StatefulWidget {
   final List<ProfileDataModel> list;
   final String userId;
-  const FriendFollowersListScreen({super.key, required this.list, required this.userId});
+  const FriendFollowersListScreen({
+    super.key,
+    required this.list,
+    required this.userId,
+  });
 
   @override
-  State<FriendFollowersListScreen> createState() => _FriendFollowersListScreenState();
+  State<FriendFollowersListScreen> createState() =>
+      _FriendFollowersListScreenState();
 }
 
 class _FriendFollowersListScreenState extends State<FriendFollowersListScreen> {
@@ -68,24 +78,21 @@ class _FriendFollowersListScreenState extends State<FriendFollowersListScreen> {
     list.assignAll(widget.list);
   }
 
-  void followUnFollowAction(String value){
-    ProfileCtrl.find.followRequest(value).applyLoader.then((value){
+  void followUnFollowAction(String value) {
+    ProfileCtrl.find.followRequest(value).applyLoader.then((value) {
       ProfileCtrl.find.getProfileDetails();
-      ProfileCtrl.find.getFriendFollowers(widget.userId).then((value){
+      ProfileCtrl.find.getFriendFollowers(widget.userId).then((value) {
         list.assignAll(value);
         list.refresh();
       });
     });
   }
 
-
-
-
-
   @override
   Widget build(BuildContext context) {
-    return Obx(()=>_FollowerScreen(list: list.value,
-      onRemove: (value){
+    return _FollowerScreen(
+      list: list,
+      onRemove: (value) {
         followUnFollowAction(value);
         // ProfileCtrl.find.followRequest(value).applyLoader.then((value){
         //   ProfileCtrl.find.getFriendFollowers(widget.userId).then((value){
@@ -93,22 +100,27 @@ class _FriendFollowersListScreenState extends State<FriendFollowersListScreen> {
         //     list.refresh();
         //   });
         // });
-      }, isMyList: false,
-      onFollow: (value){
+      },
+      isMyList: false,
+      onFollow: (value) {
         followUnFollowAction(value);
       },
-
-    ));
+    );
   }
 }
-
 
 class _FollowerScreen extends StatefulWidget {
   final List<ProfileDataModel> list;
   final Function(String)? onRemove;
   final bool isMyList;
   final Function(String)? onFollow;
-  const _FollowerScreen({super.key, required this.list, this.onRemove, required this.isMyList, this.onFollow});
+  const _FollowerScreen({
+    super.key,
+    required this.list,
+    this.onRemove,
+    required this.isMyList,
+    this.onFollow,
+  });
 
   @override
   State<_FollowerScreen> createState() => _FollowerScreenState();
@@ -119,8 +131,17 @@ class _FollowerScreenState extends State<_FollowerScreen> {
   RxString searchRx = RxString('');
   String get searchText => searchRx.value;
 
-  List<ProfileDataModel> get list => searchText.isNotNullEmpty ?
-  widget.list.where((element)=> element.name?.toLowerCase().contains(searchText.toLowerCase()) ?? false ).toList() : widget.list;
+  List<ProfileDataModel> get list => searchText.isNotNullEmpty
+      ? widget.list
+            .where(
+              (element) =>
+                  element.name?.toLowerCase().contains(
+                    searchText.toLowerCase(),
+                  ) ??
+                  false,
+            )
+            .toList()
+      : widget.list;
 
   @override
   void initState() {
@@ -130,18 +151,19 @@ class _FollowerScreenState extends State<_FollowerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return  Scaffold(
+    return Scaffold(
       backgroundColor: Colors.white,
-      appBar:AppBar(
+      appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
-        title: const Text(
-          'Linked Me',
-          style: TextStyle(color: Colors.black),
-        ),
+        title: const Text('Linked Me', style: TextStyle(color: Colors.black)),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black,size: 20,),
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: Colors.black,
+            size: 20,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -161,23 +183,30 @@ class _FollowerScreenState extends State<_FollowerScreen> {
                   fillColor: Colors.grey.withOpacity(0.2),
                   hintText: 'Search',
                   hintStyle: 14.txtRegularGrey,
-                  prefixIcon: Icon(Icons.search, color:AppColors.grey,size: 25.sdp,),
+                  prefixIcon: Icon(
+                    Icons.search,
+                    color: AppColors.grey,
+                    size: 25.sdp,
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(25),
                     borderSide: BorderSide(color: Colors.grey),
                   ),
                 ),
-                onChanged: (value){
+                onChanged: (value) {
                   searchRx.value = search.getText;
                 },
               ),
             ),
           ),
           Obx(
-                ()=> Visibility(
+            () => Visibility(
               visible: list.isNotEmpty,
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0,vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16.0,
+                  vertical: 10,
+                ),
                 child: Text(
                   '${list.length.toString().padLeft(2, '0')} Linked Me',
                   style: const TextStyle(color: Colors.black, fontSize: 16),
@@ -188,53 +217,57 @@ class _FollowerScreenState extends State<_FollowerScreen> {
           const SizedBox(height: 8),
           Expanded(
             child: Obx(
-                  ()=>list.isEmpty ?
-              Center(
-                child: TextView(text: 'No User Found.',style: 18.txtBoldBlack,),
-              ):
+              () => list.isEmpty
+                  ? Center(
+                      child: TextView(
+                        text: 'No User Found.',
+                        style: 18.txtBoldBlack,
+                      ),
+                    )
+                  : ListView.separated(
+                      itemCount: list.length,
+                      separatorBuilder: (context, index) => const Divider(
+                        color: AppColors.black,
+                        thickness: 1,
+                        indent: 16,
+                        endIndent: 16,
+                      ),
+                      itemBuilder: (context, index) {
+                        final user = list[index];
 
-
-              ListView.separated(
-                itemCount: list.length,
-                separatorBuilder: (context, index) => const Divider(
-                  color: AppColors.black,
-                  thickness: 1,
-                  indent: 16,
-                  endIndent: 16,
-                ),
-                itemBuilder: (context, index) {
-                  final user = list[index];
-
-                  bool isFollowed = widget.isMyList;
-                  if(!widget.isMyList){
-                    isFollowed = ProfileCtrl.find.profileData.value.following?.contains(user.id!) ?? false;
-                    // for(var item in list){
-                    //   if(ProfileCtrl.find.profileData.value.following?.contains(item.id) ?? false){
-                    //     isFollowed = true;
-                    //     break;
-                    //   }
-                    // }
-                  }
-                  return BlockedUserTile(
-                    data: user,
-                    isFollowed: isFollowed,
-                    name: user.name ?? '',
-                    image: user.image ?? '',
-                    onUnblock: () {
-                    },
-                    onRemove:(){
-                      widget.onRemove?.call(user.id!);
-                    },
-                    onFollow: (){
-                      widget.onFollow?.call(user.id!);
-                    },
-                    goToProfile: (){
-                      context.pushNavigator(FriendProfileScreen(data: user));
-                    },
-
-                  );
-                },
-              ),
+                        bool isFollowed = widget.isMyList;
+                        if (!widget.isMyList) {
+                          isFollowed =
+                              ProfileCtrl.find.profileData.value.following
+                                  ?.contains(user.id!) ??
+                              false;
+                          // for(var item in list){
+                          //   if(ProfileCtrl.find.profileData.value.following?.contains(item.id) ?? false){
+                          //     isFollowed = true;
+                          //     break;
+                          //   }
+                          // }
+                        }
+                        return BlockedUserTile(
+                          data: user,
+                          isFollowed: isFollowed,
+                          name: user.name ?? '',
+                          image: user.image ?? '',
+                          onUnblock: () {},
+                          onRemove: () {
+                            widget.onRemove?.call(user.id!);
+                          },
+                          onFollow: () {
+                            widget.onFollow?.call(user.id!);
+                          },
+                          goToProfile: () {
+                            context.pushNavigator(
+                              FriendProfileScreen(data: user),
+                            );
+                          },
+                        );
+                      },
+                    ),
             ),
           ),
         ],
@@ -257,232 +290,232 @@ class BlockedUserTile extends StatelessWidget {
     Key? key,
     required this.name,
     required this.image,
-    required this.onUnblock, this.onRemove, this.goToProfile, required this.isFollowed, this.onFollow, required this.data,
+    required this.onUnblock,
+    this.onRemove,
+    this.goToProfile,
+    required this.isFollowed,
+    this.onFollow,
+    required this.data,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return ListTile(
       leading: ImageView(
-        onTap: (){
+        onTap: () {
           goToProfile?.call();
         },
-          url: AppUtils.configImageUrl(image)
+        url: AppUtils.configImageUrl(image),
 
-          // image.isNotNullEmpty ? (image.contains('http') ? image : baseUrl + image) : ''
-        ,
+        // image.isNotNullEmpty ? (image.contains('http') ? image : baseUrl + image) : ''
         size: 50,
         imageType: ImageType.network,
         defaultImage: AppImages.dummyProfile,
-        radius: 50/2,
+        radius: 50 / 2,
         fit: BoxFit.cover,
         bgColor: AppColors.grey.withAlpha(100),
       ),
       title: TextView(
-        onTap: (){
+        onTap: () {
           goToProfile?.call();
         },
         text: name,
         style: 16.txtRegularWhite,
       ),
-      trailing: data.id == Preferences.uid ?
-          null :
-
-
-      isFollowed ?
-
-      TextButton(
-        onPressed: onUnblock,
-        child:  TextView(
-          text: 'Remove',
-          style: 14.txtRegularbtncolor,
-          onTap: () {
-            showDialog(
-              context: context,
-              builder: (BuildContext context) {
-                return Stack(
-                    children: [
-
-                      BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5), // Blur intensity
-                        child: Container(
-                          color: Colors.black.withOpacity(0.3), // Slightly dark background
-                        ),
-                      ),
-                      AlertDialog(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        backgroundColor: Colors.white,
-                        insetPadding: EdgeInsets.symmetric(horizontal: 40),
-                        contentPadding: EdgeInsets.zero,
-                        titlePadding: EdgeInsets.zero,
-                        title: Column(
-                          children: [
-                            15.height,
-
-                            TextView(
-                              text: "Remove Follower?",
-                              style: 24.txtSBoldprimary,
-                              textAlign: TextAlign.center,
+      trailing: data.id == Preferences.uid
+          ? null
+          : isFollowed
+          ? TextButton(
+              onPressed: onUnblock,
+              child: TextView(
+                text: 'Remove',
+                style: 14.txtRegularbtncolor,
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return Stack(
+                        children: [
+                          BackdropFilter(
+                            filter: ImageFilter.blur(
+                              sigmaX: 5,
+                              sigmaY: 5,
+                            ), // Blur intensity
+                            child: Container(
+                              color: Colors.black.withOpacity(
+                                0.3,
+                              ), // Slightly dark background
                             ),
-
-                            10.height,
-                            Divider(
-                              thickness: 1,color: AppColors.Grey,
-                            ),
-                          ],
-                        ),
-                        content: Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: TextView(
-                            text: "Are you sure you want to remove this follower?",
-                            textAlign: TextAlign.center,
-                            style: 16.txtRegularprimary,
                           ),
-                        ),
-                        actionsAlignment: MainAxisAlignment.center,
-                        actions: [
-                          Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              mainAxisAlignment: MainAxisAlignment.center,
+                          AlertDialog(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            backgroundColor: Colors.white,
+                            insetPadding: EdgeInsets.symmetric(horizontal: 40),
+                            contentPadding: EdgeInsets.zero,
+                            titlePadding: EdgeInsets.zero,
+                            title: Column(
                               children: [
-                                AppButton(
-                                  radius: 25.sdp,
-                                  width: 110.sdp,
-                                  label: AppStrings.no.tr,
-                                  labelStyle: 14.txtMediumbtncolor,
-                                  buttonColor: AppColors.white,
-                                  buttonBorderColor: AppColors.btnColor,
-                                  margin: 20.right,
-                                  onTap: context.pop,
-                                ),
-                                AppButton(
-                                  radius: 25.sdp,
-                                  width: 110.sdp,
-                                  label: AppStrings.yes.tr,
-                                  labelStyle: 14.txtMediumWhite,
-                                  buttonColor: AppColors.btnColor,
-                                  onTap: (){
-                                    context.pop();
-                                    onRemove?.call();
-                                  },
+                                15.height,
 
+                                TextView(
+                                  text: "Remove Follower?",
+                                  style: 24.txtSBoldprimary,
+                                  textAlign: TextAlign.center,
                                 ),
 
+                                10.height,
+                                Divider(thickness: 1, color: AppColors.Grey),
                               ],
                             ),
-                          ),10.height
+                            content: Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: TextView(
+                                text:
+                                    "Are you sure you want to remove this follower?",
+                                textAlign: TextAlign.center,
+                                style: 16.txtRegularprimary,
+                              ),
+                            ),
+                            actionsAlignment: MainAxisAlignment.center,
+                            actions: [
+                              Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    AppButton(
+                                      radius: 25.sdp,
+                                      width: 110.sdp,
+                                      label: AppStrings.no.tr,
+                                      labelStyle: 14.txtMediumbtncolor,
+                                      buttonColor: AppColors.white,
+                                      buttonBorderColor: AppColors.btnColor,
+                                      margin: 20.right,
+                                      onTap: context.pop,
+                                    ),
+                                    AppButton(
+                                      radius: 25.sdp,
+                                      width: 110.sdp,
+                                      label: AppStrings.yes.tr,
+                                      labelStyle: 14.txtMediumWhite,
+                                      buttonColor: AppColors.btnColor,
+                                      onTap: () {
+                                        context.pop();
+                                        onRemove?.call();
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              10.height,
+                            ],
+                          ),
                         ],
-                      ),]
-                );
-              },
-            );
-          },
-        ),
-      ) :
-
-
-
-      TextButton(
-        style: ButtonStyle(
-          backgroundColor:WidgetStateProperty.all(Colors.green),
-
-        ),
-        onPressed: onUnblock,
-        child:  TextView(
-          text: 'Link Up',
-          style: 14.txtRegularprimary,
-          onTap: () {
-            onFollow?.call();
-            // showDialog(
-            //   context: context,
-            //   builder: (BuildContext context) {
-            //     return Stack(
-            //         children: [
-            //
-            //           BackdropFilter(
-            //             filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5), // Blur intensity
-            //             child: Container(
-            //               color: Colors.black.withOpacity(0.3), // Slightly dark background
-            //             ),
-            //           ),
-            //           AlertDialog(
-            //             shape: RoundedRectangleBorder(
-            //               borderRadius: BorderRadius.circular(20),
-            //             ),
-            //             backgroundColor: Colors.white,
-            //             insetPadding: EdgeInsets.symmetric(horizontal: 40),
-            //             contentPadding: EdgeInsets.zero,
-            //             titlePadding: EdgeInsets.zero,
-            //             title: Column(
-            //               children: [
-            //                 15.height,
-            //
-            //                 TextView(
-            //                   text: "Remove Follower?",
-            //                   style: 24.txtBoldBlack,
-            //                   textAlign: TextAlign.center,
-            //                 ),
-            //
-            //                 10.height,
-            //                 Divider(
-            //                   thickness: 1,color: AppColors.Grey,
-            //                 ),
-            //               ],
-            //             ),
-            //             content: Padding(
-            //               padding: const EdgeInsets.all(8.0),
-            //               child: TextView(
-            //                 text: "Are you sure you want to remove this follower?",
-            //                 textAlign: TextAlign.center,
-            //                 style: 16.txtRegularBlack,
-            //               ),
-            //             ),
-            //             actionsAlignment: MainAxisAlignment.center,
-            //             actions: [
-            //               Padding(
-            //                 padding: const EdgeInsets.all(8.0),
-            //                 child: Row(
-            //                   crossAxisAlignment: CrossAxisAlignment.center,
-            //                   mainAxisAlignment: MainAxisAlignment.center,
-            //                   children: [
-            //                     AppButton(
-            //                       radius: 25.sdp,
-            //                       width: 110.sdp,
-            //                       label: AppStrings.no.tr,
-            //                       labelStyle: 14.txtMediumbtncolor,
-            //                       buttonColor: AppColors.white,
-            //                       buttonBorderColor: AppColors.btnColor,
-            //                       margin: 20.right,
-            //                       onTap: context.pop,
-            //                     ),
-            //                     AppButton(
-            //                       radius: 25.sdp,
-            //                       width: 110.sdp,
-            //                       label: AppStrings.yes.tr,
-            //                       labelStyle: 14.txtMediumWhite,
-            //                       buttonColor: AppColors.btnColor,
-            //                       onTap: (){
-            //                         context.pop();
-            //                         onRemove?.call();
-            //                       },
-            //
-            //                     ),
-            //
-            //                   ],
-            //                 ),
-            //               ),10.height
-            //             ],
-            //           ),]
-            //     );
-            //   },
-            // );
-          },
-        ),
-      ),
+                      );
+                    },
+                  );
+                },
+              ),
+            )
+          : TextButton(
+              style: ButtonStyle(
+                backgroundColor: WidgetStateProperty.all(Colors.green),
+              ),
+              onPressed: onUnblock,
+              child: TextView(
+                text: 'Link Up',
+                style: 14.txtRegularprimary,
+                onTap: () {
+                  onFollow?.call();
+                  // showDialog(
+                  //   context: context,
+                  //   builder: (BuildContext context) {
+                  //     return Stack(
+                  //         children: [
+                  //
+                  //           BackdropFilter(
+                  //             filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5), // Blur intensity
+                  //             child: Container(
+                  //               color: Colors.black.withOpacity(0.3), // Slightly dark background
+                  //             ),
+                  //           ),
+                  //           AlertDialog(
+                  //             shape: RoundedRectangleBorder(
+                  //               borderRadius: BorderRadius.circular(20),
+                  //             ),
+                  //             backgroundColor: Colors.white,
+                  //             insetPadding: EdgeInsets.symmetric(horizontal: 40),
+                  //             contentPadding: EdgeInsets.zero,
+                  //             titlePadding: EdgeInsets.zero,
+                  //             title: Column(
+                  //               children: [
+                  //                 15.height,
+                  //
+                  //                 TextView(
+                  //                   text: "Remove Follower?",
+                  //                   style: 24.txtBoldBlack,
+                  //                   textAlign: TextAlign.center,
+                  //                 ),
+                  //
+                  //                 10.height,
+                  //                 Divider(
+                  //                   thickness: 1,color: AppColors.Grey,
+                  //                 ),
+                  //               ],
+                  //             ),
+                  //             content: Padding(
+                  //               padding: const EdgeInsets.all(8.0),
+                  //               child: TextView(
+                  //                 text: "Are you sure you want to remove this follower?",
+                  //                 textAlign: TextAlign.center,
+                  //                 style: 16.txtRegularBlack,
+                  //               ),
+                  //             ),
+                  //             actionsAlignment: MainAxisAlignment.center,
+                  //             actions: [
+                  //               Padding(
+                  //                 padding: const EdgeInsets.all(8.0),
+                  //                 child: Row(
+                  //                   crossAxisAlignment: CrossAxisAlignment.center,
+                  //                   mainAxisAlignment: MainAxisAlignment.center,
+                  //                   children: [
+                  //                     AppButton(
+                  //                       radius: 25.sdp,
+                  //                       width: 110.sdp,
+                  //                       label: AppStrings.no.tr,
+                  //                       labelStyle: 14.txtMediumbtncolor,
+                  //                       buttonColor: AppColors.white,
+                  //                       buttonBorderColor: AppColors.btnColor,
+                  //                       margin: 20.right,
+                  //                       onTap: context.pop,
+                  //                     ),
+                  //                     AppButton(
+                  //                       radius: 25.sdp,
+                  //                       width: 110.sdp,
+                  //                       label: AppStrings.yes.tr,
+                  //                       labelStyle: 14.txtMediumWhite,
+                  //                       buttonColor: AppColors.btnColor,
+                  //                       onTap: (){
+                  //                         context.pop();
+                  //                         onRemove?.call();
+                  //                       },
+                  //
+                  //                     ),
+                  //
+                  //                   ],
+                  //                 ),
+                  //               ),10.height
+                  //             ],
+                  //           ),]
+                  //     );
+                  //   },
+                  // );
+                },
+              ),
+            ),
     );
   }
 }

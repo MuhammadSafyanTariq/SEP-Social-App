@@ -153,4 +153,21 @@ class Urls {
 
   // Token Purchase
   static const String tokenPurchase = '/api/tokenPurchase/purchase';
+
+  // User Product
+  static const String userProduct = '/api/user-product';
+  static const String getAllUserProducts = '/api/user-product/all';
+
+  // Shop/Store
+  static const String shop = '/api/shop';
+  static const String getMyShop = '/api/shop/my-shop';
+
+  // Get shop by ID
+  static String getShopById(String shopId) => '/api/shop/$shopId';
+
+  // Delete shop by ID
+  static String deleteShop(String shopId) => '/api/shop/$shopId';
+
+  // Orders
+  static const String sellerOrders = '/api/order/seller-orders';
 }

@@ -80,7 +80,7 @@ class _ReadMoreTextState extends State<ReadMoreText> {
           children: [
             TextView(
               text: widget.text,
-              style: 20.txtSBoldprimary,
+              style: 16.txtSBoldprimary,
               maxlines: isExpanded ? null : widget.maxLines,
             ),
             if (showReadMore)
@@ -92,7 +92,7 @@ class _ReadMoreTextState extends State<ReadMoreText> {
                 },
                 child: TextView(
                   text: isExpanded ? "Read Less" : "Read More",
-                  style: 14.txtMediumbtncolor,
+                  style: 12.txtMediumbtncolor,
                 ),
               ),
           ],

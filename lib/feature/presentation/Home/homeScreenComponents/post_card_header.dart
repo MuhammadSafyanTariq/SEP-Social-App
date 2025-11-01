@@ -506,25 +506,119 @@ class PostCardHeader extends StatelessWidget {
                       if (Preferences.uid == userData.id) {
                         context.pushNavigator(EditPost(data: data));
                       }
-                      // ProfileCtrl.find.editPost(data.id!).applyLoader;
                     } else if (value == 'delete') {
                       AppUtils.log('Delete clicked');
-                      ProfileCtrl.find.removePost(data.id!).applyLoader.then((
-                        value,
-                      ) {
-                        onRemovePostAction?.call();
-                      });
+                      // Show confirmation dialog
+                      showDialog(
+                        context: context,
+                        builder: (BuildContext dialogContext) {
+                          return AlertDialog(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                            title: Row(
+                              children: [
+                                Icon(
+                                  Icons.warning_amber_rounded,
+                                  color: Colors.orange,
+                                  size: 28,
+                                ),
+                                SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    'Delete ${data.fileType?.capitalizeFirst ?? 'Post'}?',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            content: Text(
+                              'Are you sure you want to delete this ${data.fileType?.toLowerCase() ?? 'post'}? This action cannot be undone.',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[700],
+                              ),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.of(dialogContext).pop();
+                                },
+                                child: Text(
+                                  'Cancel',
+                                  style: TextStyle(
+                                    color: Colors.grey[600],
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                              ElevatedButton(
+                                onPressed: () {
+                                  Navigator.of(dialogContext).pop();
+                                  ProfileCtrl.find
+                                      .removePost(data.id!)
+                                      .applyLoader
+                                      .then((value) {
+                                        onRemovePostAction?.call();
+                                      });
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.red,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 20,
+                                    vertical: 12,
+                                  ),
+                                ),
+                                child: Text(
+                                  'Delete',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      );
                     }
                   },
                   itemBuilder: (context) => [
                     if (data.fileType != 'poll')
                       PopupMenuItem(
                         value: 'edit',
-                        child: Text('Edit ${data.fileType?.capitalizeFirst}'),
+                        child: Row(
+                          children: [
+                            Icon(Icons.edit, size: 20, color: Colors.blue),
+                            SizedBox(width: 10),
+                            Text('Edit ${data.fileType?.capitalizeFirst}'),
+                          ],
+                        ),
                       ),
                     PopupMenuItem(
                       value: 'delete',
-                      child: Text('Delete ${data.fileType?.capitalizeFirst}'),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.delete_outline,
+                            size: 20,
+                            color: Colors.red,
+                          ),
+                          SizedBox(width: 10),
+                          Text(
+                            'Delete ${data.fileType?.capitalizeFirst}',
+                            style: TextStyle(color: Colors.red),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 )

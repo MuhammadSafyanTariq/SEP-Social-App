@@ -110,6 +110,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       return PostVideo(data: item, header: header, footer: footer, view: () {});
     } else {
       return PostCard(
+        postId: item.id ?? '',
         header: header,
         caption: item.content ?? '',
         imageUrls: item.files,

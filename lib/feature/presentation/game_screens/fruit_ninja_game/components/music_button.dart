@@ -1,0 +1,46 @@
+import 'dart:ui';
+import 'package:flame/components.dart';
+import 'package:sep/feature/presentation/game_screens/fruit_ninja_game/bgm.dart';
+import 'package:sep/feature/presentation/game_screens/fruit_ninja_game/fruit_game.dart';
+
+class MusicButton {
+  final FruitGame game;
+  late Rect rect;
+  late Sprite enabledSprite;
+  late Sprite disabledSprite;
+  bool isEnabled = true;
+
+  MusicButton(this.game) {
+    resize();
+    enabledSprite = Sprite(game.images.fromCache('icon-music-enabled.png'));
+    disabledSprite = Sprite(game.images.fromCache('icon-music-disabled.png'));
+  }
+
+  void render(Canvas c) {
+    final sprite = isEnabled ? enabledSprite : disabledSprite;
+    sprite.render(
+      c,
+      size: Vector2(rect.width, rect.height),
+      position: Vector2(rect.left, rect.top),
+    );
+  }
+
+  void resize() {
+    rect = Rect.fromLTWH(
+      game.tileSize * .25,
+      game.tileSize * .25,
+      game.tileSize,
+      game.tileSize,
+    );
+  }
+
+  void onTapDown() {
+    if (isEnabled) {
+      isEnabled = false;
+      BGM.pause();
+    } else {
+      isEnabled = true;
+      BGM.resume();
+    }
+  }
+}

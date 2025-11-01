@@ -23,6 +23,7 @@ import '../../../data/models/dataModels/profile_data/profile_data_model.dart';
 import '../../controller/agora_chat_ctrl.dart';
 import '../../wallet/add_card_screen.dart';
 import '../live_stream_ctrl.dart';
+import '../recording_diagnostic_screen.dart';
 import 'helper_broadcast.dart';
 
 class InstagramLiveFrame extends StatefulWidget {
@@ -222,6 +223,23 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
           _leftActionButtonsForHost(),
         ],
       ),
+      // Debug button to access recording diagnostic
+      floatingActionButton: ctrl.isHost
+          ? FloatingActionButton(
+              mini: true,
+              backgroundColor: Colors.orange.withOpacity(0.8),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const RecordingDiagnosticScreen(),
+                  ),
+                );
+              },
+              child: const Icon(Icons.bug_report, size: 20),
+            )
+          : null,
+      floatingActionButtonLocation: FloatingActionButtonLocation.miniEndTop,
     );
   }
 
@@ -334,7 +352,14 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
           Visibility(visible: isLive, child: LiveStatusButtons()),
           const SizedBox(width: 5),
           GestureDetector(
-            onTap: () => Navigator.pop(context),
+            onTap: () async {
+              // End stream and wait for dialog to be dismissed
+              await ctrl.endStream();
+              // Now pop the stream screen
+              if (context.mounted) {
+                Navigator.pop(context);
+              }
+            },
             child: CircleAvatar(
               backgroundColor: AppColors.grey.withValues(alpha: 0.35),
               child: const Icon(Icons.close, color: Colors.white),
@@ -383,9 +408,19 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
         : Obx(
             () => isBroadcaster && !ctrl.streamCtrl.value.localChannelJoined
                 ? StartStreamButton(
-                    onPressed: () {
-                      // chatCtrl.coinsAnimationListInt.add(chatCtrl.coinsAnimationListInt.length);
-                      ctrl.joinChannel();
+                    onPressed: () async {
+                      // Check permissions before starting stream
+                      final hasPermissions =
+                          await StreamUtils.checkPermission();
+                      if (!hasPermissions) {
+                        AppUtils.toastError(
+                          'Camera and microphone permissions are required to start the stream',
+                        );
+                        return;
+                      }
+
+                      // Start the stream
+                      await ctrl.joinChannel();
                     },
                   )
                 : _chatBox(),
@@ -777,7 +812,8 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
       final hasVisibleBroadcasters =
           ctrl.getLiveBroadcastersVisibleToHost.isNotEmpty;
 
-      if (!ctrl.isHost || (!isJoined && !hasVisibleBroadcasters)) {
+      // Only show for host after stream has started and has visible broadcasters
+      if (!ctrl.isHost || !isJoined || !hasVisibleBroadcasters) {
         return Positioned(top: 0, left: 0, child: const SizedBox.shrink());
       }
 
@@ -789,35 +825,10 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Recording button (only for host)
-            Obx(
-              () => GestureDetector(
-                onTap: () => ctrl.toggleRecording(),
-                child: Container(
-                  padding: const EdgeInsets.all(7),
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    color: ctrl.isRecording.value
-                        ? Colors.red.withValues(alpha: 0.9)
-                        : AppColors.black.withValues(alpha: 0.35),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    ctrl.isRecording.value
-                        ? Icons.stop
-                        : Icons.fiber_manual_record,
-                    size: 24,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
+            IconControl(
+              url: AppImages.broadcaster,
+              onTap: () => _openInviteBottomSheet(forGetLiveBroadcaster: true),
             ),
-            if (hasVisibleBroadcasters)
-              IconControl(
-                url: AppImages.broadcaster,
-                onTap: () =>
-                    _openInviteBottomSheet(forGetLiveBroadcaster: true),
-              ),
           ],
         ),
       );
@@ -1177,6 +1188,48 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Recording button (only for host)
+              Visibility(
+                visible: ctrl.isHost,
+                child: Column(
+                  children: [
+                    GestureDetector(
+                      onTap: () => ctrl.toggleRecording(),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: ctrl.isRecording.value
+                              ? Colors.red.withValues(alpha: 0.9)
+                              : Colors.white,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          ctrl.isRecording.value
+                              ? Icons.stop_rounded
+                              : Icons.fiber_manual_record_rounded,
+                          size: 28,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ),
+                    if (ctrl.isRecording.value)
+                      Padding(
+                        padding: EdgeInsets.only(top: 4, bottom: 8),
+                        child: Obx(
+                          () => TextView(
+                            text: ctrl.recordingDuration.value,
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.red,
+                            ),
+                          ),
+                        ),
+                      ),
+                    if (!ctrl.isRecording.value) SizedBox(height: 16),
+                  ],
+                ),
+              ),
               IconControl(
                 icon:
                     ctrl.streamCtrl.value.localVideoState ==

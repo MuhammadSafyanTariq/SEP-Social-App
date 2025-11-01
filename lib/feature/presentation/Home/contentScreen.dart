@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
@@ -12,11 +11,9 @@ import 'package:sep/feature/data/models/dataModels/post_data.dart';
 import 'package:sep/feature/presentation/controller/agora_chat_ctrl.dart';
 import 'package:sep/utils/appUtils.dart';
 import 'package:sep/utils/extensions/extensions.dart';
-import '../../../services/networking/urls.dart';
 import '../controller/auth_Controller/profileCtrl.dart';
 import '../controller/createpost/createpost_ctrl.dart';
 import '../widgets/profile_image.dart';
-import 'CommonBannerAdWidget.dart';
 import 'homeScreenComponents/pollCard.dart';
 import 'homeScreenComponents/postCard.dart';
 import 'homeScreenComponents/postVideo.dart';
@@ -79,18 +76,8 @@ class _HomeScreenState extends State<Contentscreen> {
   void initState() {
     super.initState();
     _loadInitialPosts();
-    // _scrollController.addListener(_scrollListener);
     CreatePostCtrl.find.getPostCategories();
     widget.getLiveStreamList?.call();
-  }
-
-  void _scrollListener() {
-    // if (_scrollController.position.pixels >=
-    //         _scrollController.position.maxScrollExtent - 100 &&
-    //     // !_isLoading.value &&
-    //     profileCtrl.hasMoreData) {
-    //   _loadMorePosts();
-    // }
   }
 
   Future postliker(String selectedpostId) async {
@@ -120,19 +107,29 @@ class _HomeScreenState extends State<Contentscreen> {
   }
 
   Future<void> _loadMorePosts() async {
-    if (isLoadingMore
-    // || !profileCtrl.hasMoreData
-    )
+    if (isLoadingMore) {
+      refreshController.loadComplete();
       return;
-    // setState(() => isLoadingMore = true);
+    }
 
-    // int offset = profileCtrl.globalPostList.length;
+    if (!profileCtrl.hasMoreData) {
+      refreshController.loadNoData();
+      return;
+    }
+
+    setState(() => isLoadingMore = true);
+
     await profileCtrl
         .globalList(isLoadMore: true, selectedCat: selectedCategory.value)
-        .applyLoaderWithOption(profileCtrl.globalPostList.isEmpty);
-    // setState(() => isLoadingMore = false);
-    refreshController.loadComplete();
-    return;
+        .applyLoaderWithOption(false);
+
+    setState(() => isLoadingMore = false);
+
+    if (profileCtrl.hasMoreData) {
+      refreshController.loadComplete();
+    } else {
+      refreshController.loadNoData();
+    }
   }
 
   RefreshController refreshController = RefreshController(
@@ -152,7 +149,12 @@ class _HomeScreenState extends State<Contentscreen> {
           builder: (context, mode) {
             Widget body;
             if (mode == LoadStatus.loading) {
-              body = CupertinoActivityIndicator(color: AppColors.white);
+              body = CupertinoActivityIndicator(color: AppColors.primaryColor);
+            } else if (mode == LoadStatus.noMore) {
+              body = Text(
+                'No more posts',
+                style: TextStyle(color: Colors.grey),
+              );
             } else {
               body = SizedBox();
             }
@@ -306,42 +308,16 @@ class _HomeScreenState extends State<Contentscreen> {
               () => SliverList(
                 delegate: profileCtrl.globalPostList.isNotEmpty
                     ? SliverChildBuilderDelegate((context, index) {
-                        // Calculate positions: Every 11th position (10, 21, 32, etc.) is an ad
-                        final isAdPosition = (index + 1) % 11 == 0;
-
-                        if (isAdPosition) {
-                          // COMPULSORY: Show ad after every 10 posts
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 8.0,
-                              horizontal: 16.0,
-                            ),
-                            child: CommonBannerAdWidget(
-                              adUnitId: Platform.isAndroid
-                                  ? 'ca-app-pub-3940256099942544/6300978111'
-                                  : 'ca-app-pub-3940256099942544/2934735716',
-                            ),
+                        if (index < profileCtrl.globalPostList.length) {
+                          final post = profileCtrl.globalPostList[index];
+                          return _buildPostWidget(
+                            post,
+                            () => _loadInitialPosts(),
+                            index,
                           );
-                        } else {
-                          // Calculate the actual post index (subtract number of ads shown before this position)
-                          final adsBeforeThisPosition = (index + 1) ~/ 11;
-                          final postIndex = index - adsBeforeThisPosition;
-
-                          if (postIndex < profileCtrl.globalPostList.length) {
-                            // Show regular post
-                            final post = profileCtrl.globalPostList[postIndex];
-
-                            return _buildPostWidget(
-                              post,
-                              () => _loadInitialPosts(),
-                              postIndex,
-                            );
-                          } else {
-                            // Return empty container for invalid indices
-                            return Container();
-                          }
                         }
-                      }, childCount: _getTotalItemCount())
+                        return Container();
+                      }, childCount: profileCtrl.globalPostList.length)
                     : SliverChildBuilderDelegate(
                         (context, index) => Center(
                           child: TextView(
@@ -463,6 +439,7 @@ class _HomeScreenState extends State<Contentscreen> {
       );
     } else {
       return PostCard(
+        postId: item.id ?? '',
         header: header,
         caption: item.content ?? '',
         imageUrls: item.files,
@@ -570,27 +547,4 @@ class _HomeScreenState extends State<Contentscreen> {
   //     },
   //   );
   // }
-
-  // Calculate total item count including MANDATORY ads after every 10 posts
-  int _getTotalItemCount() {
-    final postCount = profileCtrl.globalPostList.length;
-    if (postCount == 0) return 0;
-
-    // COMPULSORY: Add one ad for every 10 posts
-    // Formula: For n posts, we need floor(n/10) ads
-    // Total items = posts + ads
-    final adCount = (postCount / 10).floor();
-    final totalItems = postCount + adCount;
-
-    AppUtils.log(
-      '📊 POST COUNT: $postCount, AD COUNT: $adCount, TOTAL ITEMS: $totalItems',
-    );
-
-    return totalItems;
-  }
-
-  String _getFormattedVideoUrl(String? video) {
-    if (video == null || video.isEmpty) return "";
-    return video.startsWith("http") ? video : "$baseUrl$video";
-  }
 }

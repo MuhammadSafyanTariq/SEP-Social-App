@@ -7,7 +7,6 @@ import 'package:sep/feature/data/models/dataModels/chat_msg_model/chat_msg_model
 import 'package:sep/feature/data/models/dataModels/recent_chat_model/recent_chat_model.dart';
 import 'package:sep/feature/data/repository/i_chat_repo.dart';
 import 'package:sep/feature/domain/respository/chat_repo.dart';
-import 'package:sep/feature/presentation/chatScreens/Messages_Screen.dart';
 import 'package:sep/feature/presentation/controller/auth_Controller/profileCtrl.dart';
 import 'package:sep/services/socket/socket_helper.dart';
 import 'package:sep/services/storage/preferences.dart';
@@ -18,10 +17,10 @@ import '../../../services/networking/urls.dart';
 import '../../data/models/dataModels/profile_data/profile_data_model.dart';
 import '../../data/repository/iAuthRepository.dart';
 import '../../domain/respository/authRepository.dart';
-import '../chatScreens/Chat_Sample.dart';
 
 class ChatCtrl extends GetxController {
   final ChatRepo _repo = IChatRepo(SocketHelper(connectUrl: baseUrl));
+  final AuthRepository _authRepository = IAuthRepository();
 
   static ChatCtrl get find {
     try {
@@ -32,13 +31,12 @@ class ChatCtrl extends GetxController {
   }
 
   String? singleChatId;
+  String? receiverId; // Store receiver ID for notifications
 
-  List<ProfileDataModel> get friendList =>
-      ProfileCtrl.find.myFollowingList.value;
+  List<ProfileDataModel> get friendList => ProfileCtrl.find.myFollowingList;
 
   RxList<ChatMsgModel> chatMessages = RxList([]);
   RxList<RecentChatModel> recentChat = RxList([]);
-  final AuthRepository _authRepository = IAuthRepository();
 
   void getFriendsList() => ProfileCtrl.find.getMyFollowings();
 
@@ -70,6 +68,9 @@ class ChatCtrl extends GetxController {
   }
 
   void joinSingleChat(String? id, String? chatId) {
+    // Store receiver ID for notifications
+    receiverId = id;
+
     if (chatId == null) {
       _repo.joinRoomListener(
         data: (data) {
@@ -227,11 +228,68 @@ class ChatCtrl extends GetxController {
         '👤 Current profile name: ${ProfileCtrl.find.profileData.value.name}',
       );
 
-      // Send to server - let server response handle UI update
+      // Send to server
       _repo.sendMessage(data);
 
-      // Temporarily disable optimistic updates to debug server response
+      // Send notification (non-blocking)
+      if (receiverId != null) {
+        _sendChatNotification(msg, type).catchError((error) {
+          AppUtils.log('⚠️ Notification error (message still sent): $error');
+        });
+      }
+
       AppUtils.log('⏳ Message sent to server, waiting for response...');
+    }
+  }
+
+  // Send push notification for chat message (doesn't create duplicate messages)
+  Future<void> _sendChatNotification(String content, String type) async {
+    if (receiverId == null || receiverId!.isEmpty) {
+      AppUtils.log('⚠️ No receiver ID available for notification');
+      return;
+    }
+
+    try {
+      final senderName = ProfileCtrl.find.profileData.value.name ?? 'User';
+      String notificationMessage;
+
+      // Customize notification message based on content type
+      if (type == 'file') {
+        if (content.contains('.mp4') ||
+            content.contains('.mov') ||
+            content.contains('.avi')) {
+          notificationMessage = 'sent you a video';
+        } else {
+          notificationMessage = 'sent you an image';
+        }
+      } else {
+        // For text messages, show preview (limit to 50 characters)
+        notificationMessage = content.length > 50
+            ? '${content.substring(0, 50)}...'
+            : content;
+      }
+
+      final result = await _authRepository.post(
+        url: Urls.inviteFriendToLiveStream,
+        enableAuthToken: true,
+        data: {
+          "type":
+              "chatNotification", // Different type to avoid creating chat message
+          "sentTo": receiverId,
+          "sentBy": Preferences.uid,
+          "message": notificationMessage,
+          "senderName": senderName,
+          "chatId": singleChatId,
+        },
+      );
+
+      if (result.isSuccess) {
+        AppUtils.log('✅ Chat notification sent successfully');
+      } else {
+        AppUtils.log('❌ Failed to send notification: ${result.getError}');
+      }
+    } catch (e) {
+      AppUtils.log('❌ Error sending notification: $e');
     }
   }
 
@@ -243,7 +301,6 @@ class ChatCtrl extends GetxController {
       final imageUrl = result.data?.first.fileUrl;
 
       if (imageUrl != null && imageUrl.isNotEmpty) {
-        final tempId = DateTime.now().millisecondsSinceEpoch.toString();
         chatMessages.refresh();
         final serverPayload = {
           "chatId": singleChatId,
@@ -253,6 +310,13 @@ class ChatCtrl extends GetxController {
           "senderTime": DateTime.now().toUtc().toIso8601String(),
         };
         _repo.sendMessage(serverPayload);
+
+        // Send notification (non-blocking)
+        if (receiverId != null) {
+          _sendChatNotification(imageUrl, "file").catchError((error) {
+            AppUtils.log('⚠️ Notification error (image still sent): $error');
+          });
+        }
       }
     } catch (e) {
       AppUtils.toast('Failed to send image');
@@ -265,12 +329,8 @@ class ChatCtrl extends GetxController {
         imageFile: File(file.path),
       );
       final videoUrl = result.data?.first.fileUrl;
-      final filename = file.name;
-      final fileType = file.path.split('.').last;
 
       if (videoUrl != null && videoUrl.isNotEmpty) {
-        final tempId = DateTime.now().millisecondsSinceEpoch.toString();
-
         chatMessages.refresh();
 
         final serverPayload = {
@@ -282,6 +342,13 @@ class ChatCtrl extends GetxController {
         };
 
         _repo.sendMessage(serverPayload);
+
+        // Send notification (non-blocking)
+        if (receiverId != null) {
+          _sendChatNotification(videoUrl, "file").catchError((error) {
+            AppUtils.log('⚠️ Notification error (video still sent): $error');
+          });
+        }
       }
     } catch (e) {
       AppUtils.toast('Failed to send video');

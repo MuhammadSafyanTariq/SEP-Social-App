@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:pull_to_refresh/pull_to_refresh.dart';
 import 'package:sep/components/styles/textStyles.dart';
 import 'package:sep/services/networking/urls.dart';
 import 'package:sep/services/storage/preferences.dart';
@@ -34,6 +35,14 @@ class _SearchState extends State<Search> {
   final _authCtrl = AuthCtrl.find;
 
   final _debounce = RxString('');
+  final RefreshController _refreshController = RefreshController(
+    initialRefresh: false,
+  );
+
+  int _currentPage = 1;
+  bool _hasMoreData = true;
+  bool _isLoadingMore = false;
+  String _lastSearchQuery = '';
 
   @override
   void initState() {
@@ -42,19 +51,60 @@ class _SearchState extends State<Search> {
     debounce(_debounce, (_) {
       final searchText = _searchController.text.trim();
       AppUtils.log('Debounced search text: $searchText');
-      _authCtrl.searchUserInProfile(searchText);
+      _lastSearchQuery = searchText;
+      _currentPage = 1;
+      _hasMoreData = true;
+      _authCtrl.searchUserInProfile(searchText, page: 1, limit: 10);
     }, time: const Duration(milliseconds: 500));
 
     _searchController.addListener(() {
       _debounce.value = _searchController.text;
     });
 
-    _authCtrl.searchUserInProfile('');
+    _authCtrl.searchUserInProfile('', page: 1, limit: 10);
+  }
+
+  Future<void> _loadMoreUsers() async {
+    if (_isLoadingMore || !_hasMoreData) {
+      _refreshController.loadComplete();
+      return;
+    }
+
+    setState(() => _isLoadingMore = true);
+
+    _currentPage++;
+    final previousLength = _authCtrl.searchedUsers.length;
+
+    await _authCtrl.searchUserInProfile(
+      _lastSearchQuery,
+      page: _currentPage,
+      limit: 10,
+    );
+
+    final newLength = _authCtrl.searchedUsers.length;
+
+    // If no new users were added, we've reached the end
+    if (newLength == previousLength) {
+      _hasMoreData = false;
+      _refreshController.loadNoData();
+    } else {
+      _refreshController.loadComplete();
+    }
+
+    setState(() => _isLoadingMore = false);
+  }
+
+  Future<void> _refreshUsers() async {
+    _currentPage = 1;
+    _hasMoreData = true;
+    await _authCtrl.searchUserInProfile(_lastSearchQuery, page: 1, limit: 10);
+    _refreshController.refreshCompleted();
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _refreshController.dispose();
     super.dispose();
   }
 
@@ -97,7 +147,6 @@ class _SearchState extends State<Search> {
             ),
             Expanded(
               child: Obx(() {
-                // final users = _authCtrl.searchedUsers;
                 final currentUserId = Preferences.uid;
                 final users = _authCtrl.searchedUsers
                     .where((user) => user['_id'] != currentUserId)
@@ -113,62 +162,90 @@ class _SearchState extends State<Search> {
                   );
                 }
 
-                return ListView.separated(
-                  padding: EdgeInsets.symmetric(horizontal: 20.sdp),
-                  itemCount: users.length,
-                  separatorBuilder: (context, index) => 16.height,
-                  itemBuilder: (context, index) {
-                    final user = users[index];
-                    final userName = user['name'] ?? 'Unknown User';
-                    final userImage = user['image'] != null
-                        ? '$baseUrl${user['image']}'
-                        : null;
-                    AppUtils.log(
-                      'User $index => Name: $userName, Image: $userImage',
-                    );
+                return SmartRefresher(
+                  controller: _refreshController,
+                  enablePullDown: true,
+                  enablePullUp: true,
+                  onRefresh: _refreshUsers,
+                  onLoading: _loadMoreUsers,
+                  footer: CustomFooter(
+                    builder: (context, mode) {
+                      Widget body;
+                      if (mode == LoadStatus.loading) {
+                        body = CircularProgressIndicator(
+                          color: AppColors.primaryColor,
+                        );
+                      } else if (mode == LoadStatus.noMore) {
+                        body = Text(
+                          'No more users',
+                          style: TextStyle(color: Colors.grey),
+                        );
+                      } else {
+                        body = SizedBox();
+                      }
+                      return Container(
+                        height: 55.0,
+                        child: Center(child: body),
+                      );
+                    },
+                  ),
+                  child: ListView.separated(
+                    padding: EdgeInsets.symmetric(horizontal: 20.sdp),
+                    itemCount: users.length,
+                    separatorBuilder: (context, index) => 16.height,
+                    itemBuilder: (context, index) {
+                      final user = users[index];
+                      final userName = user['name'] ?? 'Unknown User';
+                      final userImage = user['image'] != null
+                          ? '$baseUrl${user['image']}'
+                          : null;
+                      AppUtils.log(
+                        'User $index => Name: $userName, Image: $userImage',
+                      );
 
-                    return GestureDetector(
-                      onTap: () {
-                        final userId = user['_id'];
-                        if (userId != null) {
-                          Get.to(
-                            () => FriendProfileScreen(
-                              data: ProfileDataModel.fromJson(user),
-                            ),
-                          );
-                        }
-                      },
-                      child: Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 16.sdp,
-                          vertical: 20.sdp,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.grey.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12.sdp),
-                        ),
-                        child: Row(
-                          children: [
-                            ImageView(
-                              url: (user['image'] as String?)?.fileUrl ?? '',
-                              imageType: ImageType.network,
-                              fit: BoxFit.cover,
-                              size: 50.sdp,
-                              radius: 25.sdp,
-                              defaultImage: AppImages.dummyProfile,
-                            ),
-                            16.width,
-                            Expanded(
-                              child: TextView(
-                                text: userName,
-                                style: 16.txtMediumprimary,
+                      return GestureDetector(
+                        onTap: () {
+                          final userId = user['_id'];
+                          if (userId != null) {
+                            Get.to(
+                              () => FriendProfileScreen(
+                                data: ProfileDataModel.fromJson(user),
                               ),
-                            ),
-                          ],
+                            );
+                          }
+                        },
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 16.sdp,
+                            vertical: 20.sdp,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.grey.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12.sdp),
+                          ),
+                          child: Row(
+                            children: [
+                              ImageView(
+                                url: (user['image'] as String?)?.fileUrl ?? '',
+                                imageType: ImageType.network,
+                                fit: BoxFit.cover,
+                                size: 50.sdp,
+                                radius: 25.sdp,
+                                defaultImage: AppImages.dummyProfile,
+                              ),
+                              16.width,
+                              Expanded(
+                                child: TextView(
+                                  text: userName,
+                                  style: 16.txtMediumprimary,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    );
-                  },
+                      );
+                    },
+                  ),
                 );
               }),
             ),
