@@ -273,6 +273,7 @@ class AgoraRecordingService {
           final fileList = data['serverResponse']['fileList'] as List;
           AppUtils.log('📁 [STOP] Found ${fileList.length} files in fileList');
 
+          // PRIORITY: Find MP4 first - this is what we want for sharing/posting
           for (final file in fileList) {
             if (file is Map<String, dynamic>) {
               // Fix: Use 'fileName' (capital N) as returned by Agora API
@@ -281,7 +282,7 @@ class AgoraRecordingService {
 
               AppUtils.log('📄 [STOP] File: $filename, trackType: $trackType');
 
-              // Look for MP4 files with audio_and_video track type
+              // Look for MP4 files with audio_and_video track type - HIGHEST PRIORITY
               if (filename.endsWith('.mp4') &&
                   trackType.contains('audio_and_video')) {
                 // Construct Blackblaze B2 URL with correct endpoint format
@@ -291,22 +292,35 @@ class AgoraRecordingService {
                 mp4Url = 'https://$cleanEndpoint/$filename';
                 fileUrl = mp4Url;
 
-                // Store for later backend submission
+                // Store for later backend submission - ONLY MP4 for sharing
                 lastRecordedVideoUrl = fileUrl;
 
-                AppUtils.log('🎥 [STOP] Found MP4 URL: $mp4Url');
+                AppUtils.log(
+                  '🎥 [STOP] Found MP4 URL (PRIMARY for sharing): $mp4Url',
+                );
+                // Break immediately - we only want ONE video for sharing
                 break;
               }
+            }
+          }
 
-              // Also check for .m3u8 files as backup
-              if (filename.endsWith('.m3u8') &&
-                  fileUrl == null &&
-                  trackType.contains('audio_and_video')) {
-                final cleanEndpoint = b2Endpoint
-                    .replaceAll('https://', '')
-                    .replaceAll('http://', '');
-                fileUrl = 'https://$cleanEndpoint/$filename';
-                AppUtils.log('🎬 [STOP] Found M3U8 URL as backup: $fileUrl');
+          // Only use M3U8 as fallback if NO MP4 was found
+          if (fileUrl == null) {
+            for (final file in fileList) {
+              if (file is Map<String, dynamic>) {
+                final filename = file['fileName'] ?? file['filename'] ?? '';
+                final trackType = file['trackType'] ?? '';
+
+                if (filename.endsWith('.m3u8') &&
+                    trackType.contains('audio_and_video')) {
+                  final cleanEndpoint = b2Endpoint
+                      .replaceAll('https://', '')
+                      .replaceAll('http://', '');
+                  fileUrl = 'https://$cleanEndpoint/$filename';
+                  lastRecordedVideoUrl = fileUrl;
+                  AppUtils.log('🎬 [STOP] Using M3U8 as fallback: $fileUrl');
+                  break;
+                }
               }
             }
           }

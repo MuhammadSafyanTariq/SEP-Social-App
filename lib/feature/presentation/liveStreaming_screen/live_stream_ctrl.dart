@@ -722,13 +722,16 @@ class LiveStreamCtrl extends GetxController {
         AppUtils.log('🎬 ✅ MP4 URL available: ${stopResult.mp4Url}');
       }
 
-      // Extract URLs from server response (like extractRecordingFiles in your working files)
+      // Extract URLs from server response - ONLY ONE VIDEO for sharing/posting
       if (stopResult.serverResponse != null) {
         final fileList = stopResult.serverResponse!['fileList'] as List?;
         if (fileList != null && fileList.isNotEmpty) {
           AppUtils.log(
             '🎬 🔍 Processing ${fileList.length} files from server response',
           );
+
+          // PRIORITY: Find MP4 first - this is what we want for sharing
+          String? primaryVideoUrl;
 
           for (final file in fileList) {
             if (file is Map<String, dynamic>) {
@@ -741,33 +744,33 @@ class LiveStreamCtrl extends GetxController {
                 '🎬 📄 File: $filename, trackType: $trackType, downloadUrl: $downloadUrl',
               );
 
-              // Look for MP4 files with downloadUrl (like your working files approach)
+              // Look for MP4 files ONLY - ignore M3U8 for sharing
               if (filename.endsWith('.mp4') &&
-                  downloadUrl != null &&
-                  downloadUrl.isNotEmpty) {
-                if (!extractedVideoUrls.contains(downloadUrl)) {
-                  extractedVideoUrls.add(downloadUrl);
-                  AppUtils.log(
-                    '🎬 ✅ Extracted video URL from fileList: $downloadUrl',
-                  );
+                  trackType.contains('audio_and_video')) {
+                if (downloadUrl != null && downloadUrl.isNotEmpty) {
+                  primaryVideoUrl = downloadUrl;
+                } else {
+                  // Construct Blackblaze B2 URL with proper format
+                  primaryVideoUrl =
+                      'https://s3.us-east-005.backblazeb2.com/$filename';
                 }
-              }
-              // Also check for other video formats or construct URL if needed
-              else if ((filename.contains('.mp4') ||
-                      filename.contains('.m3u8') ||
-                      trackType.contains('video')) &&
-                  filename.isNotEmpty) {
-                // Construct Blackblaze B2 URL with proper format
-                final constructedUrl =
-                    'https://s3.us-east-005.backblazeb2.com/$filename';
-                if (!extractedVideoUrls.contains(constructedUrl)) {
-                  extractedVideoUrls.add(constructedUrl);
-                  AppUtils.log(
-                    '🎬 ✅ Constructed Blackblaze B2 URL: $constructedUrl',
-                  );
-                }
+
+                AppUtils.log(
+                  '🎬 ✅ Found PRIMARY video (MP4): $primaryVideoUrl',
+                );
+                // Break immediately - we only want ONE video for sharing
+                break;
               }
             }
+          }
+
+          // Only add the PRIMARY video URL (MP4) to the list
+          if (primaryVideoUrl != null && primaryVideoUrl.isNotEmpty) {
+            extractedVideoUrls.clear(); // Clear any previous URLs
+            extractedVideoUrls.add(primaryVideoUrl);
+            AppUtils.log(
+              '🎬 ✅ Using SINGLE video for sharing: $primaryVideoUrl',
+            );
           }
         }
       }
