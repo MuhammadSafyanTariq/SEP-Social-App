@@ -25,18 +25,37 @@ class VideoDownloadUtils {
 
       // If this is a BlackBlaze B2 URL, get authenticated URL
       if (videoUrl.contains('backblaze') || videoUrl.contains('s3.us-east')) {
-        // Extract filename from URL
+        // Extract the full file path from URL, not just filename
         final uri = Uri.parse(videoUrl);
-        final pathSegments = uri.pathSegments;
-        final fileName = pathSegments.isNotEmpty ? pathSegments.last : '';
+        String filePath = '';
 
-        if (fileName.isNotEmpty) {
+        // For URLs like: https://s3.us-east-005.backblazeb2.com/file/sep-recordings/recordings/690619e515472048af2b3acd/1/c50857263c4f77338a098cb5ce004371_690619e515472048af2b3acd_0.mp4
+        // We need to extract: recordings/690619e515472048af2b3acd/1/c50857263c4f77338a098cb5ce004371_690619e515472048af2b3acd_0.mp4
+        final pathSegments = uri.pathSegments;
+
+        if (pathSegments.contains('file') &&
+            pathSegments.contains('sep-recordings')) {
+          // Find the index of 'sep-recordings' and get everything after it
+          final bucketIndex = pathSegments.indexOf('sep-recordings');
+          if (bucketIndex != -1 && bucketIndex < pathSegments.length - 1) {
+            // Join all segments after the bucket name
+            final pathAfterBucket = pathSegments.sublist(bucketIndex + 1);
+            filePath = pathAfterBucket.join('/');
+          }
+        }
+
+        // Fallback: just use the filename
+        if (filePath.isEmpty) {
+          filePath = pathSegments.isNotEmpty ? pathSegments.last : '';
+        }
+
+        if (filePath.isNotEmpty) {
           AppUtils.log(
-            '🔑 Getting authenticated BlackBlaze B2 URL for: $fileName',
+            '🔑 Getting authenticated BlackBlaze B2 URL for: $filePath',
           );
           final authenticatedUrl =
               await VideoUrlRetrieverService.getAuthenticatedDownloadUrl(
-                fileName,
+                filePath,
               );
           if (authenticatedUrl != null) {
             finalVideoUrl = authenticatedUrl;

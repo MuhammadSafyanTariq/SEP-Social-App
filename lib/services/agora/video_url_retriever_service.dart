@@ -110,7 +110,6 @@ class VideoUrlRetrieverService {
   /// Constructs Blackblaze B2 URL with proper bucket name and signing
   ///
   /// Based on your actual data showing:
-  /// - Working bucket: lockedin-live-recordings (from your logs)
   /// - S3-compatible endpoint: https://s3.us-east-005.backblazeb2.com
   /// - Format: https://s3.us-east-005.backblazeb2.com/file/bucket-name/path/file.mp4
   static String constructBackblazeUrl(String fileName) {
@@ -392,36 +391,108 @@ class VideoUrlRetrieverService {
         name: _logName,
       );
 
-      // Get BlackBlaze B2 credentials
+      // Get BlackBlaze B2 credentials - EXACT same source as your app config
       final keyId = AgoraRecordingService.b2KeyId;
       final appKey = AgoraRecordingService.b2AppKey;
       final bucketName = AgoraRecordingService.b2Bucket;
 
+      developer.log(
+        '🔑 [GET_AUTH] Raw credentials - keyId: $keyId, appKey: ${appKey.length > 10 ? appKey.substring(0, 10) : appKey}..., bucket: $bucketName',
+        name: _logName,
+      );
+
       if (bucketName.isEmpty || keyId.isEmpty || appKey.isEmpty) {
-        throw Exception('Incomplete BlackBlaze B2 configuration');
+        throw Exception(
+          'Incomplete BlackBlaze B2 configuration - bucket: $bucketName, keyId: $keyId, appKey: ${appKey.length} chars',
+        );
       }
 
-      // Authorize with BlackBlaze B2 Native API (same as Cloudinary processing)
+      developer.log(
+        '🔑 [GET_AUTH] Using bucket: $bucketName, keyId: ${keyId.substring(0, 8)}...',
+        name: _logName,
+      );
+
+      // Authorize with BlackBlaze B2 Native API (EXACT same as _processRecordingThroughCloudinary)
+      developer.log(
+        '🔑 [GET_AUTH] Calling B2 authorize API with credentials...',
+        name: _logName,
+      );
+
+      final basicAuth = 'Basic ${base64Encode(utf8.encode('$keyId:$appKey'))}';
+      developer.log(
+        '🔑 [GET_AUTH] Basic auth header: ${basicAuth.substring(0, 20)}...',
+        name: _logName,
+      );
+
       final authResponse = await Dio().get(
         'https://api.backblazeb2.com/b2api/v2/b2_authorize_account',
-        options: Options(
-          headers: {
-            'Authorization':
-                'Basic ${base64Encode(utf8.encode('$keyId:$appKey'))}',
-          },
-        ),
+        options: Options(headers: {'Authorization': basicAuth}),
+      );
+
+      developer.log(
+        '🔑 [GET_AUTH] B2 auth response status: ${authResponse.statusCode}',
+        name: _logName,
       );
 
       if (authResponse.statusCode != 200) {
-        throw Exception('Failed to authorize with BlackBlaze B2');
+        throw Exception(
+          'Failed to authorize with BlackBlaze B2: ${authResponse.statusCode} - ${authResponse.data}',
+        );
       }
 
       final authData = authResponse.data;
-      final downloadUrl = authData['downloadUrl'] as String;
-      final authToken = authData['authorizationToken'] as String;
+      final downloadUrl = authData['downloadUrl'] as String? ?? '';
+      final authToken = authData['authorizationToken'] as String? ?? '';
 
-      // Construct the authorized download URL (same pattern as Cloudinary processing)
-      final authenticatedUrl = '$downloadUrl/file/$bucketName/$fileName';
+      developer.log(
+        '🔑 [GET_AUTH] Got auth response - downloadUrl: $downloadUrl, token: ${authToken.substring(0, 20)}...',
+        name: _logName,
+      );
+
+      if (downloadUrl.isEmpty || authToken.isEmpty) {
+        throw Exception(
+          'Invalid auth response from B2: downloadUrl=$downloadUrl, token length=${authToken.length}',
+        );
+      }
+
+      // CRITICAL FIX: Handle both full paths and just filenames
+      String fullFilePath = fileName;
+
+      // If fileName already includes 'recordings/', use it as-is
+      if (fileName.startsWith('recordings/')) {
+        developer.log(
+          '🔧 [GET_AUTH] Using provided full path: $fileName',
+          name: _logName,
+        );
+        fullFilePath = fileName;
+      } else {
+        // If fileName doesn't start with 'recordings/', try to construct the full path
+        developer.log(
+          '🔧 [GET_AUTH] Adding path structure to fileName: $fileName',
+          name: _logName,
+        );
+
+        // Try to extract journal ID from filename pattern like: c50857263c4f77338a098cb5ce004371_690619e515472048af2b3acd_0.mp4
+        final parts = fileName.split('_');
+        if (parts.length >= 3) {
+          final journalId = parts[1]; // Should be the journal ID
+          fullFilePath = 'recordings/$journalId/1/$fileName';
+          developer.log(
+            '🔧 [GET_AUTH] Constructed full path: $fullFilePath',
+            name: _logName,
+          );
+        } else {
+          developer.log(
+            '⚠️ [GET_AUTH] Could not extract journal ID from filename, using as-is',
+            name: _logName,
+          );
+          // As a last resort, try the filename as-is
+          fullFilePath = fileName;
+        }
+      }
+
+      // Construct the authorized download URL (EXACT same pattern as Cloudinary processing)
+      final authenticatedUrl = '$downloadUrl/file/$bucketName/$fullFilePath';
 
       // Store auth info for download
       _lastAuthToken = authToken;
@@ -429,6 +500,10 @@ class VideoUrlRetrieverService {
 
       developer.log(
         '✅ [GET_AUTH] Generated authenticated URL: $authenticatedUrl',
+        name: _logName,
+      );
+      developer.log(
+        '✅ [GET_AUTH] Stored auth token: ${authToken.substring(0, 20)}...',
         name: _logName,
       );
 
