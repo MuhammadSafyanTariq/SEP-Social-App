@@ -96,20 +96,81 @@ class VideoUrlRetrieverService {
     }
   }
 
-  /// Constructs Backblaze B2 URL for your storage configuration
+  /// Constructs Blackblaze B2 URL with proper bucket name and signing
   ///
-  /// Based on your .env configuration:
+  /// Based on your configuration:
   /// - Bucket: sep-recordings
-  /// - Endpoint: https://s3.us-east-005.backblazeb2.com
+  /// - Public endpoint: https://f005.backblazeb2.com
+  /// - Format: https://f005.backblazeb2.com/file/bucket-name/path/file.mp4
   static String constructBackblazeUrl(String fileName) {
-    // Based on your .env configuration
-    const endpoint = 'https://s3.us-east-005.backblazeb2.com';
+    // Use the correct Blackblaze B2 public download format
+    const bucketName = 'sep-recordings';
+    const publicEndpoint = 'https://f005.backblazeb2.com';
 
-    final url = '$endpoint/$fileName';
+    final url = '$publicEndpoint/file/$bucketName/$fileName';
 
-    developer.log('🔗 [CONSTRUCT] Backblaze URL: $url', name: _logName);
+    developer.log('🔗 [CONSTRUCT] Blackblaze B2 URL: $url', name: _logName);
 
     return url;
+  }
+
+  /// Generate signed Blackblaze B2 URL with authentication (if needed for private files)
+  ///
+  /// For now, uses public download format. Can be extended to use AWS S3 signature v4
+  /// for private files if needed in the future.
+  static String generateSignedBackblazeUrl(
+    String fileName, {
+    int expirationHours = 24,
+  }) {
+    try {
+      developer.log(
+        '🔐 [SIGNED] Generating signed Blackblaze B2 URL for: $fileName',
+        name: _logName,
+      );
+
+      // For public files, use the standard public download URL
+      // TODO: Implement AWS S3 signature v4 for private files if needed
+      final signedUrl = constructBackblazeUrl(fileName);
+
+      developer.log(
+        '🔐 [SIGNED] Generated signed URL: $signedUrl',
+        name: _logName,
+      );
+
+      return signedUrl;
+    } catch (e) {
+      developer.log(
+        '❌ [SIGNED] Error generating signed URL: $e',
+        name: _logName,
+      );
+
+      // Fallback to basic construction
+      return constructBackblazeUrl(fileName);
+    }
+  }
+
+  /// Validate Blackblaze B2 URL format
+  static bool isValidBackblazeUrl(String url) {
+    try {
+      final uri = Uri.tryParse(url);
+      if (uri == null) return false;
+
+      // Check if it's a valid Blackblaze B2 URL format
+      final isPublicFormat = url.contains('f005.backblazeb2.com/file/');
+      final isS3Format = url.contains('s3.us-east-005.backblazeb2.com/');
+
+      final isValid = isPublicFormat || isS3Format;
+
+      developer.log(
+        '🔍 [VALIDATE] URL validation result: $isValid for $url',
+        name: _logName,
+      );
+
+      return isValid;
+    } catch (e) {
+      developer.log('❌ [VALIDATE] Error validating URL: $e', name: _logName);
+      return false;
+    }
   }
 
   /// Check if video URL is accessible

@@ -1,9 +1,7 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:collection/collection.dart';
-import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -407,7 +405,58 @@ class LiveStreamCtrl extends GetxController {
   ///---------------------------------------------------------------------------
   /// Recording Methods
 
-  /// Start Agora cloud recording
+  /// Show recording loading dialog
+  void _showRecordingLoadingDialog(String message) {
+    Get.dialog(
+      Material(
+        color: Colors.transparent,
+        child: Center(
+          child: Container(
+            padding: EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                TextView(
+                  text: message,
+                  style: TextStyle(fontSize: 16, color: Colors.black87),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      barrierDismissible: false,
+    );
+  }
+
+  /// Close loading dialog safely
+  void _closeLoadingDialog() {
+    try {
+      if (Get.isDialogOpen == true) {
+        Get.back();
+      }
+    } catch (e) {
+      AppUtils.log('Error closing dialog: $e');
+    }
+  }
+
+  /// Reset recording state
+  void _resetRecordingState() {
+    isRecording.value = false;
+    _recordingResourceId = null;
+    _recordingSid = null;
+    _recordingUid = null;
+    _recordingStartTime = null;
+    _stopRecordingDurationTimer();
+  }
+
+  /// Start Agora cloud recording using service
   Future<bool> startRecording() async {
     if (!canRecord) {
       AppUtils.toastError('Only host can start recording');
@@ -426,35 +475,12 @@ class LiveStreamCtrl extends GetxController {
     }
 
     try {
-      AppUtils.log('═══════════════════════════════════════════════════');
-      AppUtils.log('STARTING RECORDING - DIAGNOSTIC INFO');
-      AppUtils.log('═══════════════════════════════════════════════════');
-      AppUtils.log('Channel Name: $channelName');
-      AppUtils.log('Host UID (numeric): $hostAgoraId');
-      AppUtils.log('Host UID (string): ${hostAgoraId.toString()}');
-      AppUtils.log('Is Host: $isHost');
-      AppUtils.log('Can Record: $canRecord');
-      AppUtils.log('Current User ID: ${Preferences.uid}');
-      AppUtils.log('Local user audio state: ${streamCtrl.value.localMicState}');
-      AppUtils.log(
-        'Local user video state: ${streamCtrl.value.localVideoState}',
-      );
-      AppUtils.log(
-        'Remote users count: ${streamCtrl.value.remoteIds?.length ?? 0}',
-      );
-      AppUtils.log(
-        'Local channel joined: ${streamCtrl.value.localChannelJoined}',
-      );
-      AppUtils.log('═══════════════════════════════════════════════════');
-
-      // Check if user has joined the channel and is publishing
+      // Pre-recording validations
       if (!streamCtrl.value.localChannelJoined) {
         AppUtils.toastError('Please wait until you join the channel');
-        AppUtils.logEr('Recording blocked: Not joined to channel yet');
         return false;
       }
 
-      // Check if at least one stream is active (either audio or video)
       final hasAudio =
           streamCtrl.value.localMicState != null &&
           streamCtrl.value.localMicState !=
@@ -468,62 +494,23 @@ class LiveStreamCtrl extends GetxController {
         AppUtils.toastError(
           'Please enable camera or microphone before recording',
         );
-        AppUtils.logEr('Recording blocked: No active audio/video streams');
-        AppUtils.logEr(
-          'Audio state: ${streamCtrl.value.localMicState}, Video state: ${streamCtrl.value.localVideoState}',
-        );
         return false;
       }
 
-      AppUtils.log(
-        '✓ Stream validation passed - Audio: $hasAudio, Video: $hasVideo',
-      );
-
-      // Wait a moment to ensure streams are fully established
-      AppUtils.log('Waiting 2 seconds for streams to stabilize...');
-      await Future.delayed(Duration(seconds: 2));
-      AppUtils.log('Stream stabilization complete, proceeding with recording');
-
       // Show loading
-      Get.dialog(
-        Material(
-          color: Colors.transparent,
-          child: Center(
-            child: Container(
-              padding: EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  TextView(
-                    text: 'Starting recording...',
-                    style: TextStyle(fontSize: 16, color: Colors.black87),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        barrierDismissible: false,
-      );
+      _showRecordingLoadingDialog('Starting recording...');
 
       isRecording.value = true;
 
-      // Generate recording UID
+      // Generate recording UID using service
       final recordingUid = AgoraRecordingService.generateRecordingUid();
-      _recordingUid = recordingUid; // Store for stop operation
-      AppUtils.log('🎯 Generated recording UID: $recordingUid');
+      _recordingUid = recordingUid;
 
-      // Get token from backend (keep backend token generation)
+      // Get token from backend
       final tokenData = await ProfileCtrl.find.getUserAgoraToken(
         channelName,
         recordingUid.toString(),
-        false, // Not host for recording
+        false,
       );
       final token = tokenData['token'] as String?;
 
@@ -531,9 +518,7 @@ class LiveStreamCtrl extends GetxController {
         throw Exception('Failed to get recording token from backend');
       }
 
-      AppUtils.log('🔑 Got recording token: ${token.substring(0, 20)}...');
-
-      // Use complete recording workflow
+      // Use AgoraRecordingService for complete workflow
       final workflowResult = await AgoraRecordingService.startCompleteRecording(
         channelName: channelName,
         uid: recordingUid,
@@ -543,62 +528,26 @@ class LiveStreamCtrl extends GetxController {
 
       _recordingResourceId = workflowResult['resourceId'];
       _recordingSid = workflowResult['sid'];
-
-      AppUtils.log('═══════════════════════════════════════════════════');
-      AppUtils.log('START RECORDING RESULT');
-      AppUtils.log('Workflow completed successfully');
-      AppUtils.log('ResourceId: $_recordingResourceId');
-      AppUtils.log('SID: $_recordingSid');
-      AppUtils.log('═══════════════════════════════════════════════════');
       _recordingStartTime = DateTime.now();
 
-      // Start timer to update recording duration
+      // Start duration timer
       _startRecordingDurationTimer();
 
       // Close loading dialog
-      Get.back();
-
-      AppUtils.log('═══════════════════════════════════════════════════');
-      AppUtils.log('RECORDING STARTED SUCCESSFULLY ✓');
-      AppUtils.log('Channel: $channelName');
-      AppUtils.log('UID: ${hostAgoraId.toString()}');
-      AppUtils.log('ResourceId: $_recordingResourceId');
-      AppUtils.log('SID: $_recordingSid');
-      AppUtils.log('Started at: $_recordingStartTime');
-      AppUtils.log('═══════════════════════════════════════════════════');
+      _closeLoadingDialog();
 
       AppUtils.toast('Recording started successfully');
-
       return true;
     } catch (e) {
-      // Close loading dialog if open
-      if (Get.isDialogOpen == true) Get.back();
-
-      isRecording.value = false;
-      _recordingResourceId = null;
-      _recordingSid = null;
-      _recordingUid = null;
-      _recordingStartTime = null;
-      _stopRecordingDurationTimer();
-
-      AppUtils.logEr('❌ Error starting recording: $e');
+      _closeLoadingDialog();
+      _resetRecordingState();
       AppUtils.toastError('Failed to start recording: $e');
       return false;
     }
   }
 
-  /// Stop Agora cloud recording
+  /// Stop Agora cloud recording using service
   Future<bool> stopRecording() async {
-    AppUtils.log('═══════════════════════════════════════════════════');
-    AppUtils.log('STOPPING RECORDING - DIAGNOSTIC INFO');
-    AppUtils.log('═══════════════════════════════════════════════════');
-    AppUtils.log('Is Recording: ${isRecording.value}');
-    AppUtils.log('ResourceId: $_recordingResourceId');
-    AppUtils.log('SID: $_recordingSid');
-    AppUtils.log('Channel: ${streamCtrl.value.channelId}');
-    AppUtils.log('Host UID: ${hostAgoraId.toString()}');
-    AppUtils.log('═══════════════════════════════════════════════════');
-
     if (!isRecording.value) {
       AppUtils.toastError('No recording in progress');
       return false;
@@ -607,13 +556,8 @@ class LiveStreamCtrl extends GetxController {
     if (_recordingResourceId == null ||
         _recordingSid == null ||
         _recordingUid == null) {
-      AppUtils.logEr('⚠️ CRITICAL: Recording session data is missing!');
-      AppUtils.logEr('ResourceId is null: ${_recordingResourceId == null}');
-      AppUtils.logEr('SID is null: ${_recordingSid == null}');
-      AppUtils.logEr('Recording UID is null: ${_recordingUid == null}');
       AppUtils.toastError('Recording session not found');
-      isRecording.value = false;
-      _stopRecordingDurationTimer();
+      _resetRecordingState();
       return false;
     }
 
@@ -624,270 +568,66 @@ class LiveStreamCtrl extends GetxController {
     }
 
     try {
-      AppUtils.log(
-        '🛑 Stopping recording - Channel: $channelName, SID: $_recordingSid, ResourceID: $_recordingResourceId',
-      );
-      AppUtils.log(
-        '🔧 Host UID: ${hostAgoraId.toString()}, Recording UID: $_recordingUid',
-      );
+      // Show loading
+      _showRecordingLoadingDialog('Stopping recording...');
 
-      // Show loading with safety check
-      if (Get.isDialogOpen != true) {
-        Get.dialog(
-          Material(
-            color: Colors.transparent,
-            child: Center(
-              child: Container(
-                padding: EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 16),
-                    TextView(
-                      text: 'Stopping recording...',
-                      style: TextStyle(fontSize: 16, color: Colors.black87),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          barrierDismissible: false,
-        );
-      }
-
-      AppUtils.log('📞 Calling AgoraRecordingService.stop...');
+      // Use AgoraRecordingService to stop recording
       final stopResult = await AgoraRecordingService.stop(
         channelName: channelName,
-        uid: _recordingUid.toString(), // Use recording UID, not host UID
+        uid: _recordingUid.toString(),
         resourceId: _recordingResourceId!,
         sid: _recordingSid!,
       );
 
-      AppUtils.log(
-        'Stop result received - Success: ${stopResult.success}, Message: ${stopResult.message}, Error: ${stopResult.errorMessage}',
-      );
-      AppUtils.log('Stop result fileUrl: ${stopResult.fileUrl}');
-      AppUtils.log('Stop result serverResponse: ${stopResult.serverResponse}');
+      // Close loading dialog
+      _closeLoadingDialog();
 
-      // Close loading dialog with safety check
-      try {
-        if (Get.isDialogOpen == true) {
-          Get.back();
-          AppUtils.log('Loading dialog closed');
-        }
-      } catch (e) {
-        AppUtils.log('Dialog already closed or error closing: $e');
-      }
-
-      // Always reset state after stop attempt
-      isRecording.value = false;
-      final tempResourceId = _recordingResourceId;
-      final tempSid = _recordingSid;
-      final tempRecordingUid = _recordingUid;
-      _recordingResourceId = null;
-      _recordingSid = null;
-      _recordingUid = null;
-      _recordingStartTime = null;
-      _stopRecordingDurationTimer();
+      // Reset recording state
+      _resetRecordingState();
 
       if (!stopResult.success) {
-        final errorMsg = stopResult.errorMessage ?? 'Failed to stop recording';
-        AppUtils.logEr('❌ Error stopping recording: $errorMsg');
-        AppUtils.logEr(
-          '📊 Previous ResourceID: $tempResourceId, SID: $tempSid, Recording UID: $tempRecordingUid',
+        AppUtils.toastError(
+          stopResult.errorMessage ?? 'Failed to stop recording',
         );
-        AppUtils.toastError(errorMsg);
         return false;
       }
 
-      // 🎬 IMMEDIATE VIDEO URL EXTRACTION (like your working files)
-      // Extract video URLs directly from the server response
-      List<String> extractedVideoUrls = [];
+      // Extract video URLs using AgoraRecordingService
+      final recordingFiles = AgoraRecordingService.extractRecordingFiles(
+        stopResult,
+        channelName,
+      );
 
-      // First, check if fileUrl is immediately available
-      if (stopResult.fileUrl != null && stopResult.fileUrl!.isNotEmpty) {
-        extractedVideoUrls.add(stopResult.fileUrl!);
-        recordedVideoUrl = stopResult.fileUrl;
-        AppUtils.log('🎬 ✅ Immediate URL available: ${stopResult.fileUrl}');
-      }
+      // Get immediate video URL if available
+      final immediateUrl = AgoraRecordingService.getImmediateVideoUrl(
+        recordingFiles,
+      );
 
-      // Also check MP4 URL if available
-      if (stopResult.mp4Url != null && stopResult.mp4Url!.isNotEmpty) {
-        if (!extractedVideoUrls.contains(stopResult.mp4Url!)) {
-          extractedVideoUrls.add(stopResult.mp4Url!);
-        }
-        AppUtils.log('🎬 ✅ MP4 URL available: ${stopResult.mp4Url}');
-      }
-
-      // Extract URLs from server response - ONLY ONE VIDEO for sharing/posting
-      if (stopResult.serverResponse != null) {
-        final fileList = stopResult.serverResponse!['fileList'] as List?;
-        if (fileList != null && fileList.isNotEmpty) {
-          AppUtils.log(
-            '🎬 🔍 Processing ${fileList.length} files from server response',
-          );
-
-          // PRIORITY: Find MP4 first - this is what we want for sharing
-          String? primaryVideoUrl;
-
-          for (final file in fileList) {
-            if (file is Map<String, dynamic>) {
-              // Fix: Use 'fileName' (capital N) as returned by Agora API
-              final filename = file['fileName'] ?? file['filename'] ?? '';
-              final downloadUrl = file['downloadUrl'] as String?;
-              final trackType = file['trackType'] ?? '';
-
-              AppUtils.log(
-                '🎬 📄 File: $filename, trackType: $trackType, downloadUrl: $downloadUrl',
-              );
-
-              // Look for MP4 files ONLY - ignore M3U8 for sharing
-              if (filename.endsWith('.mp4') &&
-                  trackType.contains('audio_and_video')) {
-                if (downloadUrl != null && downloadUrl.isNotEmpty) {
-                  primaryVideoUrl = downloadUrl;
-                } else {
-                  // Construct Blackblaze B2 URL with proper format
-                  primaryVideoUrl =
-                      'https://s3.us-east-005.backblazeb2.com/$filename';
-                }
-
-                AppUtils.log(
-                  '🎬 ✅ Found PRIMARY video (MP4): $primaryVideoUrl',
-                );
-                // Break immediately - we only want ONE video for sharing
-                break;
-              }
-            }
-          }
-
-          // Only add the PRIMARY video URL (MP4) to the list
-          if (primaryVideoUrl != null && primaryVideoUrl.isNotEmpty) {
-            extractedVideoUrls.clear(); // Clear any previous URLs
-            extractedVideoUrls.add(primaryVideoUrl);
-            AppUtils.log(
-              '🎬 ✅ Using SINGLE video for sharing: $primaryVideoUrl',
-            );
-
-            // Print URL in green color for easy visibility
-            VideoDownloadUtils.printVideoUrlsInGreen([primaryVideoUrl]);
-          }
-        }
-      }
-
-      // 🎯 PROFESSIONAL VIDEO URL STORAGE (like your working files)
-      if (extractedVideoUrls.isNotEmpty) {
-        // Use VideoUrlRetrieverService to store URLs professionally
+      if (immediateUrl != null && immediateUrl.isNotEmpty) {
+        // Store video URLs using VideoUrlRetrieverService
         VideoUrlRetrieverService.storeVideoUrls(
-          extractedVideoUrls,
+          [immediateUrl],
           (videoUrl) {
             if (!recordedVideoUrls.contains(videoUrl)) {
               recordedVideoUrls.add(videoUrl);
             }
           },
           onVideoStored: (videoUrl) {
-            // Set main recordedVideoUrl to first available URL
-            recordedVideoUrl ??= videoUrl;
+            recordedVideoUrl = videoUrl;
             AppUtils.log('🎯 Stored video URL: $videoUrl');
           },
         );
 
-        AppUtils.log(
-          '🎬 ✅ Successfully extracted ${extractedVideoUrls.length} video URLs immediately',
-        );
-        AppUtils.log(
-          '🎬 📊 Total recordings in array: ${recordedVideoUrls.length}',
-        );
-        AppUtils.log('🎬 📋 All recorded URLs: $recordedVideoUrls');
-      } else {
-        // Try extracting using the new AgoraRecordingService method
-        AppUtils.log(
-          '🔄 [FALLBACK] Trying AgoraRecordingService.extractRecordingFiles...',
-        );
-
-        if (stopResult.serverResponse != null) {
-          final recordingFiles = AgoraRecordingService.extractRecordingFiles(
-            stopResult,
-            channelName,
-          );
-
-          final immediateUrl = AgoraRecordingService.getImmediateVideoUrl(
-            recordingFiles,
-          );
-
-          if (immediateUrl != null && immediateUrl.isNotEmpty) {
-            recordedVideoUrls.add(immediateUrl);
-            recordedVideoUrl = immediateUrl;
-            AppUtils.log(
-              '🎬 ✅ [FALLBACK] Found immediate video URL: $immediateUrl',
-            );
-          } else {
-            // Last resort: Wait for video URL to become available
-            AppUtils.log('⏳ [WAIT] Starting wait for video URL...');
-
-            final waitedUrl = await AgoraRecordingService.waitForVideoUrl(
-              resourceId: tempResourceId!,
-              sid: tempSid!,
-              maxWaitSeconds: 30,
-              checkIntervalSeconds: 5,
-            );
-
-            if (waitedUrl != null && waitedUrl.isNotEmpty) {
-              recordedVideoUrls.add(waitedUrl);
-              recordedVideoUrl = waitedUrl;
-              AppUtils.log(
-                '🎬 ✅ [WAIT] Video URL available after waiting: $waitedUrl',
-              );
-            } else {
-              AppUtils.logEr(
-                '⚠️ No video URLs available immediately. Recording may still be processing.',
-              );
-            }
-          }
-        }
-
-        // Store metadata for potential future retrieval
-        AppUtils.log(
-          'Recording metadata - ResourceID: $tempResourceId, SID: $tempSid, Channel: $channelName',
-        );
+        // Print URLs for debugging using VideoDownloadUtils
+        VideoDownloadUtils.printVideoUrlsInGreen([immediateUrl]);
       }
 
       AppUtils.toast('Recording stopped successfully');
-      AppUtils.log(
-        'Recording stopped successfully. File URL: $recordedVideoUrl',
-      );
-      AppUtils.log('Server response: ${stopResult.serverResponse}');
-
       return true;
-    } catch (e, stackTrace) {
-      // Close loading dialog if open with safety check
-      try {
-        if (Get.isDialogOpen == true) {
-          Get.back();
-          AppUtils.log('Loading dialog closed after exception');
-        }
-      } catch (dialogError) {
-        AppUtils.log('Error closing dialog: $dialogError');
-      }
-
-      AppUtils.logEr('Exception stopping recording: $e');
-      AppUtils.logEr('Stack trace: $stackTrace');
-      AppUtils.toastError('Failed to stop recording: ${e.toString()}');
-
-      // Reset recording state on exception
-      isRecording.value = false;
-      _recordingResourceId = null;
-      _recordingSid = null;
-      _recordingUid = null;
-      _recordingStartTime = null;
-      _stopRecordingDurationTimer();
-
+    } catch (e) {
+      _closeLoadingDialog();
+      _resetRecordingState();
+      AppUtils.toastError('Failed to stop recording: $e');
       return false;
     }
   }
@@ -1313,21 +1053,21 @@ class LiveStreamCtrl extends GetxController {
       'Showing recorded videos dialog with ${videoUrls.length} URLs: $videoUrls',
     );
 
-    // Download videos directly to gallery with permissions
+    // Download videos directly to gallery using VideoDownloadUtils
     AppUtils.log(
       '🎥 [DOWNLOAD] Preparing to download ${videoUrls.length} videos...',
     );
 
-    for (int i = 0; i < videoUrls.length; i++) {
-      final url = videoUrls[i];
-      AppUtils.log('🎥 [DOWNLOAD] Video ${i + 1}/${videoUrls.length}: $url');
-      await _downloadVideoWithPermissions(url);
+    // Use VideoDownloadUtils service for multiple video downloads
+    final downloadResults =
+        await VideoDownloadUtils.downloadMultipleVideosToGallery(videoUrls);
 
-      // Small delay between downloads
-      if (i < videoUrls.length - 1) {
-        await Future.delayed(const Duration(milliseconds: 1000));
-      }
-    }
+    final successCount = downloadResults.values
+        .where((success) => success)
+        .length;
+    AppUtils.log(
+      '🎯 Downloaded $successCount/${videoUrls.length} videos successfully',
+    );
 
     // Print video URLs in green color for easy debugging
     VideoDownloadUtils.printVideoUrlsInGreen(videoUrls);
@@ -1371,120 +1111,6 @@ class LiveStreamCtrl extends GetxController {
     }
 
     AppUtils.log('=== _showRecordedVideosDialog END ===');
-  }
-
-  /// Request storage permissions and download video to gallery
-  Future<void> _downloadVideoWithPermissions(String videoUrl) async {
-    try {
-      AppUtils.log('📱 [DOWNLOAD] Requesting storage permissions...');
-
-      // Request storage permissions before download
-      await _requestStoragePermissions();
-
-      AppUtils.log('📥 [DOWNLOAD] Starting video download: $videoUrl');
-
-      // Generate a proper filename
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final fileName = 'SEP_LiveStream_$timestamp.mp4';
-
-      // Download video to gallery
-      final success = await VideoDownloadUtils.downloadVideoToGallery(
-        videoUrl,
-        fileName: fileName,
-      );
-
-      if (success) {
-        AppUtils.log('✅ [DOWNLOAD] Video saved to gallery successfully!');
-        // Show success message
-        AppUtils.toast("Video saved to gallery successfully!");
-      } else {
-        AppUtils.logEr('❌ [DOWNLOAD] Failed to save video to gallery');
-        AppUtils.toastError(
-          "Failed to save video to gallery. Please check permissions.",
-        );
-      }
-    } catch (e) {
-      AppUtils.logEr('❌ [DOWNLOAD] Error downloading video: $e');
-      AppUtils.toastError("Error downloading video: $e");
-    }
-  }
-
-  /// Request storage permissions for Android/iOS
-  Future<void> _requestStoragePermissions() async {
-    try {
-      AppUtils.log('🔐 [PERMISSIONS] Requesting storage permissions...');
-
-      if (Platform.isAndroid) {
-        // Get Android version for proper permission handling
-        final deviceInfo = DeviceInfoPlugin();
-        final androidInfo = await deviceInfo.androidInfo;
-        final androidVersion = androidInfo.version.sdkInt;
-
-        AppUtils.log('📱 [PERMISSIONS] Android API level: $androidVersion');
-
-        if (androidVersion >= 33) {
-          // Android 13+ (API 33+) uses granular media permissions
-          AppUtils.log(
-            '🔄 [PERMISSIONS] Requesting Android 13+ media permissions...',
-          );
-
-          final videoPermission = await Permission.videos.request();
-          final photoPermission = await Permission.photos.request();
-
-          AppUtils.log('📹 [PERMISSIONS] Video permission: $videoPermission');
-          AppUtils.log('🖼️ [PERMISSIONS] Photo permission: $photoPermission');
-
-          if (videoPermission.isDenied || photoPermission.isDenied) {
-            AppUtils.logEr('❌ [PERMISSIONS] Media permissions denied');
-            throw Exception('Storage permissions required to save video');
-          }
-        } else if (androidVersion >= 30) {
-          // Android 11-12 (API 30-32)
-          AppUtils.log(
-            '🔄 [PERMISSIONS] Requesting Android 11-12 storage permissions...',
-          );
-
-          final storageStatus = await Permission.storage.request();
-          AppUtils.log('📁 [PERMISSIONS] Storage permission: $storageStatus');
-
-          if (storageStatus.isDenied) {
-            AppUtils.logEr('❌ [PERMISSIONS] Storage permission denied');
-            throw Exception('Storage permission required to save video');
-          }
-        } else {
-          // Android 10 and below (API 29 and below)
-          AppUtils.log(
-            '🔄 [PERMISSIONS] Requesting legacy storage permissions...',
-          );
-
-          final storageStatus = await Permission.storage.request();
-          AppUtils.log('📁 [PERMISSIONS] Storage permission: $storageStatus');
-
-          if (storageStatus.isDenied) {
-            AppUtils.logEr('❌ [PERMISSIONS] Storage permission denied');
-            throw Exception('Storage permission required to save video');
-          }
-        }
-      } else if (Platform.isIOS) {
-        // iOS permissions
-        AppUtils.log(
-          '🔄 [PERMISSIONS] Requesting iOS photo library permissions...',
-        );
-
-        final status = await Permission.photos.request();
-        AppUtils.log('📸 [PERMISSIONS] iOS Photos permission: $status');
-
-        if (status.isDenied) {
-          AppUtils.logEr('❌ [PERMISSIONS] iOS Photos permission denied');
-          throw Exception('Photos permission required to save video');
-        }
-      }
-
-      AppUtils.log('✅ [PERMISSIONS] All required permissions granted!');
-    } catch (e) {
-      AppUtils.logEr('❌ [PERMISSIONS] Error requesting permissions: $e');
-      rethrow;
-    }
   }
 
   /// Show dialog when recording is processing
@@ -1845,16 +1471,9 @@ class _RecordedVideoDialog extends StatelessWidget {
             : 'Downloading video...',
       );
 
-      // Request storage permissions first
-      AppUtils.log('🔐 [GALLERY] Requesting storage permissions...');
-      await _requestStoragePermissions();
-
-      AppUtils.log(
-        '✅ [GALLERY] Storage permissions granted, starting downloads...',
-      );
-
+      // Use VideoDownloadUtils for all downloads
       if (videoUrls.length == 1) {
-        // Download single video with proper filename
+        // Single video download
         final timestamp = DateTime.now().millisecondsSinceEpoch;
         final fileName = 'SEP_LiveStream_$timestamp.mp4';
 
@@ -1865,63 +1484,27 @@ class _RecordedVideoDialog extends StatelessWidget {
 
         if (success) {
           AppUtils.toast('✅ Video saved to gallery!');
-          AppUtils.log('✅ [GALLERY] Single video download successful');
         } else {
           AppUtils.toastError('❌ Failed to save video to gallery');
-          AppUtils.logEr('❌ [GALLERY] Single video download failed');
           return;
         }
       } else {
-        // Download multiple videos
-        AppUtils.log('🎬 [GALLERY] Downloading ${videoUrls.length} videos...');
+        // Multiple videos download using VideoDownloadUtils service
+        final downloadResults =
+            await VideoDownloadUtils.downloadMultipleVideosToGallery(videoUrls);
 
-        int successCount = 0;
-        for (int i = 0; i < videoUrls.length; i++) {
-          try {
-            final timestamp = DateTime.now().millisecondsSinceEpoch;
-            final fileName = 'SEP_LiveStream_${i + 1}_$timestamp.mp4';
+        final successCount = downloadResults.values
+            .where((success) => success)
+            .length;
 
-            AppUtils.log(
-              '📥 [GALLERY] Downloading video ${i + 1}/${videoUrls.length}...',
-            );
-
-            final success = await VideoDownloadUtils.downloadVideoToGallery(
-              videoUrls[i],
-              fileName: fileName,
-            );
-
-            if (success) {
-              successCount++;
-              AppUtils.log(
-                '✅ [GALLERY] Video ${i + 1} downloaded successfully',
-              );
-            } else {
-              AppUtils.logEr('❌ [GALLERY] Video ${i + 1} download failed');
-            }
-
-            // Small delay between downloads
-            if (i < videoUrls.length - 1) {
-              await Future.delayed(Duration(milliseconds: 1000));
-            }
-          } catch (e) {
-            AppUtils.logEr('❌ [GALLERY] Error downloading video ${i + 1}: $e');
-          }
-        }
-
-        // Show final result
         if (successCount == videoUrls.length) {
           AppUtils.toast('✅ All $successCount videos saved to gallery!');
-          AppUtils.log('✅ [GALLERY] All videos downloaded successfully');
         } else if (successCount > 0) {
           AppUtils.toast(
             '⚠️ $successCount/${videoUrls.length} videos saved to gallery',
           );
-          AppUtils.log(
-            '⚠️ [GALLERY] Partial success: $successCount/${videoUrls.length}',
-          );
         } else {
           AppUtils.toastError('❌ Failed to save videos to gallery');
-          AppUtils.logEr('❌ [GALLERY] All video downloads failed');
           return;
         }
       }
@@ -1931,7 +1514,7 @@ class _RecordedVideoDialog extends StatelessWidget {
       // Close dialog safely
       try {
         if (Navigator.of(context).canPop()) {
-          Navigator.pop(context); // Close dialog only
+          Navigator.pop(context);
         }
       } catch (e) {
         AppUtils.log('Error closing dialog: $e');
@@ -1939,84 +1522,6 @@ class _RecordedVideoDialog extends StatelessWidget {
     } catch (e) {
       AppUtils.toastError('Failed to save video: $e');
       AppUtils.logEr('❌ [GALLERY] Error in _saveToGallery: $e');
-    }
-  }
-
-  /// Request storage permissions for Android/iOS
-  Future<void> _requestStoragePermissions() async {
-    try {
-      AppUtils.log('🔐 [PERMISSIONS] Requesting storage permissions...');
-
-      if (Platform.isAndroid) {
-        // Get Android version for proper permission handling
-        final deviceInfo = DeviceInfoPlugin();
-        final androidInfo = await deviceInfo.androidInfo;
-        final androidVersion = androidInfo.version.sdkInt;
-
-        AppUtils.log('📱 [PERMISSIONS] Android API level: $androidVersion');
-
-        if (androidVersion >= 33) {
-          // Android 13+ (API 33+) uses granular media permissions
-          AppUtils.log(
-            '🔄 [PERMISSIONS] Requesting Android 13+ media permissions...',
-          );
-
-          final videoPermission = await Permission.videos.request();
-          final photoPermission = await Permission.photos.request();
-
-          AppUtils.log('📹 [PERMISSIONS] Video permission: $videoPermission');
-          AppUtils.log('🖼️ [PERMISSIONS] Photo permission: $photoPermission');
-
-          if (videoPermission.isDenied || photoPermission.isDenied) {
-            AppUtils.logEr('❌ [PERMISSIONS] Media permissions denied');
-            throw Exception('Storage permissions required to save video');
-          }
-        } else if (androidVersion >= 30) {
-          // Android 11-12 (API 30-32)
-          AppUtils.log(
-            '🔄 [PERMISSIONS] Requesting Android 11-12 storage permissions...',
-          );
-
-          final storageStatus = await Permission.storage.request();
-          AppUtils.log('📁 [PERMISSIONS] Storage permission: $storageStatus');
-
-          if (storageStatus.isDenied) {
-            AppUtils.logEr('❌ [PERMISSIONS] Storage permission denied');
-            throw Exception('Storage permission required to save video');
-          }
-        } else {
-          // Android 10 and below (API 29 and below)
-          AppUtils.log(
-            '🔄 [PERMISSIONS] Requesting legacy storage permissions...',
-          );
-
-          final storageStatus = await Permission.storage.request();
-          AppUtils.log('📁 [PERMISSIONS] Storage permission: $storageStatus');
-
-          if (storageStatus.isDenied) {
-            AppUtils.logEr('❌ [PERMISSIONS] Storage permission denied');
-            throw Exception('Storage permission required to save video');
-          }
-        }
-      } else if (Platform.isIOS) {
-        // iOS permissions
-        AppUtils.log(
-          '🔄 [PERMISSIONS] Requesting iOS photo library permissions...',
-        );
-
-        final status = await Permission.photos.request();
-        AppUtils.log('📸 [PERMISSIONS] iOS Photos permission: $status');
-
-        if (status.isDenied) {
-          AppUtils.logEr('❌ [PERMISSIONS] iOS Photos permission denied');
-          throw Exception('Photos permission required to save video');
-        }
-      }
-
-      AppUtils.log('✅ [PERMISSIONS] All required permissions granted!');
-    } catch (e) {
-      AppUtils.logEr('❌ [PERMISSIONS] Error requesting permissions: $e');
-      rethrow;
     }
   }
 

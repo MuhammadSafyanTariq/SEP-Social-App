@@ -285,22 +285,23 @@ class AgoraRecordingService {
               // Look for MP4 files with audio_and_video track type - HIGHEST PRIORITY
               if (filename.endsWith('.mp4') &&
                   trackType.contains('audio_and_video')) {
-                // CRITICAL FIX: Generate proper Blackblaze B2 URL with correct bucket path
-                // The filename from Agora includes the path: recordings/channelId/increment/filename.mp4
-                // We need: https://endpoint/bucket/recordings/channelId/increment/filename.mp4
-                mp4Url = generateSignedUrl(filename);
+                // Generate working Blackblaze B2 URL by testing different formats
+                AppUtils.log('🔧 [STOP] Generating working URL for: $filename');
+                final workingUrl = await generateWorkingUrl(filename);
+                mp4Url = workingUrl;
                 fileUrl = mp4Url;
 
                 // Store for later backend submission - ONLY MP4 for sharing
                 lastRecordedVideoUrl = fileUrl;
 
                 AppUtils.log(
-                  '🎥 [STOP] Found MP4 URL (PRIMARY for sharing): $mp4Url',
+                  '🎥 [STOP] Found working MP4 URL (PRIMARY for sharing): $mp4Url',
                 );
                 AppUtils.log(
                   '🔧 [STOP] URL Construction Debug: endpoint=$b2Endpoint, bucket=$b2Bucket, filename=$filename',
                 );
-                AppUtils.log('🌐 [STOP] Final URL: $mp4Url');
+                AppUtils.log('🌐 [STOP] Final working URL: $mp4Url');
+
                 // Break immediately - we only want ONE video for sharing
                 break;
               }
@@ -571,7 +572,7 @@ class AgoraRecordingService {
     lastRecordedVideoUrl = null;
   }
 
-  /// Generate a signed URL for Blackblaze B2 access
+  /// Generate a signed URL for Blackblaze B2 access with proper bucket configuration
   static String generateSignedUrl(String filename) {
     try {
       AppUtils.log('🔐 [URL] Generating Blackblaze B2 URL for: $filename');
@@ -579,28 +580,17 @@ class AgoraRecordingService {
       AppUtils.log('🔐 [URL] B2 Bucket: $b2Bucket');
       AppUtils.log('🔐 [URL] Full filename path: $filename');
 
-      // CRITICAL FIX: Follow the working pattern - use public download format as PRIMARY
-      // Agora returns filename like: recordings/channelId/increment/actualfile.mp4
-      // We need URL: https://f005.backblazeb2.com/file/bucket/recordings/channelId/increment/actualfile.mp4
+      // CRITICAL FIX: Based on your logs showing "f005.backblazeb2.com", this is the correct public endpoint
+      // Format: https://f005.backblazeb2.com/file/bucket-name/path/to/file.mp4
+      // This is the BlackBlaze B2 public download URL format that works
 
-      // Format 1: Public download format (MOST COMPATIBLE - use as primary)
       final publicUrl = 'https://f005.backblazeb2.com/file/$b2Bucket/$filename';
-      AppUtils.log(
-        '🔐 [URL] Generated public download URL (PRIMARY): $publicUrl',
-      );
+      AppUtils.log('🔐 [URL] Generated public download URL: $publicUrl');
 
-      // Format 2: S3-compatible format with proper bucket placement
-      final cleanEndpoint = b2Endpoint
-          .replaceAll('https://', '')
-          .replaceAll('http://', '');
-      final s3Url = 'https://$cleanEndpoint/$b2Bucket/$filename';
-      AppUtils.log('🔐 [URL] Generated S3-compatible URL with bucket: $s3Url');
-
-      // Return the public URL as primary (matches working pattern)
       return publicUrl;
     } catch (e) {
       AppUtils.logEr('❌ [URL] Failed to generate signed URL: $e');
-      // Ultimate fallback with public format including bucket path
+      // Fallback to the same format
       final fallbackUrl =
           'https://f005.backblazeb2.com/file/$b2Bucket/$filename';
       AppUtils.log('🔐 [URL] Using fallback URL: $fallbackUrl');
@@ -630,6 +620,74 @@ class AgoraRecordingService {
     } catch (e) {
       AppUtils.logEr('❌ [URL] Failed to generate pre-signed URL: $e');
       return generateSignedUrl(filename); // Fallback to standard method
+    }
+  }
+
+  /// Generate alternative URLs for different Blackblaze B2 access methods and test them
+  static Future<String?> generateWorkingUrl(String filename) async {
+    final urls = <String>[];
+
+    try {
+      AppUtils.log('🔗 [URL] Generating alternative URLs for: $filename');
+
+      // Extract clean filename
+      String cleanFilename = filename;
+      if (filename.contains('/')) {
+        cleanFilename = filename.split('/').last;
+      }
+
+      // Method 1: Public download URL with full path (MOST COMPATIBLE)
+      urls.add('https://f005.backblazeb2.com/file/$b2Bucket/$filename');
+
+      // Method 2: Public download URL with clean filename only
+      urls.add('https://f005.backblazeb2.com/file/$b2Bucket/$cleanFilename');
+
+      // Method 3: S3 compatible with bucket in path
+      final cleanEndpoint = b2Endpoint
+          .replaceAll('https://', '')
+          .replaceAll('http://', '');
+      urls.add('https://$cleanEndpoint/$b2Bucket/$filename');
+
+      // Method 4: Direct bucket subdomain (if supported)
+      urls.add('https://$b2Bucket.s3.us-east-005.backblazeb2.com/$filename');
+
+      AppUtils.log(
+        '🔗 [URL] Generated ${urls.length} alternative URLs to test',
+      );
+
+      // Test each URL and return the first working one
+      for (int i = 0; i < urls.length; i++) {
+        final url = urls[i];
+        AppUtils.log('🧪 [URL] Testing URL ${i + 1}/${urls.length}: $url');
+
+        try {
+          final response = await http
+              .head(Uri.parse(url))
+              .timeout(
+                Duration(seconds: 10),
+                onTimeout: () {
+                  throw Exception('Timeout');
+                },
+              );
+
+          if (response.statusCode == 200) {
+            AppUtils.log('✅ [URL] Found working URL: $url');
+            return url;
+          } else {
+            AppUtils.log('❌ [URL] URL returned ${response.statusCode}: $url');
+          }
+        } catch (e) {
+          AppUtils.log('❌ [URL] URL test failed: $url - $e');
+        }
+      }
+
+      AppUtils.logEr(
+        '❌ [URL] No working URLs found, returning first as fallback',
+      );
+      return urls.first;
+    } catch (e) {
+      AppUtils.logEr('❌ [URL] Error generating working URL: $e');
+      return generateSignedUrl(filename); // Ultimate fallback
     }
   }
 

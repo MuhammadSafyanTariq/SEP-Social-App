@@ -18,6 +18,14 @@ class VideoDownloadUtils {
       // Print the URL in green color to debug console
       _printVideoUrlInGreen(videoUrl);
 
+      // Test URL accessibility first to prevent 400 errors
+      AppUtils.log('🧪 Testing video URL accessibility before download...');
+      final isAccessible = await testVideoUrlAccessibility(videoUrl);
+      if (!isAccessible) {
+        AppUtils.logEr('❌ Video URL is not accessible: $videoUrl');
+        return false;
+      }
+
       // Request permissions
       final permissionsGranted = await _requestPermissions();
       if (!permissionsGranted) {
