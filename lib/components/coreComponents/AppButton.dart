@@ -56,7 +56,7 @@ class AppButton extends StatelessWidget {
           Align(
             alignment: alignment,
             child: Container(
-              padding: padding ?? EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+              padding: padding ?? EdgeInsets.symmetric(horizontal: 18, vertical: 15),
               width: width ?? (isFilledButton ? double.maxFinite : null),
               height: height,
               decoration: BoxDecoration(
