@@ -229,4 +229,60 @@ class VideoDownloadUtils {
       return 30; // Default fallback
     }
   }
+
+  /// Test if a video URL is accessible by making a HEAD request
+  static Future<bool> testVideoUrlAccessibility(String url) async {
+    try {
+      AppUtils.log('🧪 [TEST] Testing URL accessibility: $url');
+
+      final uri = Uri.parse(url);
+      final client = http.Client();
+
+      // Make a HEAD request to check if the URL is accessible without downloading
+      final response = await client
+          .head(uri)
+          .timeout(
+            Duration(seconds: 10),
+            onTimeout: () {
+              AppUtils.logEr('🧪 [TEST] Timeout testing URL: $url');
+              throw Exception('Request timeout');
+            },
+          );
+
+      AppUtils.log('🧪 [TEST] Response status: ${response.statusCode}');
+      AppUtils.log('🧪 [TEST] Response headers: ${response.headers}');
+
+      client.close();
+
+      if (response.statusCode == 200) {
+        AppUtils.log('✅ [TEST] URL is accessible: $url');
+        return true;
+      } else {
+        AppUtils.logEr('❌ [TEST] URL returned ${response.statusCode}: $url');
+        return false;
+      }
+    } catch (e) {
+      AppUtils.logEr('❌ [TEST] Error testing URL accessibility: $e');
+      return false;
+    }
+  }
+
+  /// Test multiple video URLs and return the first accessible one
+  static Future<String?> findAccessibleVideoUrl(List<String> urls) async {
+    AppUtils.log('🧪 [TEST] Testing ${urls.length} URLs for accessibility...');
+
+    for (int i = 0; i < urls.length; i++) {
+      final url = urls[i];
+      AppUtils.log('🧪 [TEST] Testing URL ${i + 1}/${urls.length}: $url');
+
+      final isAccessible = await testVideoUrlAccessibility(url);
+      if (isAccessible) {
+        AppUtils.log('✅ [TEST] Found accessible URL: $url');
+        return url;
+      }
+    }
+
+    AppUtils.logEr('❌ [TEST] No accessible URLs found');
+    return null;
+  }
 }

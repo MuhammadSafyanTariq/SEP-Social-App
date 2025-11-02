@@ -772,7 +772,7 @@ class LiveStreamCtrl extends GetxController {
             AppUtils.log(
               '🎬 ✅ Using SINGLE video for sharing: $primaryVideoUrl',
             );
-            
+
             // Print URL in green color for easy visibility
             VideoDownloadUtils.printVideoUrlsInGreen([primaryVideoUrl]);
           }
@@ -1310,7 +1310,10 @@ class LiveStreamCtrl extends GetxController {
     AppUtils.log(
       'Showing recorded videos dialog with ${videoUrls.length} URLs: $videoUrls',
     );
-    
+
+    // Test alternative URL formats for debugging
+    await _testAlternativeUrlFormats(videoUrls);
+
     // Print video URLs in green color for easy debugging
     VideoDownloadUtils.printVideoUrlsInGreen(videoUrls);
 
@@ -1353,6 +1356,73 @@ class LiveStreamCtrl extends GetxController {
     }
 
     AppUtils.log('=== _showRecordedVideosDialog END ===');
+  }
+
+  /// Test alternative URL formats for debugging Blackblaze B2 access
+  Future<void> _testAlternativeUrlFormats(List<String> videoUrls) async {
+    try {
+      AppUtils.log(
+        '🧪 [TEST] Testing alternative URL formats for Blackblaze B2 access...',
+      );
+
+      for (int i = 0; i < videoUrls.length; i++) {
+        final url = videoUrls[i];
+        AppUtils.log('🧪 [TEST] Original URL $i: $url');
+
+        // Extract filename from the original URL
+        final uri = Uri.parse(url);
+        final pathSegments = uri.pathSegments;
+        if (pathSegments.isNotEmpty) {
+          final filename = pathSegments.last;
+          AppUtils.log('🧪 [TEST] Extracted filename: $filename');
+
+          // Generate alternative URLs using AgoraRecordingService method
+          final alternatives = AgoraRecordingService.generateAlternativeUrls(
+            filename,
+          );
+          AppUtils.log(
+            '🧪 [TEST] Generated ${alternatives.length} alternative URLs:',
+          );
+
+          for (int j = 0; j < alternatives.length; j++) {
+            AppUtils.log(
+              '🧪 [TEST] Alternative URL ${j + 1}: ${alternatives[j]}',
+            );
+          }
+
+          // Test the original URL first
+          final originalWorks =
+              await VideoDownloadUtils.testVideoUrlAccessibility(url);
+          AppUtils.log('🧪 [TEST] Original URL accessible: $originalWorks');
+
+          // Test each alternative URL
+          final allUrls = [url, ...alternatives];
+          final accessibleUrl = await VideoDownloadUtils.findAccessibleVideoUrl(
+            allUrls,
+          );
+
+          if (accessibleUrl != null) {
+            AppUtils.log('✅ [TEST] WORKING URL FOUND: $accessibleUrl');
+            // Update the video URL with the working one
+            videoUrls[i] = accessibleUrl;
+          } else {
+            AppUtils.logEr(
+              '❌ [TEST] No working URLs found for file: $filename',
+            );
+          }
+
+          // Log all URLs for manual testing
+          AppUtils.log('🧪 [TEST] === COPY THESE URLS TO TEST IN BROWSER ===');
+          AppUtils.log('🧪 [TEST] Original: $url');
+          for (int j = 0; j < alternatives.length; j++) {
+            AppUtils.log('🧪 [TEST] Alt ${j + 1}: ${alternatives[j]}');
+          }
+          AppUtils.log('🧪 [TEST] === END TEST URLS ===');
+        }
+      }
+    } catch (e) {
+      AppUtils.logEr('❌ [TEST] Error testing alternative URL formats: $e');
+    }
   }
 
   /// Show dialog when recording is processing
@@ -1703,7 +1773,7 @@ class _RecordedVideoDialog extends StatelessWidget {
     try {
       // Print all video URLs in green for debugging
       VideoDownloadUtils.printVideoUrlsInGreen(videoUrls);
-      
+
       // Show loading
       AppUtils.toast(
         videoUrls.length > 1
@@ -1713,8 +1783,10 @@ class _RecordedVideoDialog extends StatelessWidget {
 
       if (videoUrls.length == 1) {
         // Download single video
-        final success = await VideoDownloadUtils.downloadVideoToGallery(videoUrls.first);
-        
+        final success = await VideoDownloadUtils.downloadVideoToGallery(
+          videoUrls.first,
+        );
+
         if (success) {
           AppUtils.toast('✅ Video saved to gallery!');
         } else {
@@ -1723,19 +1795,22 @@ class _RecordedVideoDialog extends StatelessWidget {
         }
       } else {
         // Download multiple videos
-        final results = await VideoDownloadUtils.downloadMultipleVideosToGallery(videoUrls);
+        final results =
+            await VideoDownloadUtils.downloadMultipleVideosToGallery(videoUrls);
         final successCount = results.values.where((success) => success).length;
-        
+
         if (successCount == videoUrls.length) {
           AppUtils.toast('✅ All $successCount videos saved to gallery!');
         } else if (successCount > 0) {
-          AppUtils.toast('⚠️ $successCount/${videoUrls.length} videos saved to gallery');
+          AppUtils.toast(
+            '⚠️ $successCount/${videoUrls.length} videos saved to gallery',
+          );
         } else {
           AppUtils.toastError('❌ Failed to save videos to gallery');
           return;
         }
       }
-      
+
       onClose?.call();
 
       // Close dialog safely

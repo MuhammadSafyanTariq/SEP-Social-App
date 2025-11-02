@@ -285,11 +285,8 @@ class AgoraRecordingService {
               // Look for MP4 files with audio_and_video track type - HIGHEST PRIORITY
               if (filename.endsWith('.mp4') &&
                   trackType.contains('audio_and_video')) {
-                // Construct Blackblaze B2 URL with correct endpoint format
-                final cleanEndpoint = b2Endpoint
-                    .replaceAll('https://', '')
-                    .replaceAll('http://', '');
-                mp4Url = 'https://$cleanEndpoint/$filename';
+                // Generate proper Blackblaze B2 URL (try both formats)
+                mp4Url = generateSignedUrl(filename);
                 fileUrl = mp4Url;
 
                 // Store for later backend submission - ONLY MP4 for sharing
@@ -298,6 +295,10 @@ class AgoraRecordingService {
                 AppUtils.log(
                   '🎥 [STOP] Found MP4 URL (PRIMARY for sharing): $mp4Url',
                 );
+                AppUtils.log(
+                  '🔧 [STOP] URL Construction Debug: endpoint=$b2Endpoint, bucket=$b2Bucket, filename=$filename',
+                );
+                AppUtils.log('🌐 [STOP] Final URL: $mp4Url');
                 // Break immediately - we only want ONE video for sharing
                 break;
               }
@@ -313,10 +314,7 @@ class AgoraRecordingService {
 
                 if (filename.endsWith('.m3u8') &&
                     trackType.contains('audio_and_video')) {
-                  final cleanEndpoint = b2Endpoint
-                      .replaceAll('https://', '')
-                      .replaceAll('http://', '');
-                  fileUrl = 'https://$cleanEndpoint/$filename';
+                  fileUrl = generateSignedUrl(filename);
                   lastRecordedVideoUrl = fileUrl;
                   AppUtils.log('🎬 [STOP] Using M3U8 as fallback: $fileUrl');
                   break;
@@ -571,6 +569,73 @@ class AgoraRecordingService {
     lastRecordedVideoUrl = null;
   }
 
+  /// Generate a signed URL for Blackblaze B2 access
+  static String generateSignedUrl(String filename) {
+    try {
+      AppUtils.log('🔐 [URL] Generating Blackblaze B2 URL for: $filename');
+      AppUtils.log('🔐 [URL] B2 Endpoint: $b2Endpoint');
+      AppUtils.log('🔐 [URL] B2 Bucket: $b2Bucket');
+
+      // Try multiple URL formats for maximum compatibility
+
+      // Format 1: Public download URL (most reliable for public buckets)
+      // https://f005.backblazeb2.com/file/{bucket}/{filename}
+      String publicUrl;
+      if (b2Endpoint.contains('s3.us-east-005.backblazeb2.com')) {
+        publicUrl = 'https://f005.backblazeb2.com/file/$b2Bucket/$filename';
+        AppUtils.log('🔐 [URL] Generated public download URL: $publicUrl');
+        return publicUrl;
+      }
+
+      // Format 2: S3-compatible endpoint with bucket in path
+      // https://s3.us-east-005.backblazeb2.com/{bucket}/{filename}
+      final cleanEndpoint = b2Endpoint
+          .replaceAll('https://', '')
+          .replaceAll('http://', '');
+      final s3Url = 'https://$cleanEndpoint/$b2Bucket/$filename';
+      AppUtils.log('🔐 [URL] Generated S3-compatible URL: $s3Url');
+
+      return s3Url;
+    } catch (e) {
+      AppUtils.logEr('❌ [URL] Failed to generate signed URL: $e');
+      // Ultimate fallback
+      final fallbackUrl =
+          'https://s3.us-east-005.backblazeb2.com/$b2Bucket/$filename';
+      AppUtils.log('🔐 [URL] Using fallback URL: $fallbackUrl');
+      return fallbackUrl;
+    }
+  }
+
+  /// Generate alternative URLs for testing different Blackblaze B2 access methods
+  static List<String> generateAlternativeUrls(String filename) {
+    final urls = <String>[];
+
+    try {
+      // Method 1: Public download URL
+      urls.add('https://f005.backblazeb2.com/file/$b2Bucket/$filename');
+
+      // Method 2: S3 compatible with bucket in path
+      final cleanEndpoint = b2Endpoint
+          .replaceAll('https://', '')
+          .replaceAll('http://', '');
+      urls.add('https://$cleanEndpoint/$b2Bucket/$filename');
+
+      // Method 3: Direct bucket subdomain (if supported)
+      urls.add('https://$b2Bucket.s3.us-east-005.backblazeb2.com/$filename');
+
+      AppUtils.log(
+        '🔗 [URL] Generated ${urls.length} alternative URLs for testing:',
+      );
+      for (int i = 0; i < urls.length; i++) {
+        AppUtils.log('🔗 [URL] Alt ${i + 1}: ${urls[i]}');
+      }
+    } catch (e) {
+      AppUtils.logEr('❌ [URL] Error generating alternative URLs: $e');
+    }
+
+    return urls;
+  }
+
   /// Get immediate video URL from recording files (matching your working files)
   static String? getImmediateVideoUrl(
     List<Map<String, dynamic>> recordingFiles,
@@ -748,10 +813,7 @@ class AgoraRecordingService {
               String? fileUrl = downloadUrl;
               if (fileUrl == null || fileUrl.isEmpty) {
                 if (filename.isNotEmpty) {
-                  final cleanEndpoint = b2Endpoint
-                      .replaceAll('https://', '')
-                      .replaceAll('http://', '');
-                  fileUrl = 'https://$cleanEndpoint/$filename';
+                  fileUrl = generateSignedUrl(filename);
                   AppUtils.log('🔗 [FILES] Constructed B2 URL: $fileUrl');
                 }
               }
