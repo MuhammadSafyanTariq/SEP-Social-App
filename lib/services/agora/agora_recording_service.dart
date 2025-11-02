@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:sep/utils/appUtils.dart';
+import 'video_url_retriever_service.dart';
 
 /// Service for Agora Cloud Recording
 /// Direct Agora API calls (bypassing backend for recording only)
@@ -285,9 +286,16 @@ class AgoraRecordingService {
               // Look for MP4 files with audio_and_video track type - HIGHEST PRIORITY
               if (filename.endsWith('.mp4') &&
                   trackType.contains('audio_and_video')) {
-                // Generate working Blackblaze B2 URL by testing different formats
-                AppUtils.log('🔧 [STOP] Generating working URL for: $filename');
-                final workingUrl = await generateWorkingUrl(filename);
+                // Use VideoUrlRetrieverService to generate working BlackBlaze B2 URL
+                AppUtils.log(
+                  '🔧 [STOP] Generating working URL using VideoUrlRetrieverService for: $filename',
+                );
+                final downloadUrlFromFile = file['downloadUrl'] as String?;
+                final workingUrl =
+                    await VideoUrlRetrieverService.generateWorkingBlackblazeUrl(
+                      filename,
+                      providedDownloadUrl: downloadUrlFromFile,
+                    );
                 mp4Url = workingUrl;
                 fileUrl = mp4Url;
 
@@ -317,7 +325,12 @@ class AgoraRecordingService {
 
                 if (filename.endsWith('.m3u8') &&
                     trackType.contains('audio_and_video')) {
-                  fileUrl = generateSignedUrl(filename);
+                  final downloadUrlFromFile = file['downloadUrl'] as String?;
+                  fileUrl =
+                      await VideoUrlRetrieverService.generateWorkingBlackblazeUrl(
+                        filename,
+                        providedDownloadUrl: downloadUrlFromFile,
+                      );
                   lastRecordedVideoUrl = fileUrl;
                   AppUtils.log('🎬 [STOP] Using M3U8 as fallback: $fileUrl');
                   break;
@@ -527,7 +540,10 @@ class AgoraRecordingService {
         AppUtils.log('✅ [WORKFLOW] Recording workflow stopped successfully');
 
         // Extract recording files with URLs immediately
-        final recordingFiles = extractRecordingFiles(stopResult, channelName);
+        final recordingFiles = await extractRecordingFiles(
+          stopResult,
+          channelName,
+        );
 
         // Also add any immediate URLs from stop result
         if (stopResult.fileUrl != null && stopResult.fileUrl!.isNotEmpty) {
@@ -813,7 +829,10 @@ class AgoraRecordingService {
           final queryResult = await query(resourceId: resourceId, sid: sid);
 
           if (queryResult.success && queryResult.serverResponse != null) {
-            final files = extractRecordingFiles(queryResult, 'query_check');
+            final files = await extractRecordingFiles(
+              queryResult,
+              'query_check',
+            );
             final videoUrl = getImmediateVideoUrl(files);
 
             if (videoUrl != null) {
@@ -843,10 +862,10 @@ class AgoraRecordingService {
   }
 
   /// Extract recording files from stop response (matching your working files)
-  static List<Map<String, dynamic>> extractRecordingFiles(
+  static Future<List<Map<String, dynamic>>> extractRecordingFiles(
     AgoraRecordingResult stopResult,
     String channelName,
-  ) {
+  ) async {
     try {
       AppUtils.log('🔍 [FILES] Extracting files from stop result');
 
@@ -904,13 +923,16 @@ class AgoraRecordingService {
                 '📄 [FILES] File: $filename, trackType: $trackType, downloadUrl: $downloadUrl',
               );
 
-              // Construct Blackblaze B2 URL if no downloadUrl
+              // Use VideoUrlRetrieverService to generate working BlackBlaze B2 URL
               String? fileUrl = downloadUrl;
-              if (fileUrl == null || fileUrl.isEmpty) {
-                if (filename.isNotEmpty) {
-                  fileUrl = generateSignedUrl(filename);
-                  AppUtils.log('🔗 [FILES] Constructed B2 URL: $fileUrl');
-                }
+              if (filename.isNotEmpty) {
+                // Always try to get the best working URL using VideoUrlRetrieverService
+                fileUrl =
+                    await VideoUrlRetrieverService.generateWorkingBlackblazeUrl(
+                      filename,
+                      providedDownloadUrl: downloadUrl,
+                    );
+                AppUtils.log('🔗 [FILES] Generated working B2 URL: $fileUrl');
               }
 
               if (fileUrl != null && fileUrl.isNotEmpty) {

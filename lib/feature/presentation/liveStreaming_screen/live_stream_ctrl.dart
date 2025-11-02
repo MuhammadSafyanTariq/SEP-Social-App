@@ -593,7 +593,7 @@ class LiveStreamCtrl extends GetxController {
       }
 
       // Extract video URLs using AgoraRecordingService
-      final recordingFiles = AgoraRecordingService.extractRecordingFiles(
+      final recordingFiles = await AgoraRecordingService.extractRecordingFiles(
         stopResult,
         channelName,
       );

@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:sep/utils/appUtils.dart';
+import '../services/agora/video_url_retriever_service.dart';
 
 /// Utility class for downloading and saving videos to gallery
 class VideoDownloadUtils {
@@ -18,13 +19,48 @@ class VideoDownloadUtils {
       // Print the URL in green color to debug console
       _printVideoUrlInGreen(videoUrl);
 
+      // Get authenticated download URL using same approach as Cloudinary processing
+      AppUtils.log('🔑 Getting authenticated download URL...');
+      String finalVideoUrl = videoUrl;
+
+      // If this is a BlackBlaze B2 URL, get authenticated URL
+      if (videoUrl.contains('backblaze') || videoUrl.contains('s3.us-east')) {
+        // Extract filename from URL
+        final uri = Uri.parse(videoUrl);
+        final pathSegments = uri.pathSegments;
+        final fileName = pathSegments.isNotEmpty ? pathSegments.last : '';
+
+        if (fileName.isNotEmpty) {
+          AppUtils.log(
+            '🔑 Getting authenticated BlackBlaze B2 URL for: $fileName',
+          );
+          final authenticatedUrl =
+              await VideoUrlRetrieverService.getAuthenticatedDownloadUrl(
+                fileName,
+              );
+          if (authenticatedUrl != null) {
+            finalVideoUrl = authenticatedUrl;
+            AppUtils.log('✅ Using authenticated URL for download');
+          } else {
+            AppUtils.log(
+              '⚠️ Could not get authenticated URL, using original URL',
+            );
+          }
+        }
+      }
+
       // Test URL accessibility first to prevent 400 errors
       AppUtils.log('🧪 Testing video URL accessibility before download...');
-      final isAccessible = await testVideoUrlAccessibility(videoUrl);
+      final isAccessible = await _testVideoUrlAccessibilityWithAuth(
+        finalVideoUrl,
+      );
       if (!isAccessible) {
-        AppUtils.logEr('❌ Video URL is not accessible: $videoUrl');
+        AppUtils.logEr('❌ Video URL is not accessible: $finalVideoUrl');
         return false;
       }
+
+      // Update the video URL for actual download
+      videoUrl = finalVideoUrl;
 
       // Request permissions
       final permissionsGranted = await _requestPermissions();
@@ -39,9 +75,16 @@ class VideoDownloadUtils {
       AppUtils.log('🔄 Starting video download from: $videoUrl');
       AppUtils.log('💾 Saving as: $finalFileName');
 
-      // Download video data with timeout
+      // Download video data with timeout and authentication if available
+      final headers = <String, String>{};
+      final authToken = VideoUrlRetrieverService.lastAuthToken;
+      if (authToken != null && authToken.isNotEmpty) {
+        headers['Authorization'] = authToken;
+        AppUtils.log('🔑 Using authentication token for download');
+      }
+
       final response = await http
-          .get(Uri.parse(videoUrl))
+          .get(Uri.parse(videoUrl), headers: headers)
           .timeout(
             const Duration(minutes: 5),
             onTimeout: () {
@@ -339,5 +382,59 @@ class VideoDownloadUtils {
 
     AppUtils.logEr('❌ [TEST] No accessible URLs found');
     return null;
+  }
+
+  /// Test video URL accessibility with authentication (for BlackBlaze B2 URLs)
+  static Future<bool> _testVideoUrlAccessibilityWithAuth(String url) async {
+    try {
+      AppUtils.log(
+        '🧪 [AUTH_TEST] Testing authenticated URL accessibility: $url',
+      );
+
+      final uri = Uri.parse(url);
+      final client = http.Client();
+
+      // Get auth token from VideoUrlRetrieverService if available
+      final authToken = VideoUrlRetrieverService.lastAuthToken;
+
+      final headers = <String, String>{};
+      if (authToken != null && authToken.isNotEmpty) {
+        headers['Authorization'] = authToken;
+        AppUtils.log('🔑 [AUTH_TEST] Using authentication token for request');
+      }
+
+      // Make a HEAD request to check if the URL is accessible without downloading
+      final response = await client
+          .head(uri, headers: headers)
+          .timeout(
+            Duration(seconds: 10),
+            onTimeout: () {
+              AppUtils.logEr(
+                '🧪 [AUTH_TEST] Timeout testing authenticated URL: $url',
+              );
+              throw Exception('Request timeout');
+            },
+          );
+
+      AppUtils.log('🧪 [AUTH_TEST] Response status: ${response.statusCode}');
+      AppUtils.log('🧪 [AUTH_TEST] Response headers: ${response.headers}');
+
+      client.close();
+
+      if (response.statusCode == 200) {
+        AppUtils.log('✅ [AUTH_TEST] Authenticated URL is accessible: $url');
+        return true;
+      } else {
+        AppUtils.logEr(
+          '❌ [AUTH_TEST] Authenticated URL returned ${response.statusCode}: $url',
+        );
+        return false;
+      }
+    } catch (e) {
+      AppUtils.logEr(
+        '❌ [AUTH_TEST] Error testing authenticated URL accessibility: $e',
+      );
+      return false;
+    }
   }
 }
