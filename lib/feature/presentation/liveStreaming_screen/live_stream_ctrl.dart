@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:collection/collection.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -1311,8 +1313,21 @@ class LiveStreamCtrl extends GetxController {
       'Showing recorded videos dialog with ${videoUrls.length} URLs: $videoUrls',
     );
 
-    // Test alternative URL formats for debugging
-    await _testAlternativeUrlFormats(videoUrls);
+    // Download videos directly to gallery with permissions
+    AppUtils.log(
+      '🎥 [DOWNLOAD] Preparing to download ${videoUrls.length} videos...',
+    );
+
+    for (int i = 0; i < videoUrls.length; i++) {
+      final url = videoUrls[i];
+      AppUtils.log('🎥 [DOWNLOAD] Video ${i + 1}/${videoUrls.length}: $url');
+      await _downloadVideoWithPermissions(url);
+
+      // Small delay between downloads
+      if (i < videoUrls.length - 1) {
+        await Future.delayed(const Duration(milliseconds: 1000));
+      }
+    }
 
     // Print video URLs in green color for easy debugging
     VideoDownloadUtils.printVideoUrlsInGreen(videoUrls);
@@ -1358,70 +1373,117 @@ class LiveStreamCtrl extends GetxController {
     AppUtils.log('=== _showRecordedVideosDialog END ===');
   }
 
-  /// Test alternative URL formats for debugging Blackblaze B2 access
-  Future<void> _testAlternativeUrlFormats(List<String> videoUrls) async {
+  /// Request storage permissions and download video to gallery
+  Future<void> _downloadVideoWithPermissions(String videoUrl) async {
     try {
-      AppUtils.log(
-        '🧪 [TEST] Testing alternative URL formats for Blackblaze B2 access...',
+      AppUtils.log('📱 [DOWNLOAD] Requesting storage permissions...');
+
+      // Request storage permissions before download
+      await _requestStoragePermissions();
+
+      AppUtils.log('📥 [DOWNLOAD] Starting video download: $videoUrl');
+
+      // Generate a proper filename
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final fileName = 'SEP_LiveStream_$timestamp.mp4';
+
+      // Download video to gallery
+      final success = await VideoDownloadUtils.downloadVideoToGallery(
+        videoUrl,
+        fileName: fileName,
       );
 
-      for (int i = 0; i < videoUrls.length; i++) {
-        final url = videoUrls[i];
-        AppUtils.log('🧪 [TEST] Original URL $i: $url');
-
-        // Extract filename from the original URL
-        final uri = Uri.parse(url);
-        final pathSegments = uri.pathSegments;
-        if (pathSegments.isNotEmpty) {
-          final filename = pathSegments.last;
-          AppUtils.log('🧪 [TEST] Extracted filename: $filename');
-
-          // Generate alternative URLs using AgoraRecordingService method
-          final alternatives = AgoraRecordingService.generateAlternativeUrls(
-            filename,
-          );
-          AppUtils.log(
-            '🧪 [TEST] Generated ${alternatives.length} alternative URLs:',
-          );
-
-          for (int j = 0; j < alternatives.length; j++) {
-            AppUtils.log(
-              '🧪 [TEST] Alternative URL ${j + 1}: ${alternatives[j]}',
-            );
-          }
-
-          // Test the original URL first
-          final originalWorks =
-              await VideoDownloadUtils.testVideoUrlAccessibility(url);
-          AppUtils.log('🧪 [TEST] Original URL accessible: $originalWorks');
-
-          // Test each alternative URL
-          final allUrls = [url, ...alternatives];
-          final accessibleUrl = await VideoDownloadUtils.findAccessibleVideoUrl(
-            allUrls,
-          );
-
-          if (accessibleUrl != null) {
-            AppUtils.log('✅ [TEST] WORKING URL FOUND: $accessibleUrl');
-            // Update the video URL with the working one
-            videoUrls[i] = accessibleUrl;
-          } else {
-            AppUtils.logEr(
-              '❌ [TEST] No working URLs found for file: $filename',
-            );
-          }
-
-          // Log all URLs for manual testing
-          AppUtils.log('🧪 [TEST] === COPY THESE URLS TO TEST IN BROWSER ===');
-          AppUtils.log('🧪 [TEST] Original: $url');
-          for (int j = 0; j < alternatives.length; j++) {
-            AppUtils.log('🧪 [TEST] Alt ${j + 1}: ${alternatives[j]}');
-          }
-          AppUtils.log('🧪 [TEST] === END TEST URLS ===');
-        }
+      if (success) {
+        AppUtils.log('✅ [DOWNLOAD] Video saved to gallery successfully!');
+        // Show success message
+        AppUtils.toast("Video saved to gallery successfully!");
+      } else {
+        AppUtils.logEr('❌ [DOWNLOAD] Failed to save video to gallery');
+        AppUtils.toastError(
+          "Failed to save video to gallery. Please check permissions.",
+        );
       }
     } catch (e) {
-      AppUtils.logEr('❌ [TEST] Error testing alternative URL formats: $e');
+      AppUtils.logEr('❌ [DOWNLOAD] Error downloading video: $e');
+      AppUtils.toastError("Error downloading video: $e");
+    }
+  }
+
+  /// Request storage permissions for Android/iOS
+  Future<void> _requestStoragePermissions() async {
+    try {
+      AppUtils.log('🔐 [PERMISSIONS] Requesting storage permissions...');
+
+      if (Platform.isAndroid) {
+        // Get Android version for proper permission handling
+        final deviceInfo = DeviceInfoPlugin();
+        final androidInfo = await deviceInfo.androidInfo;
+        final androidVersion = androidInfo.version.sdkInt;
+
+        AppUtils.log('📱 [PERMISSIONS] Android API level: $androidVersion');
+
+        if (androidVersion >= 33) {
+          // Android 13+ (API 33+) uses granular media permissions
+          AppUtils.log(
+            '🔄 [PERMISSIONS] Requesting Android 13+ media permissions...',
+          );
+
+          final videoPermission = await Permission.videos.request();
+          final photoPermission = await Permission.photos.request();
+
+          AppUtils.log('📹 [PERMISSIONS] Video permission: $videoPermission');
+          AppUtils.log('🖼️ [PERMISSIONS] Photo permission: $photoPermission');
+
+          if (videoPermission.isDenied || photoPermission.isDenied) {
+            AppUtils.logEr('❌ [PERMISSIONS] Media permissions denied');
+            throw Exception('Storage permissions required to save video');
+          }
+        } else if (androidVersion >= 30) {
+          // Android 11-12 (API 30-32)
+          AppUtils.log(
+            '🔄 [PERMISSIONS] Requesting Android 11-12 storage permissions...',
+          );
+
+          final storageStatus = await Permission.storage.request();
+          AppUtils.log('📁 [PERMISSIONS] Storage permission: $storageStatus');
+
+          if (storageStatus.isDenied) {
+            AppUtils.logEr('❌ [PERMISSIONS] Storage permission denied');
+            throw Exception('Storage permission required to save video');
+          }
+        } else {
+          // Android 10 and below (API 29 and below)
+          AppUtils.log(
+            '🔄 [PERMISSIONS] Requesting legacy storage permissions...',
+          );
+
+          final storageStatus = await Permission.storage.request();
+          AppUtils.log('📁 [PERMISSIONS] Storage permission: $storageStatus');
+
+          if (storageStatus.isDenied) {
+            AppUtils.logEr('❌ [PERMISSIONS] Storage permission denied');
+            throw Exception('Storage permission required to save video');
+          }
+        }
+      } else if (Platform.isIOS) {
+        // iOS permissions
+        AppUtils.log(
+          '🔄 [PERMISSIONS] Requesting iOS photo library permissions...',
+        );
+
+        final status = await Permission.photos.request();
+        AppUtils.log('📸 [PERMISSIONS] iOS Photos permission: $status');
+
+        if (status.isDenied) {
+          AppUtils.logEr('❌ [PERMISSIONS] iOS Photos permission denied');
+          throw Exception('Photos permission required to save video');
+        }
+      }
+
+      AppUtils.log('✅ [PERMISSIONS] All required permissions granted!');
+    } catch (e) {
+      AppUtils.logEr('❌ [PERMISSIONS] Error requesting permissions: $e');
+      rethrow;
     }
   }
 
@@ -1771,42 +1833,95 @@ class _RecordedVideoDialog extends StatelessWidget {
 
   void _saveToGallery(BuildContext context) async {
     try {
+      AppUtils.log('🎬 [GALLERY] Starting gallery save process...');
+
       // Print all video URLs in green for debugging
       VideoDownloadUtils.printVideoUrlsInGreen(videoUrls);
 
-      // Show loading
+      // Show loading message
       AppUtils.toast(
         videoUrls.length > 1
             ? 'Downloading ${videoUrls.length} videos...'
             : 'Downloading video...',
       );
 
+      // Request storage permissions first
+      AppUtils.log('🔐 [GALLERY] Requesting storage permissions...');
+      await _requestStoragePermissions();
+
+      AppUtils.log(
+        '✅ [GALLERY] Storage permissions granted, starting downloads...',
+      );
+
       if (videoUrls.length == 1) {
-        // Download single video
+        // Download single video with proper filename
+        final timestamp = DateTime.now().millisecondsSinceEpoch;
+        final fileName = 'SEP_LiveStream_$timestamp.mp4';
+
         final success = await VideoDownloadUtils.downloadVideoToGallery(
           videoUrls.first,
+          fileName: fileName,
         );
 
         if (success) {
           AppUtils.toast('✅ Video saved to gallery!');
+          AppUtils.log('✅ [GALLERY] Single video download successful');
         } else {
           AppUtils.toastError('❌ Failed to save video to gallery');
+          AppUtils.logEr('❌ [GALLERY] Single video download failed');
           return;
         }
       } else {
         // Download multiple videos
-        final results =
-            await VideoDownloadUtils.downloadMultipleVideosToGallery(videoUrls);
-        final successCount = results.values.where((success) => success).length;
+        AppUtils.log('🎬 [GALLERY] Downloading ${videoUrls.length} videos...');
 
+        int successCount = 0;
+        for (int i = 0; i < videoUrls.length; i++) {
+          try {
+            final timestamp = DateTime.now().millisecondsSinceEpoch;
+            final fileName = 'SEP_LiveStream_${i + 1}_$timestamp.mp4';
+
+            AppUtils.log(
+              '📥 [GALLERY] Downloading video ${i + 1}/${videoUrls.length}...',
+            );
+
+            final success = await VideoDownloadUtils.downloadVideoToGallery(
+              videoUrls[i],
+              fileName: fileName,
+            );
+
+            if (success) {
+              successCount++;
+              AppUtils.log(
+                '✅ [GALLERY] Video ${i + 1} downloaded successfully',
+              );
+            } else {
+              AppUtils.logEr('❌ [GALLERY] Video ${i + 1} download failed');
+            }
+
+            // Small delay between downloads
+            if (i < videoUrls.length - 1) {
+              await Future.delayed(Duration(milliseconds: 1000));
+            }
+          } catch (e) {
+            AppUtils.logEr('❌ [GALLERY] Error downloading video ${i + 1}: $e');
+          }
+        }
+
+        // Show final result
         if (successCount == videoUrls.length) {
           AppUtils.toast('✅ All $successCount videos saved to gallery!');
+          AppUtils.log('✅ [GALLERY] All videos downloaded successfully');
         } else if (successCount > 0) {
           AppUtils.toast(
             '⚠️ $successCount/${videoUrls.length} videos saved to gallery',
           );
+          AppUtils.log(
+            '⚠️ [GALLERY] Partial success: $successCount/${videoUrls.length}',
+          );
         } else {
           AppUtils.toastError('❌ Failed to save videos to gallery');
+          AppUtils.logEr('❌ [GALLERY] All video downloads failed');
           return;
         }
       }
@@ -1823,7 +1938,85 @@ class _RecordedVideoDialog extends StatelessWidget {
       }
     } catch (e) {
       AppUtils.toastError('Failed to save video: $e');
-      AppUtils.logEr('Error in _saveToGallery: $e');
+      AppUtils.logEr('❌ [GALLERY] Error in _saveToGallery: $e');
+    }
+  }
+
+  /// Request storage permissions for Android/iOS
+  Future<void> _requestStoragePermissions() async {
+    try {
+      AppUtils.log('🔐 [PERMISSIONS] Requesting storage permissions...');
+
+      if (Platform.isAndroid) {
+        // Get Android version for proper permission handling
+        final deviceInfo = DeviceInfoPlugin();
+        final androidInfo = await deviceInfo.androidInfo;
+        final androidVersion = androidInfo.version.sdkInt;
+
+        AppUtils.log('📱 [PERMISSIONS] Android API level: $androidVersion');
+
+        if (androidVersion >= 33) {
+          // Android 13+ (API 33+) uses granular media permissions
+          AppUtils.log(
+            '🔄 [PERMISSIONS] Requesting Android 13+ media permissions...',
+          );
+
+          final videoPermission = await Permission.videos.request();
+          final photoPermission = await Permission.photos.request();
+
+          AppUtils.log('📹 [PERMISSIONS] Video permission: $videoPermission');
+          AppUtils.log('🖼️ [PERMISSIONS] Photo permission: $photoPermission');
+
+          if (videoPermission.isDenied || photoPermission.isDenied) {
+            AppUtils.logEr('❌ [PERMISSIONS] Media permissions denied');
+            throw Exception('Storage permissions required to save video');
+          }
+        } else if (androidVersion >= 30) {
+          // Android 11-12 (API 30-32)
+          AppUtils.log(
+            '🔄 [PERMISSIONS] Requesting Android 11-12 storage permissions...',
+          );
+
+          final storageStatus = await Permission.storage.request();
+          AppUtils.log('📁 [PERMISSIONS] Storage permission: $storageStatus');
+
+          if (storageStatus.isDenied) {
+            AppUtils.logEr('❌ [PERMISSIONS] Storage permission denied');
+            throw Exception('Storage permission required to save video');
+          }
+        } else {
+          // Android 10 and below (API 29 and below)
+          AppUtils.log(
+            '🔄 [PERMISSIONS] Requesting legacy storage permissions...',
+          );
+
+          final storageStatus = await Permission.storage.request();
+          AppUtils.log('📁 [PERMISSIONS] Storage permission: $storageStatus');
+
+          if (storageStatus.isDenied) {
+            AppUtils.logEr('❌ [PERMISSIONS] Storage permission denied');
+            throw Exception('Storage permission required to save video');
+          }
+        }
+      } else if (Platform.isIOS) {
+        // iOS permissions
+        AppUtils.log(
+          '🔄 [PERMISSIONS] Requesting iOS photo library permissions...',
+        );
+
+        final status = await Permission.photos.request();
+        AppUtils.log('📸 [PERMISSIONS] iOS Photos permission: $status');
+
+        if (status.isDenied) {
+          AppUtils.logEr('❌ [PERMISSIONS] iOS Photos permission denied');
+          throw Exception('Photos permission required to save video');
+        }
+      }
+
+      AppUtils.log('✅ [PERMISSIONS] All required permissions granted!');
+    } catch (e) {
+      AppUtils.logEr('❌ [PERMISSIONS] Error requesting permissions: $e');
+      rethrow;
     }
   }
 

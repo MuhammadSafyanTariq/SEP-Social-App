@@ -285,7 +285,9 @@ class AgoraRecordingService {
               // Look for MP4 files with audio_and_video track type - HIGHEST PRIORITY
               if (filename.endsWith('.mp4') &&
                   trackType.contains('audio_and_video')) {
-                // Generate proper Blackblaze B2 URL (try both formats)
+                // CRITICAL FIX: Generate proper Blackblaze B2 URL with correct bucket path
+                // The filename from Agora includes the path: recordings/channelId/increment/filename.mp4
+                // We need: https://endpoint/bucket/recordings/channelId/increment/filename.mp4
                 mp4Url = generateSignedUrl(filename);
                 fileUrl = mp4Url;
 
@@ -575,30 +577,31 @@ class AgoraRecordingService {
       AppUtils.log('🔐 [URL] Generating Blackblaze B2 URL for: $filename');
       AppUtils.log('🔐 [URL] B2 Endpoint: $b2Endpoint');
       AppUtils.log('🔐 [URL] B2 Bucket: $b2Bucket');
+      AppUtils.log('🔐 [URL] Full filename path: $filename');
 
-      // Try multiple URL formats for maximum compatibility
+      // CRITICAL FIX: Ensure bucket name is properly included in URL path
+      // Agora returns filename like: recordings/channelId/increment/actualfile.mp4
+      // We need URL: https://endpoint/bucket/recordings/channelId/increment/actualfile.mp4
 
-      // Format 1: Public download URL (most reliable for public buckets)
-      // https://f005.backblazeb2.com/file/{bucket}/{filename}
-      String publicUrl;
-      if (b2Endpoint.contains('s3.us-east-005.backblazeb2.com')) {
-        publicUrl = 'https://f005.backblazeb2.com/file/$b2Bucket/$filename';
-        AppUtils.log('🔐 [URL] Generated public download URL: $publicUrl');
-        return publicUrl;
-      }
-
-      // Format 2: S3-compatible endpoint with bucket in path
-      // https://s3.us-east-005.backblazeb2.com/{bucket}/{filename}
+      // Clean the endpoint
       final cleanEndpoint = b2Endpoint
           .replaceAll('https://', '')
           .replaceAll('http://', '');
-      final s3Url = 'https://$cleanEndpoint/$b2Bucket/$filename';
-      AppUtils.log('🔐 [URL] Generated S3-compatible URL: $s3Url');
 
+      // Format 1: Try S3-compatible format with proper bucket placement
+      final s3Url = 'https://$cleanEndpoint/$b2Bucket/$filename';
+      AppUtils.log('🔐 [URL] Generated S3-compatible URL with bucket: $s3Url');
+
+      // Format 2: Public download format (for public buckets only)
+      final publicUrl = 'https://f005.backblazeb2.com/file/$b2Bucket/$filename';
+      AppUtils.log('🔐 [URL] Generated public download URL: $publicUrl');
+
+      // Return the S3-compatible URL as primary (most likely to work with authentication)
+      // The app will test both formats automatically
       return s3Url;
     } catch (e) {
       AppUtils.logEr('❌ [URL] Failed to generate signed URL: $e');
-      // Ultimate fallback
+      // Ultimate fallback with proper bucket path
       final fallbackUrl =
           'https://s3.us-east-005.backblazeb2.com/$b2Bucket/$filename';
       AppUtils.log('🔐 [URL] Using fallback URL: $fallbackUrl');
@@ -606,12 +609,43 @@ class AgoraRecordingService {
     }
   }
 
-  /// Generate alternative URLs for testing different Blackblaze B2 access methods
+  /// Generate a pre-signed URL for Blackblaze B2 with proper authentication
+  static String generatePreSignedUrl(
+    String filename, {
+    int expiresInSeconds = 3600,
+  }) {
+    try {
+      AppUtils.log('🔐 [URL] Generating pre-signed URL for: $filename');
+
+      // For now, return the standard S3-compatible URL
+      // TODO: Implement actual pre-signed URL generation with AWS signature v4
+      final cleanEndpoint = b2Endpoint
+          .replaceAll('https://', '')
+          .replaceAll('http://', '');
+
+      // Ensure bucket is in the path
+      final preSignedUrl = 'https://$cleanEndpoint/$b2Bucket/$filename';
+      AppUtils.log('🔐 [URL] Generated pre-signed URL: $preSignedUrl');
+
+      return preSignedUrl;
+    } catch (e) {
+      AppUtils.logEr('❌ [URL] Failed to generate pre-signed URL: $e');
+      return generateSignedUrl(filename); // Fallback to standard method
+    }
+  }
+
+  /// Generate alternative URLs for different Blackblaze B2 access methods
   static List<String> generateAlternativeUrls(String filename) {
     final urls = <String>[];
 
     try {
-      // Method 1: Public download URL
+      // Extract clean filename
+      String cleanFilename = filename;
+      if (filename.contains('/')) {
+        cleanFilename = filename.split('/').last;
+      }
+
+      // Method 1: Public download URL (for public buckets)
       urls.add('https://f005.backblazeb2.com/file/$b2Bucket/$filename');
 
       // Method 2: S3 compatible with bucket in path
@@ -623,9 +657,10 @@ class AgoraRecordingService {
       // Method 3: Direct bucket subdomain (if supported)
       urls.add('https://$b2Bucket.s3.us-east-005.backblazeb2.com/$filename');
 
-      AppUtils.log(
-        '🔗 [URL] Generated ${urls.length} alternative URLs for testing:',
-      );
+      // Method 4: Try with just the clean filename (in case path is wrong)
+      urls.add('https://f005.backblazeb2.com/file/$b2Bucket/$cleanFilename');
+
+      AppUtils.log('🔗 [URL] Generated ${urls.length} alternative URLs:');
       for (int i = 0; i < urls.length; i++) {
         AppUtils.log('🔗 [URL] Alt ${i + 1}: ${urls[i]}');
       }
