@@ -19,7 +19,10 @@ class VideoDownloadUtils {
       _printVideoUrlInGreen(videoUrl);
 
       // Request permissions
-      await _requestPermissions();
+      final permissionsGranted = await _requestPermissions();
+      if (!permissionsGranted) {
+        throw Exception('Storage permissions are required to save videos');
+      }
 
       // Generate filename if not provided
       final timestamp = DateTime.now().millisecondsSinceEpoch;
@@ -156,7 +159,7 @@ class VideoDownloadUtils {
   }
 
   /// Request necessary permissions for saving to gallery
-  static Future<void> _requestPermissions() async {
+  static Future<bool> _requestPermissions() async {
     try {
       AppUtils.log('🔐 Requesting gallery permissions...');
 
@@ -177,6 +180,15 @@ class VideoDownloadUtils {
 
           if (videoPermission.isDenied && photoPermission.isDenied) {
             AppUtils.logEr('❌ Media permissions denied');
+            throw Exception(
+              'Storage permissions denied. Please grant video and photo permissions in Settings.',
+            );
+          } else if (videoPermission.isPermanentlyDenied ||
+              photoPermission.isPermanentlyDenied) {
+            AppUtils.logEr('❌ Media permissions permanently denied');
+            throw Exception(
+              'Storage permissions permanently denied. Please enable them in Settings.',
+            );
           } else {
             AppUtils.log('✅ Media permissions granted');
           }
@@ -190,12 +202,36 @@ class VideoDownloadUtils {
 
           AppUtils.log('📁 Storage permission: $storageStatus');
           AppUtils.log('🗂️ Manage storage permission: $manageStorageStatus');
+
+          if (storageStatus.isDenied) {
+            AppUtils.logEr('❌ Storage permission denied');
+            throw Exception(
+              'Storage permission denied. Please grant storage access in Settings.',
+            );
+          } else if (storageStatus.isPermanentlyDenied) {
+            AppUtils.logEr('❌ Storage permission permanently denied');
+            throw Exception(
+              'Storage permission permanently denied. Please enable it in Settings.',
+            );
+          }
         } else {
           // Android 10 and below (API 29 and below)
           AppUtils.log('🔄 Requesting legacy storage permissions...');
 
           final storageStatus = await Permission.storage.request();
           AppUtils.log('📁 Storage permission: $storageStatus');
+
+          if (storageStatus.isDenied) {
+            AppUtils.logEr('❌ Storage permission denied');
+            throw Exception(
+              'Storage permission denied. Please grant storage access in Settings.',
+            );
+          } else if (storageStatus.isPermanentlyDenied) {
+            AppUtils.logEr('❌ Storage permission permanently denied');
+            throw Exception(
+              'Storage permission permanently denied. Please enable it in Settings.',
+            );
+          }
         }
       } else if (Platform.isIOS) {
         // iOS permissions
@@ -206,12 +242,23 @@ class VideoDownloadUtils {
 
         if (status.isDenied) {
           AppUtils.logEr('❌ iOS Photos permission denied');
+          throw Exception(
+            'Photo library access denied. Please grant access in Settings.',
+          );
+        } else if (status.isPermanentlyDenied) {
+          AppUtils.logEr('❌ iOS Photos permission permanently denied');
+          throw Exception(
+            'Photo library access permanently denied. Please enable it in Settings.',
+          );
         } else {
           AppUtils.log('✅ iOS Photos permission granted');
         }
       }
+
+      return true; // Permissions granted successfully
     } catch (e) {
       AppUtils.logEr('❌ Error requesting permissions: $e');
+      return false; // Permissions failed
     }
   }
 

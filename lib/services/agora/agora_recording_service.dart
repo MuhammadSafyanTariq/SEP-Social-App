@@ -579,31 +579,30 @@ class AgoraRecordingService {
       AppUtils.log('🔐 [URL] B2 Bucket: $b2Bucket');
       AppUtils.log('🔐 [URL] Full filename path: $filename');
 
-      // CRITICAL FIX: Ensure bucket name is properly included in URL path
+      // CRITICAL FIX: Follow the working pattern - use public download format as PRIMARY
       // Agora returns filename like: recordings/channelId/increment/actualfile.mp4
-      // We need URL: https://endpoint/bucket/recordings/channelId/increment/actualfile.mp4
+      // We need URL: https://f005.backblazeb2.com/file/bucket/recordings/channelId/increment/actualfile.mp4
 
-      // Clean the endpoint
+      // Format 1: Public download format (MOST COMPATIBLE - use as primary)
+      final publicUrl = 'https://f005.backblazeb2.com/file/$b2Bucket/$filename';
+      AppUtils.log(
+        '🔐 [URL] Generated public download URL (PRIMARY): $publicUrl',
+      );
+
+      // Format 2: S3-compatible format with proper bucket placement
       final cleanEndpoint = b2Endpoint
           .replaceAll('https://', '')
           .replaceAll('http://', '');
-
-      // Format 1: Try S3-compatible format with proper bucket placement
       final s3Url = 'https://$cleanEndpoint/$b2Bucket/$filename';
       AppUtils.log('🔐 [URL] Generated S3-compatible URL with bucket: $s3Url');
 
-      // Format 2: Public download format (for public buckets only)
-      final publicUrl = 'https://f005.backblazeb2.com/file/$b2Bucket/$filename';
-      AppUtils.log('🔐 [URL] Generated public download URL: $publicUrl');
-
-      // Return the S3-compatible URL as primary (most likely to work with authentication)
-      // The app will test both formats automatically
-      return s3Url;
+      // Return the public URL as primary (matches working pattern)
+      return publicUrl;
     } catch (e) {
       AppUtils.logEr('❌ [URL] Failed to generate signed URL: $e');
-      // Ultimate fallback with proper bucket path
+      // Ultimate fallback with public format including bucket path
       final fallbackUrl =
-          'https://s3.us-east-005.backblazeb2.com/$b2Bucket/$filename';
+          'https://f005.backblazeb2.com/file/$b2Bucket/$filename';
       AppUtils.log('🔐 [URL] Using fallback URL: $fallbackUrl');
       return fallbackUrl;
     }
@@ -645,20 +644,23 @@ class AgoraRecordingService {
         cleanFilename = filename.split('/').last;
       }
 
-      // Method 1: Public download URL (for public buckets)
+      // Method 1: Public download URL with full path (MOST COMPATIBLE)
       urls.add('https://f005.backblazeb2.com/file/$b2Bucket/$filename');
 
-      // Method 2: S3 compatible with bucket in path
+      // Method 2: Public download URL with clean filename only
+      urls.add('https://f005.backblazeb2.com/file/$b2Bucket/$cleanFilename');
+
+      // Method 3: S3 compatible with bucket in path
       final cleanEndpoint = b2Endpoint
           .replaceAll('https://', '')
           .replaceAll('http://', '');
       urls.add('https://$cleanEndpoint/$b2Bucket/$filename');
 
-      // Method 3: Direct bucket subdomain (if supported)
+      // Method 4: Direct bucket subdomain (if supported)
       urls.add('https://$b2Bucket.s3.us-east-005.backblazeb2.com/$filename');
 
-      // Method 4: Try with just the clean filename (in case path is wrong)
-      urls.add('https://f005.backblazeb2.com/file/$b2Bucket/$cleanFilename');
+      // Method 5: Alternative S3 format without bucket in path (likely wrong but test anyway)
+      urls.add('https://$cleanEndpoint/$filename');
 
       AppUtils.log('🔗 [URL] Generated ${urls.length} alternative URLs:');
       for (int i = 0; i < urls.length; i++) {
