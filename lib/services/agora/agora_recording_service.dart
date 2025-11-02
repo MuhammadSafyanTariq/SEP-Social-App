@@ -14,9 +14,9 @@ class AgoraRecordingService {
 
   // Blackblaze B2 credentials from environment
   static String get b2KeyId =>
-      dotenv.env['BACKBLAZE_KEY_ID'] ?? '005ac5db476e4ed0000000001';
+      dotenv.env['BACKBLAZE_KEY_ID'] ?? '005ac5db476e4ed0000000002';
   static String get b2AppKey =>
-      dotenv.env['BACKBLAZE_APP_KEY'] ?? 'K005X7NwZPbaIlsoh2MKWs3bqIFM17E';
+      dotenv.env['BACKBLAZE_APP_KEY'] ?? 'K005Www7q44bx4YO0XJCfXmre04Dx/M';
   static String get b2Bucket =>
       dotenv.env['BACKBLAZE_BUCKET_NAME'] ?? 'sep-recordings';
   static String get b2Endpoint =>

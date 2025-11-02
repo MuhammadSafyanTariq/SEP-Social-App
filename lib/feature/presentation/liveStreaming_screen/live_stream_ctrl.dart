@@ -13,6 +13,7 @@ import 'package:sep/main.dart';
 import 'package:sep/utils/appUtils.dart';
 import 'package:sep/utils/extensions/contextExtensions.dart';
 import 'package:sep/utils/extensions/extensions.dart';
+import 'package:sep/utils/video_download_utils.dart';
 
 import '../../../services/networking/urls.dart';
 import '../../../services/storage/preferences.dart';
@@ -771,6 +772,9 @@ class LiveStreamCtrl extends GetxController {
             AppUtils.log(
               '🎬 ✅ Using SINGLE video for sharing: $primaryVideoUrl',
             );
+            
+            // Print URL in green color for easy visibility
+            VideoDownloadUtils.printVideoUrlsInGreen([primaryVideoUrl]);
           }
         }
       }
@@ -1306,6 +1310,9 @@ class LiveStreamCtrl extends GetxController {
     AppUtils.log(
       'Showing recorded videos dialog with ${videoUrls.length} URLs: $videoUrls',
     );
+    
+    // Print video URLs in green color for easy debugging
+    VideoDownloadUtils.printVideoUrlsInGreen(videoUrls);
 
     // Prevent showing dialog if already open
     if (Get.isDialogOpen == true) {
@@ -1694,6 +1701,9 @@ class _RecordedVideoDialog extends StatelessWidget {
 
   void _saveToGallery(BuildContext context) async {
     try {
+      // Print all video URLs in green for debugging
+      VideoDownloadUtils.printVideoUrlsInGreen(videoUrls);
+      
       // Show loading
       AppUtils.toast(
         videoUrls.length > 1
@@ -1701,19 +1711,31 @@ class _RecordedVideoDialog extends StatelessWidget {
             : 'Downloading video...',
       );
 
-      // TODO: Implement download logic for all videos in the array
-      // This would typically involve:
-      // 1. Loop through videoUrls array
-      // 2. Download each video from the URL
-      // 3. Save to device gallery using image_gallery_saver or similar package
-
-      await Future.delayed(Duration(seconds: 1)); // Simulate download
-
-      AppUtils.toast(
-        videoUrls.length > 1
-            ? '${videoUrls.length} videos saved to gallery!'
-            : 'Video saved to gallery!',
-      );
+      if (videoUrls.length == 1) {
+        // Download single video
+        final success = await VideoDownloadUtils.downloadVideoToGallery(videoUrls.first);
+        
+        if (success) {
+          AppUtils.toast('✅ Video saved to gallery!');
+        } else {
+          AppUtils.toastError('❌ Failed to save video to gallery');
+          return;
+        }
+      } else {
+        // Download multiple videos
+        final results = await VideoDownloadUtils.downloadMultipleVideosToGallery(videoUrls);
+        final successCount = results.values.where((success) => success).length;
+        
+        if (successCount == videoUrls.length) {
+          AppUtils.toast('✅ All $successCount videos saved to gallery!');
+        } else if (successCount > 0) {
+          AppUtils.toast('⚠️ $successCount/${videoUrls.length} videos saved to gallery');
+        } else {
+          AppUtils.toastError('❌ Failed to save videos to gallery');
+          return;
+        }
+      }
+      
       onClose?.call();
 
       // Close dialog safely
@@ -1726,6 +1748,7 @@ class _RecordedVideoDialog extends StatelessWidget {
       }
     } catch (e) {
       AppUtils.toastError('Failed to save video: $e');
+      AppUtils.logEr('Error in _saveToGallery: $e');
     }
   }
 
