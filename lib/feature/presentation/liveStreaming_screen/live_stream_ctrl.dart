@@ -217,6 +217,12 @@ class LiveStreamCtrl extends GetxController {
   // Array to store all recorded video URLs in the session
   final RxList<String> recordedVideoUrls = RxList<String>([]);
 
+  // Flag to prevent showing dialog multiple times
+  bool _hasShownRecordingDialog = false;
+
+  // Flag to track if recording was ever started in this session
+  bool _recordingWasStarted = false;
+
   ///---------------------------------------------------------------------------
   /// Recording getters
   bool get canRecord => isHost; // Only host can record
@@ -530,6 +536,9 @@ class LiveStreamCtrl extends GetxController {
       _recordingSid = workflowResult['sid'];
       _recordingStartTime = DateTime.now();
 
+      // Set flag that recording was started in this session
+      _recordingWasStarted = true;
+
       // Start duration timer
       _startRecordingDurationTimer();
 
@@ -690,11 +699,29 @@ class LiveStreamCtrl extends GetxController {
     String channelName, {
     bool isHost = false,
   }) async {
-    streamCtrl.value = StreamControlsModel(
-      clientRole: role,
-      channelId: channelName,
+    print(
+      'LiveStreamCtrl: Starting initBroadCast - role: ${role.name}, channel: $channelName, isHost: $isHost',
     );
-    await _registerEngine();
+
+    try {
+      // Reset dialog and recording flags for new session
+      _hasShownRecordingDialog = false;
+      _recordingWasStarted = false;
+      print('LiveStreamCtrl: Reset dialog flags');
+
+      streamCtrl.value = StreamControlsModel(
+        clientRole: role,
+        channelId: channelName,
+      );
+      print('LiveStreamCtrl: Set stream control model');
+
+      print('LiveStreamCtrl: Calling _registerEngine...');
+      await _registerEngine();
+      print('LiveStreamCtrl: _registerEngine completed successfully');
+    } catch (e) {
+      print('LiveStreamCtrl: Error in initBroadCast: $e');
+      rethrow;
+    }
   }
 
   void sendGiftToken(
@@ -983,6 +1010,12 @@ class LiveStreamCtrl extends GetxController {
   Future<void> endStream() async {
     AppUtils.log('=== START endStream() ===');
 
+    // Prevent showing dialog multiple times
+    if (_hasShownRecordingDialog) {
+      AppUtils.log('Recording dialog already shown, skipping...');
+      return;
+    }
+
     // Store video URL and host status before cleanup
     final videoUrl = recordedVideoUrl;
     final wasHost = isHost;
@@ -993,6 +1026,7 @@ class LiveStreamCtrl extends GetxController {
     );
     AppUtils.log('Total recordings in array: ${recordedVideoUrls.length}');
     AppUtils.log('isRecording.value: ${isRecording.value}');
+    AppUtils.log('Recording was started in session: $_recordingWasStarted');
 
     try {
       // Stop recording if active
@@ -1020,27 +1054,33 @@ class LiveStreamCtrl extends GetxController {
     _updateBroadcasterCount();
     AgoraChatCtrl.find.leaveAudienceLiveCamera(LiveRequestStatus.leave);
 
-    // Show recorded video dialog if there are recordings and user was host
+    // Show recorded video dialog only if recording was started and user was host
     final hasRecordings = recordedVideoUrls.isNotEmpty;
 
     AppUtils.log(
       'Final check - Has recordings in array: $hasRecordings, Was host: $wasHost, Total videos: ${recordedVideoUrls.length}',
     );
-    AppUtils.log('Will show dialog? ${hasRecordings && wasHost}');
+    AppUtils.log('Recording was started: $_recordingWasStarted');
+    AppUtils.log(
+      'Will show dialog? ${hasRecordings && wasHost && _recordingWasStarted}',
+    );
 
-    if (hasRecordings && wasHost) {
+    // Only show dialog if recording was actually started in this session
+    if (hasRecordings && wasHost && _recordingWasStarted) {
       AppUtils.log('Calling _showRecordedVideosDialog...');
+      _hasShownRecordingDialog = true; // Set flag to prevent duplicate
       // Wait for dialog to be dismissed before continuing
       await _showRecordedVideosDialog(recordedVideoUrls.toList());
       AppUtils.log('Dialog dismissed, endStream completing');
-    } else if (wasHost && !hasRecordings) {
-      // Host stopped recording but file URL not yet available
+    } else if (wasHost && !hasRecordings && _recordingWasStarted) {
+      // Host started recording but file URL not yet available
       AppUtils.log('Host ended stream but no recordings available yet');
       AppUtils.log('Showing processing dialog instead...');
+      _hasShownRecordingDialog = true; // Set flag to prevent duplicate
       await _showRecordingProcessingDialog();
     } else {
       AppUtils.log(
-        'NOT showing dialog - hasRecordings: $hasRecordings, wasHost: $wasHost',
+        'NOT showing dialog - hasRecordings: $hasRecordings, wasHost: $wasHost, recordingStarted: $_recordingWasStarted',
       );
     }
 

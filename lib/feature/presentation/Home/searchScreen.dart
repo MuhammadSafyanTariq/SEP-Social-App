@@ -5,13 +5,10 @@ import 'package:sep/components/styles/textStyles.dart';
 import 'package:sep/services/networking/urls.dart';
 import 'package:sep/services/storage/preferences.dart';
 import 'package:sep/utils/appUtils.dart';
-import 'package:sep/utils/extensions/contextExtensions.dart';
 import 'package:sep/utils/extensions/extensions.dart';
 import 'package:sep/utils/extensions/size.dart';
 import 'package:sep/utils/extensions/textStyle.dart';
 import 'package:sep/utils/extensions/widget.dart';
-
-import '../../../components/coreComponents/AppButton.dart';
 import '../../../components/coreComponents/appBar2.dart';
 import '../../../components/coreComponents/EditText.dart';
 import '../../../components/coreComponents/ImageView.dart';
@@ -54,14 +51,14 @@ class _SearchState extends State<Search> {
       _lastSearchQuery = searchText;
       _currentPage = 1;
       _hasMoreData = true;
-      _authCtrl.searchUserInProfile(searchText, page: 1, limit: 10);
+      _authCtrl.searchUserInProfile(searchText, page: 1, limit: 20);
     }, time: const Duration(milliseconds: 500));
 
     _searchController.addListener(() {
       _debounce.value = _searchController.text;
     });
 
-    _authCtrl.searchUserInProfile('', page: 1, limit: 10);
+    _authCtrl.searchUserInProfile('', page: 1, limit: 20);
   }
 
   Future<void> _loadMoreUsers() async {
@@ -78,7 +75,7 @@ class _SearchState extends State<Search> {
     await _authCtrl.searchUserInProfile(
       _lastSearchQuery,
       page: _currentPage,
-      limit: 10,
+      limit: 20,
     );
 
     final newLength = _authCtrl.searchedUsers.length;
@@ -97,7 +94,7 @@ class _SearchState extends State<Search> {
   Future<void> _refreshUsers() async {
     _currentPage = 1;
     _hasMoreData = true;
-    await _authCtrl.searchUserInProfile(_lastSearchQuery, page: 1, limit: 10);
+    await _authCtrl.searchUserInProfile(_lastSearchQuery, page: 1, limit: 20);
     _refreshController.refreshCompleted();
   }
 

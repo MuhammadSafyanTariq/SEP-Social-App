@@ -14,6 +14,8 @@ import 'package:sep/components/styles/appImages.dart';
 import 'package:sep/feature/data/models/dataModels/post_data.dart';
 import 'package:sep/feature/presentation/liveStreaming_screen/broad_cast_video.dart';
 import 'package:sep/feature/presentation/liveStreaming_screen/live_stream_ctrl.dart';
+import 'package:sep/feature/presentation/liveStreaming_screen/helper/topic_dialog.dart';
+import 'package:sep/feature/presentation/controller/agora_chat_ctrl.dart';
 import 'package:sep/utils/extensions/contextExtensions.dart';
 import 'package:sep/utils/extensions/extensions.dart';
 
@@ -27,6 +29,7 @@ import '../controller/auth_Controller/profileCtrl.dart';
 import '../screens/post_browsing_listing.dart';
 import 'followers.dart';
 import 'setting/following.dart';
+import 'setting/editProfile.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -377,6 +380,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                 buttonColor: AppColors.btnColor,
                 onTap: () {
                   // Navigate to edit profile
+                  context.pushNavigator(EditProfile());
                 },
               ),
             ),
@@ -391,8 +395,11 @@ class _ProfileScreenState extends State<ProfileScreen>
               child: InkWell(
                 borderRadius: BorderRadius.circular(20),
                 onTap: () async {
+                  print('Live button clicked - starting flow...');
+
                   // Check permissions before starting live stream
                   final hasPermissions = await StreamUtils.checkPermission();
+                  print('Permissions check result: $hasPermissions');
 
                   if (!hasPermissions) {
                     // Show error message if permissions not granted
@@ -402,20 +409,32 @@ class _ProfileScreenState extends State<ProfileScreen>
                     return;
                   }
 
-                  if (Platform.isIOS && kDebugMode) {
+                  try {
+                    print('Showing topic dialog...');
+                    final topic = await LiveStreamTopicDialog.show(context);
+                    print('Topic dialog result: $topic');
+
+                    // If user cancels (topic is null), don't proceed
+                    if (topic == null) {
+                      print('User cancelled topic dialog');
+                      return;
+                    }
+
+                    // Store the topic in controller
+                    AgoraChatCtrl.find.liveStreamTopic.value = topic;
+                    print('Topic stored: $topic');
+
+                    print('Navigating to BroadCastVideo...');
                     context.pushNavigator(
                       BroadCastVideo(
                         clientRole: ClientRoleType.clientRoleBroadcaster,
                         isHost: true,
                       ),
                     );
-                  } else {
-                    context.pushNavigator(
-                      BroadCastVideo(
-                        clientRole: ClientRoleType.clientRoleBroadcaster,
-                        isHost: true,
-                      ),
-                    );
+                    print('Navigation completed');
+                  } catch (e) {
+                    print('Error in live stream flow: $e');
+                    AppUtils.toastError('Failed to start live stream: $e');
                   }
                 },
                 child: Icon(

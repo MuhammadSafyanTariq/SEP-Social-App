@@ -58,6 +58,9 @@ class AgoraChatCtrl extends GetxController {
 
   RxList<LiveStreamMessageModel> chatList = RxList();
 
+  // Temporary field for live stream topic
+  RxString liveStreamTopic = RxString('');
+
   ClientRoleType? get role => LiveStreamCtrl.find.streamCtrl.value.clientRole;
 
   final AgoraChatRepo _repo = IAgoraChatRepo(SocketHelper(connectUrl: baseUrl));
@@ -521,6 +524,7 @@ class AgoraChatCtrl extends GetxController {
     }
     hostGiftAmountTotal.value = 0;
     chatList.clear();
+    liveStreamTopic.value = ''; // Clear topic when leaving room
     _repo.leave();
     _repo.removeListenersOnLeaveLiveStream();
     _incomingLiveRequestToHostController.close();

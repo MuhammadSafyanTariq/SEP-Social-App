@@ -278,14 +278,18 @@ class _PollCardState extends State<PollCard> {
                           maintainSize: true,
                           maintainAnimation: true,
                           maintainState: true,
-                          child: ImageView(
-                            url: AppImages.poll,
-                            tintColor: AppColors.greynew,
-                            size: 30,
-                            margin: const EdgeInsets.only(left: 5, right: 20),
+                          child: GestureDetector(
                             onTap: () {
                               context.pushNavigator(ShowPollScreen());
                             },
+                            child: Container(
+                              margin: const EdgeInsets.only(left: 5, right: 20),
+                              child: Icon(
+                                Icons.poll,
+                                color: AppColors.greynew,
+                                size: 30,
+                              ),
+                            ),
                           ),
                         ),
                       ],
@@ -351,16 +355,20 @@ class _PollCardState extends State<PollCard> {
                                     ),
                                     Visibility(
                                       visible: widget.showPollButton,
-                                      child: ImageView(
-                                        url: AppImages.poll,
-                                        tintColor: AppColors.greynew,
-                                        size: 25,
-                                        margin: 10.right,
+                                      child: GestureDetector(
                                         onTap: () {
                                           context.pushNavigator(
                                             ShowPollScreen(),
                                           );
                                         },
+                                        child: Container(
+                                          margin: 10.right,
+                                          child: Icon(
+                                            Icons.poll_outlined,
+                                            color: AppColors.greynew,
+                                            size: 25,
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -405,10 +413,10 @@ class _PollCardState extends State<PollCard> {
                                                   padding: const EdgeInsets.all(
                                                     3.5,
                                                   ),
-                                                  child: ImageView(
-                                                    url: AppImages.poll,
+                                                  child: Icon(
+                                                    Icons.poll,
                                                     size: 15,
-                                                    tintColor:
+                                                    color:
                                                         AppColors.primaryColor,
                                                   ),
                                                 ),
@@ -423,16 +431,20 @@ class _PollCardState extends State<PollCard> {
                                         ),
                                         Visibility(
                                           visible: widget.showPollButton,
-                                          child: ImageView(
-                                            url: AppImages.poll,
-                                            tintColor: AppColors.greynew,
-                                            size: 25,
-                                            margin: 15.right,
+                                          child: GestureDetector(
                                             onTap: () {
                                               context.pushNavigator(
                                                 ShowPollScreen(),
                                               );
                                             },
+                                            child: Container(
+                                              margin: 15.right,
+                                              child: Icon(
+                                                Icons.poll,
+                                                color: AppColors.greynew,
+                                                size: 25,
+                                              ),
+                                            ),
                                           ),
                                         ),
                                       ],

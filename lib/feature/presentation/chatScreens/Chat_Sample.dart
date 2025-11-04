@@ -287,68 +287,193 @@ class ChatSampleState extends State<ChatSample> {
                 }
               : null,
           child: Container(
-            width: MediaQuery.of(context).size.width * 0.7,
+            width: MediaQuery.of(context).size.width * 0.85,
             margin: EdgeInsets.only(
               left: isSentByUser ? 0 : 10.0,
               right: isSentByUser ? 10.0 : 0,
             ),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.greynew, width: 2),
+              borderRadius: BorderRadius.circular(16),
+              gradient: LinearGradient(
+                colors: isActive
+                    ? [Colors.red.shade400, Colors.red.shade600]
+                    : [Colors.grey.shade400, Colors.grey.shade600],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: (isActive ? Colors.red : Colors.grey).withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: Offset(0, 4),
+                ),
+              ],
             ),
             clipBehavior: Clip.hardEdge,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Stack(
               children: [
-                Container(
-                  decoration: BoxDecoration(
-                    color: (isActive ? AppColors.primaryBlue : AppColors.red)
-                        .withValues(alpha: 0.7),
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(10.0),
-                      topRight: Radius.circular(10.0),
-                    ),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: TextView(
-                                text: 'Live Video Stream',
-                                style: 20.txtBoldWhite,
-                              ),
-                            ),
-                            ImageView(
-                              url: AppImages.getLiveBtn,
-                              size: 50,
-                              tintColor: AppColors.white,
-                            ),
-                          ],
-                        ),
-                        TextView(
-                          text: isSentByUser
-                              ? 'You invited ${peerUser?.name ?? ''} to your live video stream'
-                              : '${peerUser?.name ?? ''} invited you to join the live video stream',
-                          margin: EdgeInsets.only(top: 20),
-                        ),
-                      ],
+                // Background pattern
+                Positioned.fill(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.white.withOpacity(0.1),
+                          Colors.transparent,
+                          Colors.black.withOpacity(0.1),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
                     ),
                   ),
                 ),
-                Visibility(
-                  visible: !isSentByUser,
-                  child: TextView(
-                    margin: EdgeInsets.all(10),
-                    text: isActive
-                        ? 'Join Video Stream'
-                        : 'Video stream session expired',
-                    style: 14.txtMediumPrimary,
-                  ),
+
+                // Main content
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Header with live indicator
+                          Row(
+                            children: [
+                              Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (isActive) ...[
+                                      Container(
+                                        width: 8,
+                                        height: 8,
+                                        decoration: BoxDecoration(
+                                          color: Colors.red,
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                      SizedBox(width: 6),
+                                    ],
+                                    Text(
+                                      isActive ? 'LIVE' : 'ENDED',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: isActive
+                                            ? Colors.red
+                                            : Colors.grey.shade600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Spacer(),
+                              Container(
+                                padding: EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(
+                                  Icons.videocam,
+                                  color: Colors.white,
+                                  size: 24,
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          SizedBox(height: 16),
+
+                          // Title
+                          Text(
+                            'Live Video Stream',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              shadows: [
+                                Shadow(
+                                  color: Colors.black26,
+                                  offset: Offset(1, 1),
+                                  blurRadius: 2,
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          SizedBox(height: 8),
+
+                          // Description
+                          Text(
+                            isSentByUser
+                                ? 'You invited ${peerUser?.name ?? 'someone'} to your live video stream'
+                                : '${peerUser?.name ?? 'Someone'} invited you to join the live video stream',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.white.withOpacity(0.95),
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Action button for non-sender
+                    if (!isSentByUser)
+                      Container(
+                        width: double.infinity,
+                        margin: EdgeInsets.fromLTRB(16, 0, 16, 16),
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: isActive
+                              ? Colors.white
+                              : Colors.white.withOpacity(0.3),
+                          borderRadius: BorderRadius.circular(24),
+                          border: !isActive
+                              ? Border.all(
+                                  color: Colors.white.withOpacity(0.5),
+                                  width: 1,
+                                )
+                              : null,
+                        ),
+                        child: Center(
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                isActive ? Icons.videocam : Icons.videocam_off,
+                                color: isActive
+                                    ? Colors.red.shade600
+                                    : Colors.white.withOpacity(0.8),
+                                size: 20,
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                isActive ? 'Join Live Stream' : 'Stream Ended',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: isActive
+                                      ? Colors.red.shade600
+                                      : Colors.white.withOpacity(0.8),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ],
             ),

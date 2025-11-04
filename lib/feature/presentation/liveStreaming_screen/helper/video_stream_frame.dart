@@ -223,7 +223,7 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
           _leftActionButtonsForHost(),
         ],
       ),
-   
+
       floatingActionButtonLocation: FloatingActionButtonLocation.miniEndTop,
     );
   }
@@ -328,9 +328,24 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
           ),
           Expanded(
             child: Obx(
-              () => TextView(
-                text: hostName,
-                style: 18.txtSBoldBlack.withShadow(AppColors.grey),
+              () => Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextView(
+                    text: hostName,
+                    style: 18.txtSBoldBlack.withShadow(AppColors.grey),
+                  ),
+                  // Show topic if available
+                  if (chatCtrl.liveStreamTopic.value.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: TextView(
+                        text: "📺 ${chatCtrl.liveStreamTopic.value}",
+                        style: 12.txtRegularGrey.withShadow(AppColors.grey),
+                      ),
+                    ),
+                ],
               ),
             ),
           ),

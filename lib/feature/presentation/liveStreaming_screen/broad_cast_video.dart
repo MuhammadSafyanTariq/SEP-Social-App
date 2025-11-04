@@ -37,24 +37,37 @@ class _BroadCastVideoState extends State<BroadCastVideo> {
   }
 
   Future<void> _initializeBroadcast() async {
-    WakelockPlus.enable();
-    AgoraChatCtrl.find.chatConnection = false;
+    print('BroadCastVideo: Starting _initializeBroadcast');
 
-    // Wait for engine initialization to complete
-    await ctrl.initBroadCast(
-      widget.clientRole,
-      widget.hostId ?? Preferences.uid ?? '',
-      isHost: widget.isHost,
-    );
+    try {
+      WakelockPlus.enable();
+      AgoraChatCtrl.find.chatConnection = false;
 
-    setState(() {
-      _isInitializing = false;
-    });
+      print('BroadCastVideo: Calling ctrl.initBroadCast...');
+      // Wait for engine initialization to complete
+      await ctrl.initBroadCast(
+        widget.clientRole,
+        widget.hostId ?? Preferences.uid ?? '',
+        isHost: widget.isHost,
+      );
+      print('BroadCastVideo: initBroadCast completed');
 
-    // if(widget.clientRole == ClientRoleType.clientRoleAudience || (widget.hostId ?? '') == Preferences.uid ){
-    if (!widget.isHost) {
-      AppUtils.log('testing step 1111   ${widget.isHost}');
-      _createChatConnection();
+      setState(() {
+        _isInitializing = false;
+      });
+      print('BroadCastVideo: Set _isInitializing to false');
+
+      // if(widget.clientRole == ClientRoleType.clientRoleAudience || (widget.hostId ?? '') == Preferences.uid ){
+      if (!widget.isHost) {
+        AppUtils.log('testing step 1111   ${widget.isHost}');
+        _createChatConnection();
+      }
+
+      print('BroadCastVideo: _initializeBroadcast completed successfully');
+    } catch (e) {
+      print('BroadCastVideo: Error in _initializeBroadcast: $e');
+      // Keep showing loading spinner on error
+      AppUtils.toastError('Failed to initialize live stream: $e');
     }
   }
 
@@ -71,7 +84,8 @@ class _BroadCastVideoState extends State<BroadCastVideo> {
     WakelockPlus.disable();
     AgoraChatCtrl.find.leaveRoom();
     LiveStreamCtrl.clear;
-    ctrl.endStream();
+    // Don't call endStream here to prevent duplicate dialog
+    // endStream is handled by UI close button
 
     super.dispose();
   }

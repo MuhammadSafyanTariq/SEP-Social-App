@@ -729,7 +729,7 @@ class NotificationItemComponent extends StatelessWidget {
     switch (data.notificationType?.toLowerCase()) {
       case 'live':
       case 'inviteforlive':
-        return 'Games';
+        return 'Live Streaming';
       case 'marketplace':
       case 'order':
         return 'Marketplace';

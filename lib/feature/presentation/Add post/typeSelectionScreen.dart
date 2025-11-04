@@ -45,85 +45,82 @@ class TypeSelectionScreen extends StatelessWidget {
                 color: Colors.grey[600],
               ),
             ),
+            Spacer(), // This pushes the options to the bottom
+            // Grid layout for options
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildOptionItem(
+                  title: "Media",
+                  icon: Icons.image,
+                  onTap: () {
+                    Navigator.pop(context);
+                    context.pushNavigator(CreatePost(categoryid: ''));
+                  },
+                ),
+                _buildOptionItem(
+                  title: "Poll",
+                  icon: Icons.poll_outlined,
+                  onTap: () {
+                    Navigator.pop(context);
+                    context.pushNavigator(AddPoll());
+                  },
+                ),
+                _buildOptionItem(
+                  title: "Celebrate",
+                  icon: Icons.celebration,
+                  onTap: () {
+                    Navigator.pop(context);
+                    context.pushNavigator(CelebrationScreen());
+                  },
+                ),
+              ],
+            ),
             SizedBox(height: 40),
-
-            // Post Option
-            _buildSelectionCard(
-              title: "Post",
-              icon: AppImages.post, // Using post.png
-              onTap: () {
-                Navigator.pop(context);
-                context.pushNavigator(CreatePost(categoryid: ''));
-              },
-            ),
-
-            SizedBox(height: 20),
-
-            // Poll Option
-            _buildSelectionCard(
-              title: "Poll",
-              icon: AppImages.poll, // Using poll.png
-              onTap: () {
-                Navigator.pop(context);
-                context.pushNavigator(AddPoll());
-              },
-            ),
-
-            SizedBox(height: 20),
-
-            // Celebrate Option
-            _buildSelectionCard(
-              title: "Celebrate",
-              icon: AppImages.celebrate, // Using celebrate.png
-              onTap: () {
-                Navigator.pop(context);
-                context.pushNavigator(CelebrationScreen());
-              },
-            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildSelectionCard({
+  Widget _buildOptionItem({
     required String title,
-    required String icon,
+    required IconData icon,
     required VoidCallback onTap,
   }) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-        decoration: BoxDecoration(
-          color: Colors.grey[200],
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.withOpacity(0.3)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.2),
-              spreadRadius: 2,
-              blurRadius: 5,
-              offset: Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: TextView(
-                text: title,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              color: Colors.grey[200],
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.grey.withOpacity(0.3)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.1),
+                  spreadRadius: 1,
+                  blurRadius: 3,
+                  offset: Offset(0, 2),
                 ),
-              ),
+              ],
             ),
-            ImageView(url: icon, width: 60, height: 60, fit: BoxFit.contain),
-          ],
-        ),
+            child: Icon(icon, size: 28, color: Colors.grey[600]),
+          ),
+          SizedBox(height: 8),
+          TextView(
+            text: title,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: Colors.grey[700],
+            ),
+          ),
+        ],
       ),
     );
   }

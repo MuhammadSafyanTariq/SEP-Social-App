@@ -268,7 +268,16 @@ class AuthCtrl extends GetxController {
       AppUtils.log("API Raw Response:::::: ${response.data}");
       final users = response.data?['data']?['users'] as List<dynamic>?;
       AppUtils.log("API Raw Respons???????? ${users}");
-      searchedUsers.value = users?.cast<Map<String, dynamic>>() ?? [];
+
+      final newUsers = users?.cast<Map<String, dynamic>>() ?? [];
+
+      if (page == 1) {
+        // First page or new search - replace the list
+        searchedUsers.value = newUsers;
+      } else {
+        // Loading more pages - append to existing list
+        searchedUsers.addAll(newUsers);
+      }
     }
 
     isLoading.value = false;
