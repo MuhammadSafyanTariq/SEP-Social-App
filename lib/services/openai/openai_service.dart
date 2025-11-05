@@ -55,6 +55,13 @@ Be friendly, helpful, and provide clear step-by-step guidance when needed.
         );
       }
 
+      // Debug API key format
+      AppUtils.log('API Key loaded: ${_apiKey.substring(0, 15)}...');
+      AppUtils.log(
+        'API Key format: ${_apiKey.startsWith('sk-proj-') ? 'Project API Key ✅' : 'Legacy/Invalid format ❌'}',
+      );
+      AppUtils.log('API Key length: ${_apiKey.length}');
+
       _openAI = OpenAI.instance.build(
         token: _apiKey,
         baseOption: HttpSetup(
@@ -77,6 +84,9 @@ Be friendly, helpful, and provide clear step-by-step guidance when needed.
         initialize();
       }
 
+      AppUtils.log('Sending message to OpenAI: $userMessage');
+      AppUtils.log('API Key (first 10 chars): ${_apiKey.substring(0, 10)}...');
+
       // Build messages list with system prompt and conversation history
       final List<Map<String, String>> messages = [
         {'role': 'system', 'content': _systemPrompt},
@@ -84,27 +94,80 @@ Be friendly, helpful, and provide clear step-by-step guidance when needed.
         {'role': 'user', 'content': userMessage},
       ];
 
+      // Use GPT-3.5-turbo model (current supported version)
       final request = ChatCompleteText(
         messages: messages,
         maxToken: 500,
-        model: Gpt4ChatModel(),
+        model: GptTurboChatModel(), // Using the current GPT-3.5-turbo model
         temperature: 0.7,
       );
 
+      AppUtils.log('Making API request to OpenAI...');
       final response = await _openAI.onChatCompletion(request: request);
 
       if (response != null && response.choices.isNotEmpty) {
         final content =
             response.choices.first.message?.content ??
             'Sorry, I could not generate a response.';
-        AppUtils.log('AI Response: $content');
+        AppUtils.log('AI Response received: $content');
         return content;
       } else {
+        AppUtils.log('OpenAI response was null or empty');
         return 'Sorry, I could not generate a response. Please try again.';
       }
     } catch (e) {
       AppUtils.log('Error sending message to OpenAI: $e');
-      return 'Sorry, there was an error processing your request. Please try again later.';
+
+      // Return simple user-friendly messages instead of detailed error logs
+      if (e.toString().contains('401')) {
+        return 'Sorry, I\'m having trouble connecting right now. Please try again later.';
+      } else if (e.toString().contains('429')) {
+        return 'Sorry, I\'m a bit busy right now. Please wait a moment and try again.';
+      } else if (e.toString().contains('insufficient')) {
+        return 'Sorry, I\'m temporarily unavailable. Please try again later.';
+      } else if (e.toString().contains('404') ||
+          e.toString().contains('model_not_found') ||
+          e.toString().contains('deprecated')) {
+        return 'Sorry, I\'m experiencing some technical difficulties. Please try again later.';
+      } else {
+        return 'Sorry, I couldn\'t process your message right now. Please try again later.';
+      }
+    }
+  }
+
+  /// Test the API key and connection
+  Future<bool> testConnection() async {
+    try {
+      if (!_initialized) {
+        initialize();
+      }
+
+      AppUtils.log('Testing OpenAI connection...');
+      AppUtils.log(
+        'API Key format: ${_apiKey.startsWith('sk-proj-') ? 'Project key (correct)' : 'Legacy key (might cause issues)'}',
+      );
+
+      final testRequest = ChatCompleteText(
+        messages: [
+          {'role': 'user', 'content': 'Hello, just testing the connection.'},
+        ],
+        maxToken: 10,
+        model: GptTurboChatModel(), // Using the same current model
+        temperature: 0.1,
+      );
+
+      final response = await _openAI.onChatCompletion(request: testRequest);
+
+      if (response != null && response.choices.isNotEmpty) {
+        AppUtils.log('✅ OpenAI connection test successful');
+        return true;
+      } else {
+        AppUtils.log('❌ OpenAI connection test failed - empty response');
+        return false;
+      }
+    } catch (e) {
+      AppUtils.log('❌ OpenAI connection test failed: $e');
+      return false;
     }
   }
 

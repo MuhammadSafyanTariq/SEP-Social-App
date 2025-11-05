@@ -24,6 +24,7 @@ import '../controller/agora_chat_ctrl.dart';
 import '../helpers/chat_message_helper.dart';
 import 'ImagePreviewScreen.dart';
 import 'VideoPreviewScreen.dart';
+import 'celebration_chat_card.dart';
 
 final GlobalKey<ChatSampleState> singleMessageScreenChatOperationKey =
     GlobalKey<ChatSampleState>();
@@ -263,27 +264,61 @@ class ChatSampleState extends State<ChatSample> {
         content.endsWith(".MOV") ||
         content.endsWith(".avi");
 
+    final bool isCelebration = content.startsWith('SEP#Celebrate');
+
     Widget liveStreamCard() {
       return Obx(() {
-        bool isActive =
-            AgoraChatCtrl.find.liveStreamChannels.firstWhereOrNull(
-              (element) => element.channelId == data.channelId,
-            ) !=
-            null;
+        // Strict active status check for live invitations
+        bool isActive = false;
+
+        if (data.isLiveInvitation) {
+          // For live invitations, check if the sender has an active channel
+          isActive =
+              AgoraChatCtrl.find.liveStreamChannels.firstWhereOrNull(
+                (element) => element.hostId == data.sender?.id,
+              ) !=
+              null;
+
+          // If no channel found but we have a channelId, also check by channelId
+          if (!isActive && data.channelId != null) {
+            isActive =
+                AgoraChatCtrl.find.liveStreamChannels.firstWhereOrNull(
+                  (element) => element.channelId == data.channelId,
+                ) !=
+                null;
+          }
+
+          // REMOVED: No longer assume invitations are active based on time
+          // Only show as active if there's an actual live stream channel
+        } else {
+          // For other cases, use the original logic
+          isActive =
+              AgoraChatCtrl.find.liveStreamChannels.firstWhereOrNull(
+                (element) => element.channelId == data.channelId,
+              ) !=
+              null;
+        }
+
         return GestureDetector(
-          onTap: !isSentByUser && isActive
+          onTap: !isSentByUser
               ? () {
-                  bool connectionCallBack = false;
-                  AgoraChatCtrl.find.joinLiveChannel(
-                    LiveStreamChannelModel(
-                      channelId: data.channelId,
-                      hostId: data.sender?.id,
-                      hostName: data.sender?.name,
-                    ),
-                    ClientRoleType.clientRoleBroadcaster,
-                    connectionCallBack,
-                    (value) {},
-                  );
+                  // Only allow joining if the stream is actually active
+                  if (isActive) {
+                    bool connectionCallBack = false;
+                    AgoraChatCtrl.find.joinLiveChannel(
+                      LiveStreamChannelModel(
+                        channelId: data.channelId,
+                        hostId: data.sender?.id,
+                        hostName: data.sender?.name,
+                      ),
+                      ClientRoleType.clientRoleBroadcaster,
+                      connectionCallBack,
+                      (value) {},
+                    );
+                  } else {
+                    // Show message that stream has ended
+                    AppUtils.toastError('This live stream has ended');
+                  }
                 }
               : null,
           child: Container(
@@ -508,6 +543,11 @@ class ChatSampleState extends State<ChatSample> {
                   children: [
                     data.isLiveInvitation
                         ? liveStreamCard()
+                        : isCelebration
+                        ? CelebrationChatCard(
+                            content: content,
+                            isSentByUser: isSentByUser,
+                          )
                         : ConstrainedBox(
                             constraints: BoxConstraints(
                               maxWidth: MediaQuery.of(context).size.width * 0.8,

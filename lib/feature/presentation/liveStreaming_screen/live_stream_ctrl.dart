@@ -29,13 +29,21 @@ bool _showLog = true;
 
 int broadCastUserMaxLimit = 6;
 
-enum AgoraUserLiveStatus { offLine, liveBroadCaster, liveAudience, invited }
+enum AgoraUserLiveStatus {
+  offLine,
+  onLine,
+  liveBroadCaster,
+  liveAudience,
+  invited,
+}
 
 extension OnAgoraUserLiveStatus on AgoraUserLiveStatus {
   String get statusValue {
     switch (this) {
       case AgoraUserLiveStatus.offLine:
         return 'Off Line';
+      case AgoraUserLiveStatus.onLine:
+        return 'Online';
       case AgoraUserLiveStatus.liveBroadCaster:
         return 'Live (Co Host)';
       case AgoraUserLiveStatus.liveAudience:
@@ -361,19 +369,27 @@ class LiveStreamCtrl extends GetxController {
     await ProfileCtrl.find.getMyFollowings();
     // getMyFollowings
     return _friendList.map((friend) {
-      if (liveUsers.any((user) => user['userId'] == friend.id)) {
-        //   {
-        // flutter: │ 🐛     "uid": "68aedb61e80f138227cd4b13",
-        // flutter: │ 🐛     "agoraId": 1115127494,
-        // flutter: │ 🐛     "data": {
-        // flutter: │ 🐛       "id": "68aedb61e80f138227cd4b13",
-        // flutter: │ 🐛       "name": "test1",
-        // flutter: │ 🐛       "image": "/public/upload/image_picker_68A93548-82AE-4A60-B998-1F484CDC5751-19217-0000000F3C905E57-1756793139140.jpg",
-        // flutter: │ 🐛       "joinedAt": "2025-09-15T05:35:57.313Z",
-        // flutter: │ 🐛       "role": "participant"
-        // flutter: │ 🐛     }
-        // flutter: │ 🐛   }
+      // Priority-based status detection:
+      // 1. If invited -> show "Invitation Sent"
+      // 2. If hosting and co-hosting -> show "CoHost"
+      // 3. If hosting but not co-hosting -> show "Live"
+      // 4. If online (socket connected and isActive) -> show "Online"
+      // 5. If offline -> show "Off Line"
 
+      // Check if friend has been invited
+      if (invitedUsers.any((invited) => invited.id == friend.id)) {
+        return friend.copyWith(
+          agoraLiveStatus: AgoraUserLiveStatus.invited as AgoraUserLiveStatus?,
+        );
+      }
+
+      // Check if friend is currently hosting a live stream
+      final isHostingLive = AgoraChatCtrl.find.liveStreamChannels.any(
+        (channel) => channel.hostId == friend.id,
+      );
+
+      if (isHostingLive) {
+        // Check if they are also broadcasting in the current stream (co-hosting)
         final uData = _userIdsMapping.firstWhereOrNull(
           (json) => json['uid'] == friend.id,
         );
@@ -384,28 +400,117 @@ class LiveStreamCtrl extends GetxController {
             : null;
 
         if (agoraId != null) {
+          // User is co-hosting in current stream
           return friend.copyWith(
             agoraLiveStatus:
                 AgoraUserLiveStatus.liveBroadCaster as AgoraUserLiveStatus?,
           );
         }
-        // if(uData != null && uData['data'] == 'host'){
-        //   return friend.copyWith(agoraLiveStatus: AgoraUserLiveStatus.liveBroadCaster);
-        // }
+        // If hosting but not broadcasting in current stream, they're live audience
         return friend.copyWith(
           agoraLiveStatus:
               AgoraUserLiveStatus.liveAudience as AgoraUserLiveStatus?,
         );
-      } else if (invitedUsers.any((invited) => invited.id == friend.id)) {
+      }
+
+      // Check if user is online (using socket connection + isActive status)
+      final isUserOnline = _isUserOnline(friend);
+
+      if (isUserOnline) {
+        // User is online but not live streaming
         return friend.copyWith(
-          agoraLiveStatus: AgoraUserLiveStatus.invited as AgoraUserLiveStatus?,
+          agoraLiveStatus: AgoraUserLiveStatus.onLine as AgoraUserLiveStatus?,
+          isActive: true,
         );
       } else {
+        // User is offline
         return friend.copyWith(
           agoraLiveStatus: AgoraUserLiveStatus.offLine as AgoraUserLiveStatus?,
+          isActive: false,
         );
       }
     }).toList();
+  }
+
+  /// Determine if a user is currently online
+  /// This method checks multiple indicators to determine online status
+  bool _isUserOnline(ProfileDataModel user) {
+    try {
+      // Method 1: Check if user's profile isActive flag is true
+      if (user.isActive == true) {
+        return true;
+      }
+
+      // Method 2: Check if user is connected to any socket services
+      // (This would require additional socket tracking implementation)
+      final isSocketConnected = _checkUserSocketConnection(user.id);
+      if (isSocketConnected) {
+        return true;
+      }
+
+      // Method 3: Check recent activity timestamp
+      // If user has been active within the last 5 minutes, consider online
+      final isRecentlyActive = _checkRecentActivity(user);
+      if (isRecentlyActive) {
+        return true;
+      }
+
+      // Default to offline if no indicators show online status
+      return false;
+    } catch (e) {
+      AppUtils.log('Error checking user online status: $e');
+      return false;
+    }
+  }
+
+  /// Check if user has an active socket connection
+  /// This is a placeholder - would need backend socket tracking
+  bool _checkUserSocketConnection(String? userId) {
+    if (userId == null) return false;
+
+    try {
+      // Check if user is in live stream participants (indicates socket connection)
+      final chatCtrl = AgoraChatCtrl.find;
+
+      // Check if user is in any active live stream as host
+      final isHostingLiveStream = chatCtrl.liveStreamChannels.any(
+        (channel) => channel.hostId == userId,
+      );
+
+      if (isHostingLiveStream) {
+        return true;
+      }
+
+      // Additional checks could be added here for:
+      // - Chat socket connections
+      // - Recent message sending
+      // - Other real-time activities
+
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Check if user has been recently active
+  bool _checkRecentActivity(ProfileDataModel user) {
+    try {
+      // Check updatedAt timestamp - if updated within last 5 minutes, consider active
+      if (user.updatedAt != null) {
+        final lastUpdate = DateTime.tryParse(user.updatedAt!);
+        if (lastUpdate != null) {
+          final timeDifference = DateTime.now().difference(lastUpdate);
+          // Consider user online if last activity was within 5 minutes
+          if (timeDifference.inMinutes < 5) {
+            return true;
+          }
+        }
+      }
+
+      return false;
+    } catch (e) {
+      return false;
+    }
   }
 
   ///---------------------------------------------------------------------------

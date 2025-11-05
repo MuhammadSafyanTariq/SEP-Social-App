@@ -1394,6 +1394,11 @@ class _ChatScreenState extends State<ChatScreen> {
         lowerContent.endsWith(".mov") ||
         lowerContent.endsWith(".avi");
 
+    // Check if it's a celebration message
+    if (content.startsWith('SEP#Celebrate')) {
+      return "🎉 Shared a celebration";
+    }
+
     if (isImage) {
       return "📷 Image";
     } else if (isVideo) {

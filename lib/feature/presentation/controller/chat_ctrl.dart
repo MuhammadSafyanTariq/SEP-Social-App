@@ -33,6 +33,10 @@ class ChatCtrl extends GetxController {
   String? singleChatId;
   String? receiverId; // Store receiver ID for notifications
 
+  // Prevent duplicate message sending
+  String? _lastSentMessage;
+  int _lastSentTime = 0;
+
   List<ProfileDataModel> get friendList => ProfileCtrl.find.myFollowingList;
 
   RxList<ChatMsgModel> chatMessages = RxList([]);
@@ -119,6 +123,10 @@ class ChatCtrl extends GetxController {
     chatMessages.clear();
     singleChatId = null;
     singleChatPage = 1;
+
+    // Clear duplicate prevention state
+    _lastSentMessage = null;
+    _lastSentTime = 0;
   }
 
   int singleChatPage = 1;
@@ -210,6 +218,27 @@ class ChatCtrl extends GetxController {
   void sendTextMsg(String msg) => sendMessage(type: 'text', msg: msg);
 
   void sendMessage({required String msg, required String type}) {
+    final callId = DateTime.now().millisecondsSinceEpoch;
+    AppUtils.log(
+      '🎯 sendMessage called [$callId] with type: $type, msg length: ${msg.length}',
+    );
+    AppUtils.log('🔍 Current singleChatId: $singleChatId');
+    AppUtils.log(
+      '📱 Stack trace: ${StackTrace.current.toString().split('\n').take(3).join('\n')}',
+    );
+
+    // Prevent duplicate sends within 2 seconds
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (_lastSentMessage == msg && (now - _lastSentTime) < 2000) {
+      AppUtils.log(
+        '🚫 Duplicate message detected within 2 seconds, ignoring [$callId]',
+      );
+      return;
+    }
+
+    _lastSentMessage = msg;
+    _lastSentTime = now;
+
     if (singleChatId != null) {
       final currentTime = DateTime.now().toUtc().toIso8601String();
 
@@ -221,7 +250,7 @@ class ChatCtrl extends GetxController {
         "senderTime": currentTime,
       };
 
-      AppUtils.log('🚀 SENDING MESSAGE:');
+      AppUtils.log('🚀 SENDING MESSAGE [$callId]:');
       AppUtils.log('📤 Data being sent to server: $data');
       AppUtils.log('👤 Current user ID in preferences: ${Preferences.uid}');
       AppUtils.log(
@@ -230,15 +259,22 @@ class ChatCtrl extends GetxController {
 
       // Send to server
       _repo.sendMessage(data);
+      AppUtils.log('✅ Message sent to server [$callId]');
 
-      // Send notification (non-blocking)
-      if (receiverId != null) {
+      // Send notification (non-blocking) - Skip for celebration messages
+      if (receiverId != null && !msg.startsWith('SEP#Celebrate')) {
         _sendChatNotification(msg, type).catchError((error) {
           AppUtils.log('⚠️ Notification error (message still sent): $error');
         });
+      } else if (msg.startsWith('SEP#Celebrate')) {
+        AppUtils.log(
+          '🎉 Celebration message sent - skipping separate notification',
+        );
       }
 
-      AppUtils.log('⏳ Message sent to server, waiting for response...');
+      AppUtils.log('⏳ Message send completed [$callId]');
+    } else {
+      AppUtils.log('❌ Cannot send message [$callId]: singleChatId is null');
     }
   }
 
@@ -262,8 +298,11 @@ class ChatCtrl extends GetxController {
         } else {
           notificationMessage = 'sent you an image';
         }
+      } else if (content.startsWith('SEP#Celebrate')) {
+        // This is a celebration message
+        notificationMessage = 'shared a celebration';
       } else {
-        // For text messages, show preview (limit to 50 characters)
+        // For regular text messages, show preview (limit to 50 characters)
         notificationMessage = content.length > 50
             ? '${content.substring(0, 50)}...'
             : content;
@@ -386,12 +425,65 @@ class ChatCtrl extends GetxController {
         final isFromCurrentUser = message.sender?.id == Preferences.uid;
         AppUtils.log('✅ Is message from current user: $isFromCurrentUser');
 
-        // Add message and maintain chronological order
-        chatMessages.add(message);
-        _sortMessagesByTime();
-        AppUtils.log('➕ Added message to chat list and sorted by time');
+        // Enhanced duplicate check with detailed logging
+        bool messageExists = false;
+        String duplicateReason = '';
 
-        chatMessages.refresh();
+        for (var existingMsg in chatMessages) {
+          // Check by ID first (most reliable)
+          if (existingMsg.id != null &&
+              message.id != null &&
+              existingMsg.id == message.id) {
+            messageExists = true;
+            duplicateReason = 'Same ID: ${message.id}';
+            break;
+          }
+
+          // Check by content, sender, and approximate time (within 5 seconds)
+          if (existingMsg.content == message.content &&
+              existingMsg.sender?.id == message.sender?.id) {
+            // Parse times for comparison
+            final existingTime = DateTime.tryParse(
+              existingMsg.senderTime ?? '',
+            );
+            final newTime = DateTime.tryParse(message.senderTime ?? '');
+
+            if (existingTime != null && newTime != null) {
+              final timeDiff =
+                  (existingTime.millisecondsSinceEpoch -
+                          newTime.millisecondsSinceEpoch)
+                      .abs();
+              if (timeDiff < 5000) {
+                // Within 5 seconds
+                messageExists = true;
+                duplicateReason =
+                    'Same content+sender+time (${timeDiff}ms diff)';
+                break;
+              }
+            } else if (existingMsg.senderTime == message.senderTime) {
+              messageExists = true;
+              duplicateReason = 'Same content+sender+exact time';
+              break;
+            }
+          }
+        }
+
+        AppUtils.log('🔍 Duplicate check result: $messageExists');
+        if (messageExists) {
+          AppUtils.log('📝 Duplicate reason: $duplicateReason');
+        }
+
+        if (!messageExists) {
+          // Add message and maintain chronological order
+          chatMessages.add(message);
+          _sortMessagesByTime();
+          AppUtils.log('➕ Added new message to chat list and sorted by time');
+          chatMessages.refresh();
+        } else {
+          AppUtils.log(
+            '⚠️ Message already exists, skipping to prevent duplicate ($duplicateReason)',
+          );
+        }
 
         // Log current chat messages count
         AppUtils.log('📊 Total messages in chat: ${chatMessages.length}');

@@ -15,6 +15,9 @@ import '../../../utils/appUtils.dart';
 import '../../data/models/dataModels/Createpost/getcategory_model.dart';
 import '../Home/homeScreen.dart';
 import '../controller/auth_Controller/get_stripe_ctrl.dart';
+import '../controller/chat_ctrl.dart';
+import '../controller/auth_Controller/profileCtrl.dart';
+import '../../data/models/dataModels/profile_data/profile_data_model.dart';
 
 // Template model class
 class CelebrationTemplate {
@@ -380,6 +383,283 @@ class _CelebrationScreenState extends State<CelebrationScreen> {
     return hasText && withinLimit && hasCategory;
   }
 
+  void _showUploadOptions() {
+    showModalBottomSheet(
+      context: context,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 50,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+              SizedBox(height: 20),
+              TextView(
+                text: "Choose Upload Option",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black,
+                ),
+              ),
+              SizedBox(height: 30),
+
+              // Upload as Post option
+              ListTile(
+                leading: Container(
+                  padding: EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.greenlight.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.public,
+                    color: AppColors.greenlight,
+                    size: 24,
+                  ),
+                ),
+                title: TextView(
+                  text: "Upload as Post",
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black,
+                  ),
+                ),
+                subtitle: TextView(
+                  text: "Share your celebration with everyone",
+                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _submitCelebration();
+                },
+              ),
+
+              SizedBox(height: 10),
+
+              // Send as DM option
+              ListTile(
+                leading: Container(
+                  padding: EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.btnColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.send, color: AppColors.btnColor, size: 24),
+                ),
+                title: TextView(
+                  text: "Send as DM",
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black,
+                  ),
+                ),
+                subtitle: TextView(
+                  text: "Send privately to your friends",
+                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showContactSelection();
+                },
+              ),
+
+              SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showContactSelection() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.8,
+          maxChildSize: 0.9,
+          minChildSize: 0.5,
+          expand: false,
+          builder: (context, scrollController) {
+            return _ContactSelectionWidget(
+              scrollController: scrollController,
+              onContactsSelected: _sendCelebrationAsDM,
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _sendCelebrationAsDM(List<ProfileDataModel> selectedContacts) async {
+    if (selectedContacts.isEmpty) {
+      AppUtils.toastError("Please select at least one contact");
+      return;
+    }
+
+    try {
+      // Create celebration card content
+      final celebrationCard = _createCelebrationCard();
+      AppUtils.log("Generated celebration card: $celebrationCard");
+
+      final chatCtrl = ChatCtrl.find;
+      int successCount = 0;
+
+      // Send to each selected contact
+      for (final contact in selectedContacts) {
+        try {
+          AppUtils.log(
+            "Initializing chat with ${contact.name} (${contact.id})",
+          );
+
+          // Initialize chat with the contact
+          chatCtrl.joinSingleChat(contact.id!, null);
+
+          // Wait for chat initialization and verify singleChatId is set
+          int attempts = 0;
+          while (chatCtrl.singleChatId == null && attempts < 20) {
+            await Future.delayed(Duration(milliseconds: 250));
+            attempts++;
+            AppUtils.log(
+              "Waiting for chat initialization... attempt $attempts, chatId: ${chatCtrl.singleChatId}",
+            );
+          }
+
+          if (chatCtrl.singleChatId == null) {
+            AppUtils.log(
+              "Failed to initialize chat with ${contact.name} - no chatId received",
+            );
+            continue;
+          }
+
+          AppUtils.log(
+            "Chat initialized successfully with chatId: ${chatCtrl.singleChatId}",
+          );
+          AppUtils.log("Sending celebration message: $celebrationCard");
+
+          // Send the celebration card
+          chatCtrl.sendMessage(type: 'text', msg: celebrationCard);
+
+          AppUtils.log("Message send method called for ${contact.name}");
+
+          successCount++;
+          AppUtils.log("Celebration sent to ${contact.name}");
+        } catch (e) {
+          AppUtils.log("Failed to send celebration to ${contact.name}: $e");
+        }
+      }
+
+      // Clean up chat state
+      chatCtrl.onLeaveChatRoom();
+
+      if (successCount > 0) {
+        _showSuccessDialog(successCount);
+      } else {
+        AppUtils.toastError("Failed to send celebration to contacts");
+      }
+    } catch (e) {
+      AppUtils.log("Error sending celebration as DM: $e");
+      AppUtils.toastError("Failed to send celebration. Please try again.");
+    }
+  }
+
+  String _createCelebrationCard() {
+    final templateId = templates[selectedTemplateIndex].id;
+    final colorHex = textColorPresets[selectedColorIndex].value
+        .toRadixString(16)
+        .padLeft(8, '0');
+    final posX = textPositionX.toStringAsFixed(3);
+    final posY = textPositionY.toStringAsFixed(3);
+    final message = _textController.text.trim();
+
+    AppUtils.log(
+      "Creating celebration card - Template: $templateId, selectedTemplateIndex: $selectedTemplateIndex",
+    );
+    AppUtils.log("Template list: ${templates.map((t) => t.id).toList()}");
+
+    // Create celebration card content that can be displayed properly in chat
+    return 'SEP#Celebrate+$templateId+$colorHex+$posX+$posY+$message';
+  }
+
+  void _showSuccessDialog(int successCount) {
+    showDialog(
+      barrierDismissible: false,
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          contentPadding: EdgeInsets.all(20),
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ImageView(url: AppImages.Done),
+              SizedBox(height: 10),
+              Center(
+                child: TextView(
+                  text: "Celebration sent successfully!",
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.btnColor,
+                  ),
+                  textAlign: TextAlign.center,
+                  margin: EdgeInsets.only(top: 20, bottom: 20),
+                ),
+              ),
+              TextView(
+                text:
+                    "Your celebration has been sent to $successCount friend${successCount > 1 ? 's' : ''}!",
+                style: TextStyle(fontSize: 20, color: AppColors.btnColor),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AppButton(
+                margin: EdgeInsets.only(top: 20),
+                label: AppStrings.gotohome,
+                labelStyle: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+                buttonColor: AppColors.btnColor,
+                onTap: () {
+                  Navigator.of(context).pop(); // Close dialog
+                  context.pushAndClearNavigator(
+                    HomeScreen(),
+                  ); // Navigate to home
+                },
+              ),
+            ],
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(20)),
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _submitCelebration() async {
     if (!_isValidForm) {
       AppUtils.toastError('Please fill all required fields');
@@ -531,6 +811,7 @@ class _CelebrationScreenState extends State<CelebrationScreen> {
                   ),
                   buttonColor: AppColors.btnColor,
                   onTap: () {
+                    Navigator.of(context).pop(); // Close dialog first
                     context.pushAndClearNavigator(HomeScreen());
                   },
                 ),
@@ -578,7 +859,7 @@ class _CelebrationScreenState extends State<CelebrationScreen> {
             padding: EdgeInsets.only(right: 16),
             child: Center(
               child: GestureDetector(
-                onTap: _isValidForm ? _submitCelebration : null,
+                onTap: _isValidForm ? _showUploadOptions : null,
                 child: Container(
                   padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                   decoration: BoxDecoration(
@@ -1147,6 +1428,282 @@ class _CelebrationScreenState extends State<CelebrationScreen> {
             SizedBox(height: 40),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ContactSelectionWidget extends StatefulWidget {
+  final ScrollController scrollController;
+  final Function(List<ProfileDataModel>) onContactsSelected;
+
+  const _ContactSelectionWidget({
+    Key? key,
+    required this.scrollController,
+    required this.onContactsSelected,
+  }) : super(key: key);
+
+  @override
+  State<_ContactSelectionWidget> createState() =>
+      _ContactSelectionWidgetState();
+}
+
+class _ContactSelectionWidgetState extends State<_ContactSelectionWidget> {
+  final TextEditingController _searchController = TextEditingController();
+  List<ProfileDataModel> _allContacts = [];
+  List<ProfileDataModel> _filteredContacts = [];
+  final Set<String> _selectedContactIds = {};
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadContacts();
+    _searchController.addListener(_filterContacts);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _loadContacts() async {
+    try {
+      final profileCtrl = ProfileCtrl.find;
+
+      // Load both followers and following
+      await profileCtrl.getMyFollowings();
+
+      setState(() {
+        _allContacts = profileCtrl.myFollowingList.toList();
+        _filteredContacts = _allContacts;
+        _isLoading = false;
+      });
+    } catch (e) {
+      AppUtils.log("Error loading contacts: $e");
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _filterContacts() {
+    final query = _searchController.text.toLowerCase();
+    setState(() {
+      if (query.isEmpty) {
+        _filteredContacts = _allContacts;
+      } else {
+        _filteredContacts = _allContacts
+            .where(
+              (contact) => contact.name?.toLowerCase().contains(query) ?? false,
+            )
+            .toList();
+      }
+    });
+  }
+
+  void _toggleContactSelection(ProfileDataModel contact) {
+    setState(() {
+      if (_selectedContactIds.contains(contact.id)) {
+        _selectedContactIds.remove(contact.id);
+      } else {
+        _selectedContactIds.add(contact.id!);
+      }
+    });
+  }
+
+  void _sendToSelectedContacts() {
+    final selectedContacts = _allContacts
+        .where((contact) => _selectedContactIds.contains(contact.id))
+        .toList();
+    widget.onContactsSelected(selectedContacts);
+    Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        children: [
+          // Handle bar
+          Container(
+            margin: EdgeInsets.only(top: 12, bottom: 20),
+            width: 50,
+            height: 5,
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(3),
+            ),
+          ),
+
+          // Header
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                TextView(
+                  text: "Select Friends",
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black,
+                  ),
+                ),
+                TextButton(
+                  onPressed: _selectedContactIds.isEmpty
+                      ? null
+                      : _sendToSelectedContacts,
+                  child: TextView(
+                    text: "Send (${_selectedContactIds.length})",
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: _selectedContactIds.isEmpty
+                          ? Colors.grey
+                          : AppColors.btnColor,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Search bar
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: "Search friends...",
+                prefixIcon: Icon(Icons.search, color: Colors.grey),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey[300]!),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey[300]!),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: AppColors.btnColor),
+                ),
+                filled: true,
+                fillColor: Colors.grey[50],
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+              ),
+            ),
+          ),
+
+          // Contacts list
+          Expanded(
+            child: _isLoading
+                ? Center(child: CircularProgressIndicator())
+                : _filteredContacts.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.people_outline,
+                          size: 64,
+                          color: Colors.grey[400],
+                        ),
+                        SizedBox(height: 16),
+                        TextView(
+                          text: _allContacts.isEmpty
+                              ? "No friends found.\nConnect with people to send celebrations!"
+                              : "No friends match your search",
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey[600],
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    controller: widget.scrollController,
+                    padding: EdgeInsets.symmetric(horizontal: 20),
+                    itemCount: _filteredContacts.length,
+                    itemBuilder: (context, index) {
+                      final contact = _filteredContacts[index];
+                      final isSelected = _selectedContactIds.contains(
+                        contact.id,
+                      );
+
+                      return Container(
+                        margin: EdgeInsets.only(bottom: 8),
+                        child: ListTile(
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 4,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          tileColor: isSelected
+                              ? AppColors.btnColor.withOpacity(0.1)
+                              : Colors.transparent,
+                          leading: ImageView(
+                            url: AppUtils.configImageUrl(contact.image ?? ''),
+                            size: 50,
+                            imageType: ImageType.network,
+                            defaultImage: AppImages.dummyProfile,
+                            radius: 25,
+                            fit: BoxFit.cover,
+                          ),
+                          title: TextView(
+                            text: contact.name ?? "Unknown",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.black,
+                            ),
+                          ),
+                          trailing: Container(
+                            width: 24,
+                            height: 24,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: isSelected
+                                    ? AppColors.btnColor
+                                    : Colors.grey[400]!,
+                                width: 2,
+                              ),
+                              color: isSelected
+                                  ? AppColors.btnColor
+                                  : Colors.transparent,
+                            ),
+                            child: isSelected
+                                ? Icon(
+                                    Icons.check,
+                                    color: Colors.white,
+                                    size: 16,
+                                  )
+                                : null,
+                          ),
+                          onTap: () => _toggleContactSelection(contact),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+
+          // Bottom padding for safe area
+          SizedBox(height: MediaQuery.of(context).padding.bottom),
+        ],
       ),
     );
   }

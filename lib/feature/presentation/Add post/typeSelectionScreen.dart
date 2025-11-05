@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:sep/components/coreComponents/ImageView.dart';
 import 'package:sep/components/coreComponents/TextView.dart';
-import 'package:sep/components/styles/appImages.dart';
 import 'package:sep/utils/extensions/contextExtensions.dart';
 import 'CreatePost.dart';
 import 'polladd.dart';
@@ -45,38 +43,40 @@ class TypeSelectionScreen extends StatelessWidget {
                 color: Colors.grey[600],
               ),
             ),
-            Spacer(), // This pushes the options to the bottom
-            // Grid layout for options
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildOptionItem(
-                  title: "Media",
-                  icon: Icons.image,
-                  onTap: () {
-                    Navigator.pop(context);
-                    context.pushNavigator(CreatePost(categoryid: ''));
-                  },
+            // Center the options vertically
+            Expanded(
+              child: Center(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _buildOptionItem(
+                      title: "Media",
+                      icon: Icons.image,
+                      onTap: () {
+                        Navigator.pop(context);
+                        context.pushNavigator(CreatePost(categoryid: ''));
+                      },
+                    ),
+                    _buildOptionItem(
+                      title: "Poll",
+                      icon: Icons.poll_outlined,
+                      onTap: () {
+                        Navigator.pop(context);
+                        context.pushNavigator(AddPoll());
+                      },
+                    ),
+                    _buildOptionItem(
+                      title: "Celebrate",
+                      icon: Icons.celebration,
+                      onTap: () {
+                        Navigator.pop(context);
+                        context.pushNavigator(CelebrationScreen());
+                      },
+                    ),
+                  ],
                 ),
-                _buildOptionItem(
-                  title: "Poll",
-                  icon: Icons.poll_outlined,
-                  onTap: () {
-                    Navigator.pop(context);
-                    context.pushNavigator(AddPoll());
-                  },
-                ),
-                _buildOptionItem(
-                  title: "Celebrate",
-                  icon: Icons.celebration,
-                  onTap: () {
-                    Navigator.pop(context);
-                    context.pushNavigator(CelebrationScreen());
-                  },
-                ),
-              ],
+              ),
             ),
-            SizedBox(height: 40),
           ],
         ),
       ),

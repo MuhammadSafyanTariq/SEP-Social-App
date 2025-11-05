@@ -404,6 +404,14 @@ class _NotificationscreenState extends State<Notificationscreen> {
   //   });
   // }
 
+  String _getFormattedNotificationMessage(String message) {
+    // Check if this is a celebration message and format it properly
+    if (message.startsWith('SEP#Celebrate')) {
+      return '🎉 Shared a celebration';
+    }
+    return message;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -629,7 +637,9 @@ class _NotificationscreenState extends State<Notificationscreen> {
               ? item.senderId?.name ?? ''
               : 'New Notification',
           type: item.notificationType ?? '',
-          notification: item.message ?? "No message",
+          notification: _getFormattedNotificationMessage(
+            item.message ?? "No message",
+          ),
           // time: DateTime.parse(item.createdAt ?? ""),
           time: item.localDate ?? DateTime.parse(''),
           liveStatus: liveStatus,

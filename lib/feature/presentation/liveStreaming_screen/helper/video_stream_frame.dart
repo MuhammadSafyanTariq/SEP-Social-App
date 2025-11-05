@@ -342,7 +342,23 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
                       padding: const EdgeInsets.only(top: 2),
                       child: TextView(
                         text: "📺 ${chatCtrl.liveStreamTopic.value}",
-                        style: 12.txtRegularGrey.withShadow(AppColors.grey),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                          shadows: [
+                            Shadow(
+                              color: Colors.black.withOpacity(0.8),
+                              offset: Offset(1, 1),
+                              blurRadius: 3,
+                            ),
+                            Shadow(
+                              color: Colors.black.withOpacity(0.5),
+                              offset: Offset(0, 0),
+                              blurRadius: 6,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                 ],

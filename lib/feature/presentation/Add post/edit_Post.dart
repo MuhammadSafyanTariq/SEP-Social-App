@@ -1,9 +1,9 @@
-
 import 'dart:io';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:video_player/video_player.dart';
 import 'package:sep/components/coreComponents/AppButton.dart';
 import 'package:sep/components/coreComponents/EditText.dart';
 import 'package:sep/components/coreComponents/EditText2.dart';
@@ -36,7 +36,7 @@ import 'dart:typed_data';
 
 class EditPost extends StatefulWidget {
   PostData data;
-   EditPost({super.key , required this.data});
+  EditPost({super.key, required this.data});
 
   @override
   State<EditPost> createState() => _EditPostState();
@@ -56,17 +56,17 @@ class _EditPostState extends State<EditPost> {
   @override
   void initState() {
     super.initState();
-   AppUtils.log("userPostData::${widget.data}");
+    AppUtils.log("userPostData::${widget.data}");
     if (widget.data.files != null && widget.data.files!.isNotEmpty) {
       AppUtils.log("image:::::${widget.data.files!.first.file.fileUrl}");
     } else {
       AppUtils.log("No files available in post data");
     }
 
-
-    _editTitleController = TextEditingController(text: widget.data.content ?? "");
+    _editTitleController = TextEditingController(
+      text: widget.data.content ?? "",
+    );
     _countryController = TextEditingController(text: widget.data.country ?? "");
-
   }
 
   @override
@@ -75,7 +75,6 @@ class _EditPostState extends State<EditPost> {
     _countryController.dispose();
     super.dispose();
   }
-
 
   Future<void> _updatePost(BuildContext context) async {
     AppUtils.log("Starting post submission...");
@@ -86,28 +85,26 @@ class _EditPostState extends State<EditPost> {
     //   return;
     // }
 
-
     AppLoader.showLoader(context);
     List<Map<String, dynamic>> uploadedFiles = [];
 
     try {
-      Future<(String,ui.Size)?> uploadFile(data) async{
+      Future<(String, ui.Size)?> uploadFile(data) async {
         bool isUint8 = data is Uint8List;
         final response = await authRepository.uploadPhoto(
-            imageFile: isUint8 ? null : data , memoryFile:  isUint8 ? data : null);
+          imageFile: isUint8 ? null : data,
+          memoryFile: isUint8 ? data : null,
+        );
         if (response.isSuccess) {
           List<String> data = response.data ?? [];
           if (data.isNotEmpty) {
             String fileUrl = data.first;
             final size = await getNetworkImageSize(fileUrl.fileUrl ?? '');
-            return (fileUrl,size);
+            return (fileUrl, size);
           }
         }
         return null;
       }
-
-
-
 
       for (MediaItem mediaItem in _mediaItems) {
         if (!mediaItem.file.existsSync()) {
@@ -116,34 +113,32 @@ class _EditPostState extends State<EditPost> {
         }
 
         (String, ui.Size)? thumbnailUrl;
-        if(mediaItem.isVideo){
+        if (mediaItem.isVideo) {
           thumbnailUrl = await uploadFile(mediaItem.thumnailFile);
         }
         final fileUrlData = await uploadFile(mediaItem.file);
-        if(fileUrlData != null){
+        if (fileUrlData != null) {
           uploadedFiles.add({
             "file": fileUrlData.$1,
             "type": mediaItem.isVideo ? 'video' : "image",
-            ...(thumbnailUrl != null?{
-              'thumbnail': thumbnailUrl.$1,
-              'x':thumbnailUrl.$2.width,
-              'y':thumbnailUrl.$2.height
-            }:{
-              'x':fileUrlData.$2.width,
-              'y':fileUrlData.$2.height
-            })
+            ...(thumbnailUrl != null
+                ? {
+                    'thumbnail': thumbnailUrl.$1,
+                    'x': thumbnailUrl.$2.width,
+                    'y': thumbnailUrl.$2.height,
+                  }
+                : {'x': fileUrlData.$2.width, 'y': fileUrlData.$2.height}),
           });
         }
       }
 
-      await  ProfileCtrl.find.editPost(
+      await ProfileCtrl.find.editPost(
         postId: widget.data.id ?? "",
         content: _editTitleController.getText,
         country: _countryController.getText,
         uploadedFileUrls: uploadedFiles,
       );
       AppUtils.log("Edit Post Request: ${uploadedFiles.toString()}");
-
 
       AppUtils.toast("Update successfully");
       AppLoader.hideLoader(context);
@@ -153,16 +148,15 @@ class _EditPostState extends State<EditPost> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.white,
       appBar: AppBar(
-        iconTheme: IconThemeData(color: AppColors.primaryColor,size: 20.sdp),
+        iconTheme: IconThemeData(color: AppColors.primaryColor, size: 20.sdp),
         elevation: 0,
         backgroundColor: AppColors.white,
-        title: TextView(text : AppStrings.editPost , style: 17.txtMediumBlack,),
+        title: TextView(text: AppStrings.editPost, style: 17.txtMediumBlack),
       ),
       body: Padding(
         padding: 15.horizontal,
@@ -175,43 +169,55 @@ class _EditPostState extends State<EditPost> {
                   spacing: 10,
                   runSpacing: 10,
                   children: [
-                    if (widget.data.files != null && widget.data.files!.isNotEmpty)
+                    if (widget.data.files != null &&
+                        widget.data.files!.isNotEmpty)
                       ...widget.data.files!
-                          .where((fileElement) => !_removedOriginalImageIds.contains(fileElement.id))
+                          .where(
+                            (fileElement) => !_removedOriginalImageIds.contains(
+                              fileElement.id,
+                            ),
+                          )
                           .map((fileElement) {
-                        return Stack(
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Image.network(
-                                fileElement.file.fileUrl ?? "",
-                                width: 80.sdp,
-                                height: 80.sdp,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                            Positioned(
-                              top: 0,
-                              right: 0,
-                              child: GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    _removedOriginalImageIds.add(fileElement.id ?? "");
-                                  });
-                                },
-                                child: Container(
-                                  padding: EdgeInsets.all(4),
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: Colors.black.withOpacity(0.6),
+                            return Stack(
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Image.network(
+                                    fileElement.file.fileUrl ?? "",
+                                    width: 80.sdp,
+                                    height: 80.sdp,
+                                    fit: BoxFit.cover,
                                   ),
-                                  child: Icon(Icons.close, color: Colors.white, size: 16),
                                 ),
-                              ),
-                            ),
-                          ],
-                        );
-                      }).toList(),
+                                Positioned(
+                                  top: 0,
+                                  right: 0,
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        _removedOriginalImageIds.add(
+                                          fileElement.id ?? "",
+                                        );
+                                      });
+                                    },
+                                    child: Container(
+                                      padding: EdgeInsets.all(4),
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: Colors.black.withOpacity(0.6),
+                                      ),
+                                      child: Icon(
+                                        Icons.close,
+                                        color: Colors.white,
+                                        size: 16,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            );
+                          })
+                          .toList(),
 
                     // _mediaItems (new uploads)
                     for (int i = 0; i < _mediaItems.length; i++)
@@ -241,7 +247,11 @@ class _EditPostState extends State<EditPost> {
                                   shape: BoxShape.circle,
                                   color: Colors.black.withOpacity(0.6),
                                 ),
-                                child: Icon(Icons.close, color: Colors.white, size: 16),
+                                child: Icon(
+                                  Icons.close,
+                                  color: Colors.white,
+                                  size: 16,
+                                ),
                               ),
                             ),
                           ),
@@ -254,7 +264,9 @@ class _EditPostState extends State<EditPost> {
                         showModalBottomSheet(
                           context: context,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                            borderRadius: BorderRadius.vertical(
+                              top: Radius.circular(16),
+                            ),
                           ),
                           builder: (BuildContext context) {
                             return SafeArea(
@@ -264,9 +276,15 @@ class _EditPostState extends State<EditPost> {
                                   ListTile(
                                     leading: Padding(
                                       padding: 12.all,
-                                      child: ImageView(url: AppImages.gallery, size: 30),
+                                      child: ImageView(
+                                        url: AppImages.gallery,
+                                        size: 30,
+                                      ),
                                     ),
-                                    title: TextView(text: 'Pick Image', style: 16.txtRegularprimary),
+                                    title: TextView(
+                                      text: 'Pick Image',
+                                      style: 16.txtRegularprimary,
+                                    ),
                                     onTap: () {
                                       Navigator.pop(context);
                                       chooseImage();
@@ -275,9 +293,15 @@ class _EditPostState extends State<EditPost> {
                                   ListTile(
                                     leading: Padding(
                                       padding: 12.all,
-                                      child: ImageView(url: AppImages.videoicon, size: 30),
+                                      child: ImageView(
+                                        url: AppImages.videoicon,
+                                        size: 30,
+                                      ),
                                     ),
-                                    title: TextView(text: 'Pick Video', style: 16.txtRegularprimary),
+                                    title: TextView(
+                                      text: 'Pick Video',
+                                      style: 16.txtRegularprimary,
+                                    ),
                                     onTap: () {
                                       Navigator.pop(context);
                                       _pickVideo();
@@ -297,7 +321,10 @@ class _EditPostState extends State<EditPost> {
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(color: AppColors.primaryColor),
                         ),
-                        child: Icon(Icons.add_a_photo, color: AppColors.primaryColor),
+                        child: Icon(
+                          Icons.add_a_photo,
+                          color: AppColors.primaryColor,
+                        ),
                       ),
                     ),
                   ],
@@ -343,10 +370,7 @@ class _EditPostState extends State<EditPost> {
                   validator: (value) => null,
                   suffixIcon: Padding(
                     padding: const EdgeInsets.only(right: 8.0),
-                    child: ImageView(
-                      url: AppImages.locations,
-                      size: 50.sdp,
-                    ),
+                    child: ImageView(url: AppImages.locations, size: 50.sdp),
                   ),
                 ),
               ),
@@ -358,13 +382,12 @@ class _EditPostState extends State<EditPost> {
               label: "Update Post",
 
               labelStyle: 16.txtBoldWhite,
-            )
+            ),
           ],
         ),
       ),
     );
   }
-
 
   Future<void> chooseImage() async {
     if (_mediaItems.length >= 6) {
@@ -390,22 +413,45 @@ class _EditPostState extends State<EditPost> {
     }
   }
 
-
   void _pickVideo() async {
     final XFile? media = await _picker.pickVideo(source: ImageSource.gallery);
 
     if (media != null) {
-      final thumbnail = await getThumbnail(media.path
+      // Check video duration before proceeding
+      final controller = VideoPlayerController.file(File(media.path));
+      try {
+        await controller.initialize();
+        final duration = controller.value.duration;
+
+        // Check if video is longer than 90 seconds
+        if (duration.inSeconds > 90) {
+          AppUtils.toastError("You can't upload videos longer than 90 seconds");
+          await controller.dispose();
+          return;
+        }
+
+        await controller.dispose();
+      } catch (e) {
+        AppUtils.log("Error checking video duration: $e");
+        AppUtils.toastError(
+          "Error processing video. Please try another video.",
+        );
+        return;
+      }
+
+      final thumbnail = await getThumbnail(
+        media.path,
         // , size.height, size.width
       );
       setState(() {
-        _mediaItems.add(MediaItem(
-          file: File(media.path),
-          isVideo: true,
-          thumnailFile: thumbnail,
-        ));
+        _mediaItems.add(
+          MediaItem(
+            file: File(media.path),
+            isVideo: true,
+            thumnailFile: thumbnail,
+          ),
+        );
       });
     }
   }
-
 }

@@ -196,6 +196,28 @@ class _CreatePostState extends State<CreatePost> {
     final XFile? media = await _picker.pickVideo(source: ImageSource.gallery);
 
     if (media != null) {
+      // Check video duration before proceeding
+      final controller = VideoPlayerController.file(File(media.path));
+      try {
+        await controller.initialize();
+        final duration = controller.value.duration;
+
+        // Check if video is longer than 90 seconds
+        if (duration.inSeconds > 90) {
+          AppUtils.toastError("You can't upload videos longer than 90 seconds");
+          await controller.dispose();
+          return;
+        }
+
+        await controller.dispose();
+      } catch (e) {
+        AppUtils.log("Error checking video duration: $e");
+        AppUtils.toastError(
+          "Error processing video. Please try another video.",
+        );
+        return;
+      }
+
       // String networkThumbnailUrl = "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhgBO9es3gnfmoILLgaplnrfQCAqYKl_rGf2TqRead8WjoMnpJ-rS7fFWEBn0oJy_-U1DFeTM-Gle7-Humwy3KDO8EjV0G3a7M6QOkEd2CPXaRbYWR94aRuiYp4sn9gttYvNpwS5X1etudg/s1600/file-MrylO8jADD.png";
       // final size = await getVideoResolution(media.path);
       final thumbnail = await getThumbnail(
