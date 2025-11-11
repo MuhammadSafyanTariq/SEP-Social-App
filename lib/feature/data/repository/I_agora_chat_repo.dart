@@ -4,7 +4,6 @@ import 'package:sep/utils/appUtils.dart';
 import '../../domain/respository/agora_chat_repo.dart';
 import '../../presentation/controller/agora_chat_ctrl.dart';
 
-
 class IAgoraChatRepo implements AgoraChatRepo {
   final SocketHelper _socket;
 
@@ -24,30 +23,31 @@ class IAgoraChatRepo implements AgoraChatRepo {
   void joinLive(String host) {
     _socket.callEvent(SocketKey.joinLive, {
       "userId": Preferences.uid,
-      "hostId":host
+      "hostId": host,
     });
   }
 
   @override
   void leave() {
-    _socket.callEvent(SocketKey.leaveLive, {'userId':Preferences.uid});
+    _socket.callEvent(SocketKey.leaveLive, {'userId': Preferences.uid});
   }
 
   @override
-  void sendMessage(Map<String,dynamic> msg, {String? userId}) {
+  void sendMessage(Map<String, dynamic> msg, {String? userId}) {
     _socket.callEvent(SocketKey.sendChatMessage, {
       "userId": userId ?? Preferences.uid,
-      ...msg
+      ...msg,
     });
   }
 
   @override
-  void startLive() {
-    AppUtils.log({
-      'event': 'startLive',
-      'data': {'userId':Preferences.uid}
-    });
-    _socket.callEvent(SocketKey.startLive, {'userId':Preferences.uid});
+  void startLive({String? title}) {
+    final data = {
+      'userId': Preferences.uid,
+      if (title != null && title.isNotEmpty) 'title': title,
+    };
+    AppUtils.log({'event': 'startLive', 'data': data});
+    _socket.callEvent(SocketKey.startLive, data);
   }
 
   @override
@@ -57,7 +57,6 @@ class IAgoraChatRepo implements AgoraChatRepo {
 
   @override
   void onLiveStart(Function(dynamic) data) {
-
     _socket.listen(SocketKey.liveStarted, data);
   }
 
@@ -87,9 +86,7 @@ class IAgoraChatRepo implements AgoraChatRepo {
   }
 
   @override
-  void removeListenersOnLeaveLiveStream() {
-
-  }
+  void removeListenersOnLeaveLiveStream() {}
 
   @override
   void unsubscribe(SocketKey key) {
@@ -98,19 +95,19 @@ class IAgoraChatRepo implements AgoraChatRepo {
 
   @override
   bool get isConnected {
-    try{
-     return _socket.socket.connected;
-    }catch(e){
+    try {
+      return _socket.socket.connected;
+    } catch (e) {
       return false;
     }
   }
 
   @override
-  void checkRoomExist(String roomId, String hostId,{int? broadCasterCount} ) {
-    _socket.callEvent(SocketKey.roomExist,{
-      'roomId':roomId,
-      "hostId":hostId,
-      ...(broadCasterCount != null ? {'broadcastCount':broadCasterCount} : {})
+  void checkRoomExist(String roomId, String hostId, {int? broadCasterCount}) {
+    _socket.callEvent(SocketKey.roomExist, {
+      'roomId': roomId,
+      "hostId": hostId,
+      ...(broadCasterCount != null ? {'broadcastCount': broadCasterCount} : {}),
     });
   }
 
@@ -126,10 +123,10 @@ class IAgoraChatRepo implements AgoraChatRepo {
 
   @override
   void getParticipantsList(String roomId, String hostId) {
-    _socket.callEvent(SocketKey.getParticipantsList,{
-      'roomId':roomId,
+    _socket.callEvent(SocketKey.getParticipantsList, {
+      'roomId': roomId,
       // "userId":Preferences.uid,
-      "userId":hostId,
+      "userId": hostId,
     });
   }
 
@@ -140,7 +137,7 @@ class IAgoraChatRepo implements AgoraChatRepo {
 
   @override
   void getLiveStreamChannelList() {
-    _socket.callEvent(SocketKey.getLiveFollowers,{'userId':Preferences.uid,});
+    _socket.callEvent(SocketKey.getLiveFollowers, {'userId': Preferences.uid});
   }
 
   @override
@@ -149,8 +146,13 @@ class IAgoraChatRepo implements AgoraChatRepo {
   }
 
   @override
+  void onLiveRoomInfo(Function(dynamic) data) {
+    _socket.listen(SocketKey.liveRoomInfo, data);
+  }
+
+  @override
   void connectUserForListenLiveStream() {
-    _socket.callEvent(SocketKey.userConnected,{'userId':Preferences.uid,});
+    _socket.callEvent(SocketKey.userConnected, {'userId': Preferences.uid});
   }
 
   @override
@@ -158,16 +160,17 @@ class IAgoraChatRepo implements AgoraChatRepo {
     _socket.callEvent(SocketKey.inviteUserLive, {
       'sentBy': Preferences.uid,
       ...data,
-      'type':LiveRequestStatus.inviteForLive.name,
-      "message": '${Preferences.profile?.name ?? ''} invited you to join live video session',
+      'type': LiveRequestStatus.inviteForLive.name,
+      "message":
+          '${Preferences.profile?.name ?? ''} invited you to join live video session',
     });
   }
 
   @override
   void getLiveRoomInfo(String hostId, String roomId) {
     _socket.callEvent(SocketKey.getLiveRoomInfo, {
-      "hostId":hostId,
-      "roomId":roomId
+      "hostId": hostId,
+      "roomId": roomId,
     });
   }
 
@@ -176,15 +179,6 @@ class IAgoraChatRepo implements AgoraChatRepo {
     _socket.listen(SocketKey.newParticipantJoined, data);
   }
 
-
-
-
-
-
-
-
-
-
   // _onReceiveMessage();
   // _onError();
   // _onJoin();
@@ -192,7 +186,4 @@ class IAgoraChatRepo implements AgoraChatRepo {
   // _onUserLeave();
   // _onLiveEnded();
   // _onChatError();
-
-
-
 }

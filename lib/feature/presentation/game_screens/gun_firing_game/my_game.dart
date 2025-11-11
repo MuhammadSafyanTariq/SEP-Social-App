@@ -6,14 +6,12 @@ import 'package:flame/events.dart';
 import 'package:flame/flame.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
-
 import 'components/asteroid.dart';
 import 'components/audio_manager.dart';
 import 'components/pickup.dart';
 import 'components/player.dart';
 import 'components/shoot_button.dart';
 import 'components/star.dart';
-import 'overlays/title_overlay.dart';
 
 class MyGame extends FlameGame
     with HasKeyboardHandlerComponents, HasCollisionDetection {

@@ -35,6 +35,7 @@ enum SocketKey {
   getLiveFollowers,
   inviteUserLive,
   getLiveRoomInfo,
+  liveRoomInfo,
   newParticipantJoined,
 }
 
@@ -111,18 +112,24 @@ class SocketHelper {
   }
 
   void listen(SocketKey event, dynamic Function(dynamic) handler) async {
-    if (!hasListener(event)) {
-      socket.on(event.name, (value) {
-        AppUtils.log({
-          'type': 'LISTENER Socket',
-          'event': event.name,
-          'data': value,
-        });
-        handler(value);
-      });
-
-      // socket.once(event, handler)
+    // Remove any existing listeners for this event to prevent duplicates
+    if (hasListener(event)) {
+      AppUtils.log(
+        '⚠️ Removing existing listener for ${event.name} to prevent duplicates',
+      );
+      socket.off(event.name);
     }
+
+    socket.on(event.name, (value) {
+      AppUtils.log({
+        'type': 'LISTENER Socket',
+        'event': event.name,
+        'data': value,
+      });
+      handler(value);
+    });
+
+    AppUtils.log('✅ Listener registered for ${event.name}');
   }
 
   void get(SocketKey event, dynamic Function(dynamic) handler) {

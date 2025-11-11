@@ -1,23 +1,20 @@
-
-
 import 'package:sep/services/socket/socket_helper.dart';
 
 abstract class AgoraChatRepo {
-
   bool get isConnected;
 
   void connect(Function() onConnected, {Function(dynamic)? onError});
 
   //Events....
-  void startLive();
+  void startLive({String? title});
 
   void joinLive(String host);
 
   void leave();
 
-  void sendMessage(Map<String,dynamic> msg, {String? userId});
+  void sendMessage(Map<String, dynamic> msg, {String? userId});
 
-  void checkRoomExist(String roomId, String hostId,{int? broadCasterCount});
+  void checkRoomExist(String roomId, String hostId, {int? broadCasterCount});
 
   void getParticipantsList(String roomId, String hostId);
 
@@ -27,9 +24,7 @@ abstract class AgoraChatRepo {
 
   void connectUserForListenLiveStream();
 
-  void sendLiveRequestToFriendByHost(Map<String,dynamic> data);
-
-
+  void sendLiveRequestToFriendByHost(Map<String, dynamic> data);
 
   //listeners.....
 
@@ -63,7 +58,5 @@ abstract class AgoraChatRepo {
 
   void onLiveStreamChannelList(Function(dynamic) data);
 
-
-
-
+  void onLiveRoomInfo(Function(dynamic) data);
 }

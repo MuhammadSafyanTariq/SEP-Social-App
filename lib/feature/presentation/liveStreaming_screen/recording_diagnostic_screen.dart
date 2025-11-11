@@ -1,13 +1,9 @@
-// Recording Diagnostic Screen
-// This screen will help diagnose the Agora recording issue by logging all API responses
-
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sep/services/agora/agora_recording_service.dart';
 import 'package:sep/utils/appUtils.dart';
 import 'package:sep/components/coreComponents/AppButton.dart';
-import 'package:sep/components/coreComponents/TextView.dart';
 import 'package:sep/components/styles/appColors.dart';
 
 class RecordingDiagnosticScreen extends StatefulWidget {

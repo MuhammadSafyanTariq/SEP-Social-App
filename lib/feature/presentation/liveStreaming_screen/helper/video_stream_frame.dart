@@ -19,11 +19,11 @@ import '../../../../components/styles/appColors.dart';
 import '../../../../components/styles/appImages.dart';
 import '../../../../services/storage/preferences.dart';
 import '../../../data/models/dataModels/live_stream_message_model/live_stream_message_model.dart';
+import '../live_stream_ctrl.dart';
 import '../../../data/models/dataModels/profile_data/profile_data_model.dart';
 import '../../controller/agora_chat_ctrl.dart';
 import '../../wallet/add_card_screen.dart';
 import '../live_stream_ctrl.dart';
-import '../recording_diagnostic_screen.dart';
 import 'helper_broadcast.dart';
 
 class InstagramLiveFrame extends StatefulWidget {
@@ -82,6 +82,10 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
   bool chatConnected = false;
 
   bool _inComingRequestFlag = false;
+
+  // State for collapsible right controls
+  bool _rightControlsCollapsed = false;
+  bool _keyboardVisible = false;
 
   void onJoinHandler() {
     if (ctrl.isHost && !chatConnected) {
@@ -202,6 +206,18 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
 
   @override
   Widget build(BuildContext context) {
+    // Detect keyboard visibility
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+    final newKeyboardVisible = keyboardHeight > 0;
+
+    if (newKeyboardVisible != _keyboardVisible) {
+      _keyboardVisible = newKeyboardVisible;
+      // Auto-collapse controls when keyboard opens, expand when closes
+      if (_keyboardVisible) {
+        _rightControlsCollapsed = true;
+      }
+    }
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Stack(
@@ -237,7 +253,68 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
   Widget buildVideoGrid(List<RemoteUserAgora> uids) {
     int count = uids.length;
 
-    if (count == 0) return Center(child: Text("No users"));
+    AppUtils.log('buildVideoGrid called with ${count} users');
+    for (int i = 0; i < uids.length; i++) {
+      AppUtils.log(
+        'User $i: id=${uids[i].id}, videoState=${uids[i].videoState?.name}, audioState=${uids[i].audioState?.name}',
+      );
+    }
+
+    if (count == 0) {
+      AppUtils.log('No users to display - showing "No users" message');
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.videocam_off, size: 64, color: Colors.white54),
+            SizedBox(height: 16),
+            Text(
+              "Waiting for stream...",
+              style: TextStyle(color: Colors.white, fontSize: 18),
+            ),
+            SizedBox(height: 8),
+            Text(
+              "The broadcaster will appear here",
+              style: TextStyle(color: Colors.white54, fontSize: 14),
+            ),
+            SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: () {
+                AppUtils.log(
+                  'Refresh button pressed - triggering manual refresh',
+                );
+                ctrl.streamCtrl.refresh();
+                // Try to force add host if still no remote users
+                if ((ctrl.streamCtrl.value.remoteIds?.isEmpty ?? true) &&
+                    !ctrl.isHost) {
+                  AppUtils.log(
+                    'Manual refresh: No remote users, attempting to add host',
+                  );
+                  final hostUser = RemoteUserAgora(
+                    id: ctrl.hostAgoraId,
+                    audioState: RemoteAudioState.remoteAudioStateStarting,
+                    videoState: RemoteVideoState.remoteVideoStateStarting,
+                    channelId: ctrl.streamCtrl.value.channelId,
+                  );
+
+                  final remoteIds =
+                      (ctrl.streamCtrl.value.remoteIds ?? <RemoteUserAgora>{})
+                        ..add(hostUser);
+                  ctrl.streamCtrl.value.remoteIds = remoteIds;
+                  ctrl.streamCtrl.refresh();
+                }
+              },
+              icon: Icon(Icons.refresh),
+              label: Text('Refresh'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white24,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     List<Widget> rows = [];
 
@@ -336,31 +413,40 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
                     text: hostName,
                     style: 18.txtSBoldBlack.withShadow(AppColors.grey),
                   ),
-                  // Show topic if available
-                  if (chatCtrl.liveStreamTopic.value.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: TextView(
-                        text: "📺 ${chatCtrl.liveStreamTopic.value}",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                          shadows: [
-                            Shadow(
-                              color: Colors.black.withOpacity(0.8),
-                              offset: Offset(1, 1),
-                              blurRadius: 3,
+                  // Show title from backend if available - reactive with Obx
+                  Obx(() {
+                    final title = chatCtrl.currentStreamTitle;
+                    print('VideoStreamFrame: currentStreamTitle = "$title"');
+                    print('VideoStreamFrame: title isEmpty = ${title.isEmpty}');
+                    print(
+                      'VideoStreamFrame: currentLiveRoomInfo = ${chatCtrl.currentLiveRoomInfo.value}',
+                    );
+                    return title.isNotEmpty
+                        ? Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: TextView(
+                              text: "📺 $title",
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                                shadows: [
+                                  Shadow(
+                                    color: Colors.black.withOpacity(0.8),
+                                    offset: Offset(1, 1),
+                                    blurRadius: 3,
+                                  ),
+                                  Shadow(
+                                    color: Colors.black.withOpacity(0.5),
+                                    offset: Offset(0, 0),
+                                    blurRadius: 6,
+                                  ),
+                                ],
+                              ),
                             ),
-                            Shadow(
-                              color: Colors.black.withOpacity(0.5),
-                              offset: Offset(0, 0),
-                              blurRadius: 6,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                          )
+                        : SizedBox.shrink();
+                  }),
                 ],
               ),
             ),
@@ -629,17 +715,18 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
   Widget _buildChatList(BuildContext context) {
     return Obx(
       () => Container(
-        height: context.getHeight * 0.35,
+        height: context.getHeight * 0.3,
         decoration: chatCtrl.chatList.isNotEmpty
             ? BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    AppColors.grey.withValues(alpha: 0.009),
-                    AppColors.grey.withValues(alpha: 0.06),
-                    AppColors.grey.withValues(alpha: 0.3),
-                    AppColors.grey.withValues(alpha: 0.7),
+                    AppColors.grey.withValues(
+                      alpha: 0.00,
+                    ), // Much more transparent at top  // Reduced opacity
+                    AppColors.grey.withValues(
+                      alpha: 0.2,
+                    ), // Less opaque at bottom
                   ],
-                  stops: [0.05, 0.1, 0.25, 0.8],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                 ),
@@ -1204,104 +1291,130 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Recording button (only for host)
-              Visibility(
-                visible: ctrl.isHost,
-                child: Column(
-                  children: [
-                    GestureDetector(
-                      onTap: () => ctrl.toggleRecording(),
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: ctrl.isRecording.value
-                              ? Colors.red.withValues(alpha: 0.9)
-                              : Colors.white,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          ctrl.isRecording.value
-                              ? Icons.stop_rounded
-                              : Icons.fiber_manual_record_rounded,
-                          size: 28,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ),
-                    if (ctrl.isRecording.value)
-                      Padding(
-                        padding: EdgeInsets.only(top: 4, bottom: 8),
-                        child: Obx(
-                          () => TextView(
-                            text: ctrl.recordingDuration.value,
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.red,
-                            ),
-                          ),
-                        ),
-                      ),
-                    if (!ctrl.isRecording.value) SizedBox(height: 16),
-                  ],
-                ),
-              ),
-              IconControl(
-                icon:
-                    ctrl.streamCtrl.value.localVideoState ==
-                        LocalVideoStreamState.localVideoStreamStateStopped
-                    ? Icons.videocam_off
-                    : Icons.videocam,
-                onTap: ctrl.onVideoAction,
-              ),
-              SizedBox(height: 8),
-              IconControl(
-                icon:
-                    ctrl.streamCtrl.value.localMicState ==
-                        LocalAudioStreamState.localAudioStreamStateStopped
-                    ? Icons.mic_off
-                    : Icons.mic,
-                onTap: ctrl.micButtonAction,
-              ),
-              SizedBox(height: 8),
-              IconControl(
-                icon: Icons.flip_camera_android_sharp,
-                onTap: ctrl.cameraFlip,
-              ),
-              Visibility(
-                visible: ctrl.isHost,
-                child: Padding(
-                  padding: EdgeInsets.only(top: 12),
-                  child: Column(
-                    children: [
-                      // Invite button
-                      IconControl(
-                        url: AppImages.inviteToVideo,
-                        onTap: () =>
-                            _openInviteBottomSheet(forInviteFriend: true),
-                      ),
-                      SizedBox(height: 12),
-                      // Token display with updated icon
-                      Column(
-                        children: [
-                          ImageView(url: AppImages.token, size: 40),
-                          SizedBox(height: 4),
-                          Obx(
-                            () => TextView(
-                              text: '${AgoraChatCtrl.find.hostGiftAmountTotal}',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+              // Collapse/Expand Button
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _rightControlsCollapsed = !_rightControlsCollapsed;
+                  });
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    _rightControlsCollapsed
+                        ? Icons.keyboard_arrow_down_rounded
+                        : Icons.keyboard_arrow_up_rounded,
+                    size: 20,
+                    color: Colors.white,
                   ),
                 ),
               ),
+              if (!_rightControlsCollapsed) ...[
+                SizedBox(height: 8),
+                // Recording button (only for host)
+                Visibility(
+                  visible: ctrl.isHost,
+                  child: Column(
+                    children: [
+                      GestureDetector(
+                        onTap: () => ctrl.toggleRecording(),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: ctrl.isRecording.value
+                                ? Colors.red.withValues(alpha: 0.9)
+                                : Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            ctrl.isRecording.value
+                                ? Icons.stop_rounded
+                                : Icons.fiber_manual_record_rounded,
+                            size: 28,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ),
+                      if (ctrl.isRecording.value)
+                        Padding(
+                          padding: EdgeInsets.only(top: 4, bottom: 8),
+                          child: Obx(
+                            () => TextView(
+                              text: ctrl.recordingDuration.value,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.red,
+                              ),
+                            ),
+                          ),
+                        ),
+                      if (!ctrl.isRecording.value) SizedBox(height: 16),
+                    ],
+                  ),
+                ),
+                IconControl(
+                  icon:
+                      ctrl.streamCtrl.value.localVideoState ==
+                          LocalVideoStreamState.localVideoStreamStateStopped
+                      ? Icons.videocam_off
+                      : Icons.videocam,
+                  onTap: ctrl.onVideoAction,
+                ),
+                SizedBox(height: 8),
+                IconControl(
+                  icon:
+                      ctrl.streamCtrl.value.localMicState ==
+                          LocalAudioStreamState.localAudioStreamStateStopped
+                      ? Icons.mic_off
+                      : Icons.mic,
+                  onTap: ctrl.micButtonAction,
+                ),
+                SizedBox(height: 8),
+                IconControl(
+                  icon: Icons.flip_camera_android_sharp,
+                  onTap: ctrl.cameraFlip,
+                ),
+                Visibility(
+                  visible: ctrl.isHost,
+                  child: Padding(
+                    padding: EdgeInsets.only(top: 12),
+                    child: Column(
+                      children: [
+                        // Invite button
+                        IconControl(
+                          url: AppImages.inviteToVideo,
+                          onTap: () =>
+                              _openInviteBottomSheet(forInviteFriend: true),
+                        ),
+                        SizedBox(height: 12),
+                        // Token display with updated icon
+                        Column(
+                          children: [
+                            ImageView(url: AppImages.token, size: 40),
+                            SizedBox(height: 4),
+                            Obx(
+                              () => TextView(
+                                text:
+                                    '${AgoraChatCtrl.find.hostGiftAmountTotal}',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ], // Close the conditional block for !_rightControlsCollapsed
             ],
           ),
         ),

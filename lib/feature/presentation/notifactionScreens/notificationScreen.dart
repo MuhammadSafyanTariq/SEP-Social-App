@@ -562,6 +562,7 @@ class _NotificationscreenState extends State<Notificationscreen> {
                   channelId: item.roomId!,
                   hostId: item.senderId?.id,
                   hostName: item.senderId?.name,
+                  title: item.title, // Include title from notification
                 ),
                 item.notificationType == 'inviteForLive'
                     ? ClientRoleType.clientRoleBroadcaster

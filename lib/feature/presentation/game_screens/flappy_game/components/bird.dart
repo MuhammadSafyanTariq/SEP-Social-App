@@ -4,8 +4,6 @@ import 'package:flame/effects.dart';
 import 'package:flame_audio/flame_audio.dart';
 import 'package:flutter/material.dart';
 import 'package:sep/components/styles/appImages.dart';
-
-import '../game/assets.dart';
 import '../game/bird_movement.dart';
 import '../game/configuration.dart';
 import '../game/flappy_bird_game.dart';

@@ -249,6 +249,26 @@ class LiveStreamCtrl extends GetxController {
     // Remove 0 if it's somehow already in remote IDs
     remote.removeWhere((element) => element.id == 0);
 
+    // FOR AUDIENCE MEMBERS: If we don't have any remote users but we're connected to a channel,
+    // we should add the host as a remote user so audience can see the stream
+    if (remote.isEmpty &&
+        !isHost &&
+        streamCtrl.value.localChannelJoined == true &&
+        streamCtrl.value.clientRole == ClientRoleType.clientRoleAudience) {
+      AppUtils.log(
+        'Audience member with no remote users - adding host to broadcasters',
+      );
+
+      // Add the host as a remote user so audience can see the stream
+      final hostUser = RemoteUserAgora(
+        id: hostAgoraId,
+        audioState: RemoteAudioState.remoteAudioStateStarting,
+        videoState: RemoteVideoState.remoteVideoStateStarting,
+        channelId: streamCtrl.value.channelId,
+      );
+      remote.add(hostUser);
+    }
+
     // Limit remote list to max 6, or 5 if local broadcaster to make space for 0
     final maxRemote = localUser != null ? 5 : 6;
     final limitedRemote = remote.take(maxRemote).toList();
@@ -259,6 +279,9 @@ class LiveStreamCtrl extends GetxController {
     }
 
     AppUtils.log('broadCaster length :: ${limitedRemote.length}');
+    AppUtils.log(
+      'isHost: $isHost, localChannelJoined: ${streamCtrl.value.localChannelJoined}, clientRole: ${streamCtrl.value.clientRole?.name}',
+    );
 
     return limitedRemote;
   }
@@ -962,7 +985,15 @@ class LiveStreamCtrl extends GetxController {
       } else if (!isHost) {
         StreamUtils.log('_registerEngine', 'Setting up audience mode...');
         streamCtrl.value.clientRole = ClientRoleType.clientRoleAudience;
+
+        // For audience members, mute local streams
         await engine.muteLocalVideoStream(true);
+        await engine.muteLocalAudioStream(true);
+
+        StreamUtils.log(
+          '_registerEngine',
+          'Audience setup complete, joining channel...',
+        );
         await joinChannel();
       }
 
@@ -1384,11 +1415,20 @@ class LiveStreamCtrl extends GetxController {
   }
 
   void _handleRemoteUserJoined(RemoteUserAgora user) {
+    AppUtils.log(
+      'Remote user joined: ${user.id}, isHost: $isHost, hostAgoraId: $hostAgoraId',
+    );
+
     final remoteIds = (streamCtrl.value.remoteIds ?? <RemoteUserAgora>{})
       ..add(user);
     streamCtrl.value.remoteIds = remoteIds;
     streamCtrl.refresh();
     _updateBroadcasterCount();
+
+    // For audience members, if this is the host joining, log it
+    if (!isHost && user.id == hostAgoraId) {
+      AppUtils.log('Host stream is now available for audience member');
+    }
   }
 
   void _onRemoteVideoStateChanged(RemoteUserAgora user) =>
@@ -1436,6 +1476,52 @@ class LiveStreamCtrl extends GetxController {
     streamCtrl.value.localChannelJoined = true;
     streamCtrl.refresh();
     _updateBroadcasterCount();
+
+    AppUtils.log(
+      'Local user joined channel - isHost: $isHost, role: ${streamCtrl.value.clientRole?.name}',
+    );
+
+    // For audience members, trigger a refresh after joining to ensure we can see existing broadcasters
+    if (!isHost &&
+        streamCtrl.value.clientRole == ClientRoleType.clientRoleAudience) {
+      AppUtils.log(
+        'Audience member joined - checking for existing broadcasters...',
+      );
+
+      // Small delay to allow for remote users to be detected
+      Future.delayed(const Duration(milliseconds: 1000), () {
+        AppUtils.log('Refreshing broadcasters list for audience member');
+        streamCtrl.refresh();
+
+        // If still no remote users, force add the host
+        if ((streamCtrl.value.remoteIds?.isEmpty ?? true)) {
+          AppUtils.log('No remote users detected, manually adding host stream');
+          _forceAddHostForAudience();
+        }
+      });
+    }
+
+    // Title is now stored in backend via startLive API call
+    // No need to broadcast via chat messages
+  }
+
+  void _forceAddHostForAudience() {
+    if (!isHost &&
+        streamCtrl.value.clientRole == ClientRoleType.clientRoleAudience) {
+      final hostUser = RemoteUserAgora(
+        id: hostAgoraId,
+        audioState: RemoteAudioState.remoteAudioStateStarting,
+        videoState: RemoteVideoState.remoteVideoStateStarting,
+        channelId: streamCtrl.value.channelId,
+      );
+
+      final remoteIds = (streamCtrl.value.remoteIds ?? <RemoteUserAgora>{})
+        ..add(hostUser);
+      streamCtrl.value.remoteIds = remoteIds;
+      streamCtrl.refresh();
+
+      AppUtils.log('Manually added host to remote users for audience member');
+    }
   }
 
   void _handleRemoteUserOffline(RemoteUserAgora user) {

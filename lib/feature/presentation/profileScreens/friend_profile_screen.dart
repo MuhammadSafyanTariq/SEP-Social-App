@@ -16,6 +16,7 @@ import 'package:sep/feature/data/models/dataModels/profile_data/profile_data_mod
 import 'package:sep/feature/presentation/profileScreens/followers.dart';
 import 'package:sep/feature/presentation/profileScreens/profileScreen.dart';
 import 'package:sep/feature/presentation/profileScreens/setting/following.dart';
+import 'package:sep/feature/presentation/chatScreens/ImagePreviewScreen.dart';
 import 'package:sep/services/networking/urls.dart';
 import 'package:sep/services/storage/preferences.dart';
 import 'package:sep/utils/extensions/contextExtensions.dart';
@@ -616,12 +617,21 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
                 final imageUrl = AppUtils.configImageUrl(
                   profileData.value.image ?? '',
                 );
-                return CircleAvatar(
-                  radius: 56,
-                  backgroundColor: Colors.grey[300],
-                  backgroundImage: imageUrl.isNotEmpty
-                      ? NetworkImage(imageUrl)
-                      : AssetImage(AppImages.dummyProfile) as ImageProvider,
+                return GestureDetector(
+                  onTap: () {
+                    if (imageUrl.isNotEmpty) {
+                      context.pushNavigator(
+                        ImagePreviewScreen(imageUrl: imageUrl),
+                      );
+                    }
+                  },
+                  child: CircleAvatar(
+                    radius: 56,
+                    backgroundColor: Colors.grey[300],
+                    backgroundImage: imageUrl.isNotEmpty
+                        ? NetworkImage(imageUrl)
+                        : AssetImage(AppImages.dummyProfile) as ImageProvider,
+                  ),
                 );
               }),
             ),

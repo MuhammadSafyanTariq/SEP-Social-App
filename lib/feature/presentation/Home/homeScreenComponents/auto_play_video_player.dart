@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 import 'package:sep/utils/appUtils.dart';
+import 'package:sep/utils/extensions/contextExtensions.dart';
 import 'package:get/get.dart';
+import 'videoPlayerScreen.dart';
 
 // Global video controller manager
 class VideoControllerManager extends GetxController {
@@ -66,7 +68,6 @@ class _AutoPlayVideoPlayerState extends State<AutoPlayVideoPlayer> {
   VideoPlayerController? _controller;
   bool _isInitialized = false;
   bool _isPlaying = false;
-  bool _showControls = false;
   bool _isMuted = true;
 
   @override
@@ -165,17 +166,15 @@ class _AutoPlayVideoPlayerState extends State<AutoPlayVideoPlayer> {
         _controller!.play();
         _isPlaying = true;
       }
-      _showControls = true;
     });
+  }
 
-    // Hide controls after 2 seconds
-    Future.delayed(Duration(seconds: 2), () {
-      if (mounted) {
-        setState(() {
-          _showControls = false;
-        });
-      }
-    });
+  void _navigateToFullScreen(BuildContext context) {
+    if (_controller == null || !_isInitialized) return;
+
+    context.pushNavigator(
+      VideoPlayerScreen(videoUrl: widget.videoUrl, postId: widget.postId),
+    );
   }
 
   void _toggleMute() {
@@ -217,7 +216,7 @@ class _AutoPlayVideoPlayerState extends State<AutoPlayVideoPlayer> {
       key: Key('video_${widget.postId}'),
       onVisibilityChanged: _handleVisibilityChanged,
       child: GestureDetector(
-        onTap: _togglePlayPause,
+        onTap: () => _navigateToFullScreen(context),
         child: AspectRatio(
           aspectRatio: _controller!.value.aspectRatio,
           child: Stack(
@@ -225,19 +224,22 @@ class _AutoPlayVideoPlayerState extends State<AutoPlayVideoPlayer> {
             children: [
               VideoPlayer(_controller!),
 
-              // Play/Pause overlay
-              AnimatedOpacity(
-                opacity: !_isPlaying || _showControls ? 1.0 : 0.0,
-                duration: Duration(milliseconds: 300),
-                child: Container(
-                  decoration: BoxDecoration(color: Colors.black26),
-                  child: Center(
+              // Corner Play/Pause button overlay
+              Positioned(
+                top: 8,
+                left: 8,
+                child: GestureDetector(
+                  onTap: _togglePlayPause,
+                  child: Container(
+                    padding: EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.7),
+                      shape: BoxShape.circle,
+                    ),
                     child: Icon(
-                      _isPlaying
-                          ? Icons.pause_circle_filled
-                          : Icons.play_circle_filled,
-                      size: 64,
-                      color: Colors.white.withOpacity(0.9),
+                      _isPlaying ? Icons.pause : Icons.play_arrow,
+                      color: Colors.white,
+                      size: 20,
                     ),
                   ),
                 ),
@@ -252,7 +254,7 @@ class _AutoPlayVideoPlayerState extends State<AutoPlayVideoPlayer> {
                   child: Container(
                     padding: EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.black45,
+                      color: Colors.black.withOpacity(0.7),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(

@@ -1,8 +1,6 @@
 import 'dart:async';
-
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:get/get.dart';
-import 'package:sep/components/appLoader.dart';
 import 'package:sep/feature/data/repository/i_agora_chat_repo.dart';
 import 'package:sep/feature/domain/respository/agora_chat_repo.dart';
 import 'package:sep/feature/presentation/liveStreaming_screen/live_stream_ctrl.dart';
@@ -58,8 +56,62 @@ class AgoraChatCtrl extends GetxController {
 
   RxList<LiveStreamMessageModel> chatList = RxList();
 
-  // Temporary field for live stream topic
-  RxString liveStreamTopic = RxString('');
+  // Get the current live stream title from backend data only
+  String get currentStreamTitle {
+    // Access the reactive variable first to ensure reactivity
+    final roomInfo = currentLiveRoomInfo.value;
+    final channels = liveStreamChannels;
+    final currentChannelId = liveStreamCtrl.streamCtrl.value.channelId;
+
+    AppUtils.log('🔍 Getting currentStreamTitle...');
+    AppUtils.log('📊 currentLiveRoomInfo.value: $roomInfo');
+    AppUtils.log('📋 liveStreamChannels.length: ${channels.length}');
+    AppUtils.log('🆔 current channelId: $currentChannelId');
+
+    // First priority: Current live room info from backend
+    final backendTitle = roomInfo?['title'];
+    AppUtils.log('🎯 Backend title from currentLiveRoomInfo: "$backendTitle"');
+    if (backendTitle != null && backendTitle.toString().isNotEmpty) {
+      AppUtils.log('✅ Returning backend title: "${backendTitle.toString()}"');
+      return backendTitle.toString();
+    }
+
+    // Second priority: Channel list data from backend
+    if (currentChannelId != null) {
+      final currentChannel = channels.firstWhereOrNull(
+        (channel) => channel.channelId == currentChannelId,
+      );
+      AppUtils.log('📺 Channel found: ${currentChannel?.title}');
+      if (currentChannel?.title != null && currentChannel!.title!.isNotEmpty) {
+        AppUtils.log('✅ Returning channel title: "${currentChannel.title!}"');
+        return currentChannel.title!;
+      }
+    }
+
+    // No title available from backend
+    AppUtils.log('❌ No title available, returning empty string');
+    return '';
+  }
+
+  // Temporary getter to fix the missing liveStreamTopic error
+  // This should be removed once we identify where it's being called from
+  String get liveStreamTopic {
+    AppUtils.log('liveStreamTopic getter called - this should be replaced!');
+    return currentStreamTitle;
+  }
+
+  // Debug method to test title retrieval
+  void debugTitleData() {
+    AppUtils.log('=== DEBUG TITLE DATA ===');
+    AppUtils.log('currentLiveRoomInfo: ${currentLiveRoomInfo.value}');
+    AppUtils.log('liveStreamChannels count: ${liveStreamChannels.length}');
+    for (var i = 0; i < liveStreamChannels.length; i++) {
+      final ch = liveStreamChannels[i];
+      AppUtils.log('Channel $i: id=${ch.channelId}, title=${ch.title}');
+    }
+    AppUtils.log('currentStreamTitle getter returns: "${currentStreamTitle}"');
+    AppUtils.log('========================');
+  }
 
   ClientRoleType? get role => LiveStreamCtrl.find.streamCtrl.value.clientRole;
 
@@ -81,8 +133,9 @@ class AgoraChatCtrl extends GetxController {
     }
   }
 
-  void connectAndJoin(String hostId, String username) {
+  void connectAndJoin(String hostId, String username, {String? title}) {
     // _chatConnection = false;
+    AppUtils.log('connectAndJoin called with title: $title');
     connect(() {
       if (chatConnection) {
         AppUtils.log('go back');
@@ -91,7 +144,8 @@ class AgoraChatCtrl extends GetxController {
         AppUtils.log('continue');
         chatConnection = true;
         this.hostId = hostId;
-        callStart();
+        AppUtils.log('About to callStart with title: $title');
+        callStart(title: title);
       }
       // _onConnect();
       return;
@@ -142,17 +196,36 @@ class AgoraChatCtrl extends GetxController {
 
   RxList<LiveStreamChannelModel> liveStreamChannels = RxList([]);
 
+  // Store current live room info
+  Rx<Map<String, dynamic>?> currentLiveRoomInfo = Rx<Map<String, dynamic>?>(
+    null,
+  );
+
   void onLiveStreamChannelList() {
     _repo.onLiveStreamChannelList((data) {
       AppUtils.log('liveChannelsdata ::: ::::::::');
       AppUtils.log(data);
       if (data['code'] == 200) {
+        final liveFollowersData = data['data']?['liveFollowers'] ?? [];
+        AppUtils.log('Raw live followers data:');
+        AppUtils.log(liveFollowersData);
+
         final list = List<LiveStreamChannelModel>.from(
-          (data['data']?['liveFollowers'] ?? []).map(
-            (json) => LiveStreamChannelModel.fromJson(json),
-          ),
+          liveFollowersData.map((json) {
+            AppUtils.log(
+              'Processing channel: ${json['roomId']}, title: ${json['title']}',
+            );
+            return LiveStreamChannelModel.fromJson(json);
+          }),
         );
         liveStreamChannels.assignAll(list);
+
+        // Log final parsed channels with titles
+        for (var channel in liveStreamChannels) {
+          AppUtils.log(
+            'Channel ${channel.channelId} has title: ${channel.title}',
+          );
+        }
       }
 
       // flutter: │ 🐛 {
@@ -166,6 +239,61 @@ class AgoraChatCtrl extends GetxController {
       // flutter: │ 🐛     "timestamp": "2025-07-21T04:53:24.505Z"
       // flutter: │ 🐛   }
       // flutter: │ 🐛 }
+    });
+  }
+
+  void onLiveRoomInfo() {
+    AppUtils.log(
+      '🔧🔧🔧 REGISTERING onLiveRoomInfo listener - VERSION 2 🔧🔧🔧',
+    );
+
+    // Force unsubscribe first to clear any old handlers
+    try {
+      _repo.unsubscribe(SocketKey.liveRoomInfo);
+      AppUtils.log('🧹 Old liveRoomInfo handler unsubscribed');
+    } catch (e) {
+      AppUtils.log('⚠️ No old handler to unsubscribe: $e');
+    }
+
+    _repo.onLiveRoomInfo((data) {
+      AppUtils.log(
+        '🚨🚨🚨 NEW HANDLER TRIGGERED - DATA RECEIVED - VERSION 2 🚨🚨🚨',
+      );
+      try {
+        AppUtils.log('=== onLiveRoomInfo HANDLER CALLED ===');
+        AppUtils.log('=== onLiveRoomInfo START ===');
+        AppUtils.log('Raw data: $data');
+        AppUtils.log('Data type: ${data.runtimeType}');
+
+        // Backend sends direct response without code/data wrapper
+        if (data != null && data is Map<String, dynamic>) {
+          AppUtils.log('✅ Valid data received, processing...');
+
+          // Extract and log the title before assignment
+          final title = data['title'];
+          AppUtils.log('📝 Title from backend: "$title"');
+
+          // Store the data
+          currentLiveRoomInfo.value = data;
+          AppUtils.log('💾 Data stored in currentLiveRoomInfo');
+
+          // Force refresh
+          currentLiveRoomInfo.refresh();
+          AppUtils.log('🔄 Refreshed reactive variable');
+
+          // Test the getter immediately
+          final currentTitle = currentStreamTitle;
+          AppUtils.log('🎯 Current title via getter: "$currentTitle"');
+
+          AppUtils.log('✅ onLiveRoomInfo processing complete');
+        } else {
+          AppUtils.log('❌ Invalid or null data received for live room info');
+        }
+        AppUtils.log('=== onLiveRoomInfo END ===');
+      } catch (e, stackTrace) {
+        AppUtils.log('💥 ERROR in onLiveRoomInfo: $e');
+        AppUtils.log('Stack trace: $stackTrace');
+      }
     });
   }
 
@@ -211,6 +339,7 @@ class AgoraChatCtrl extends GetxController {
                   clientRole: newRole,
                   hostId: data.hostId,
                   hostName: data.hostName,
+                  title: data.title,
                 ),
               )
               .then(call);
@@ -266,10 +395,10 @@ class AgoraChatCtrl extends GetxController {
   //   }
   // }
 
-  void callStart() {
+  void callStart({String? title}) {
     // if (role == ClientRoleType.clientRoleBroadcaster) {
     if (liveStreamCtrl.isHost) {
-      _startLive();
+      _startLive(title: title);
     } else {
       _joinLive();
     }
@@ -281,11 +410,12 @@ class AgoraChatCtrl extends GetxController {
     _onLiveEnded();
     _onChatError();
     _onParticipantsCount();
+    onLiveRoomInfo();
   }
 
-  void _startLive() {
-    AppUtils.log('emit-----_startLive');
-    _repo.startLive();
+  void _startLive({String? title}) {
+    AppUtils.log('emit-----_startLive with title: $title');
+    _repo.startLive(title: title);
   }
 
   void _joinLive() {
@@ -471,13 +601,32 @@ class AgoraChatCtrl extends GetxController {
     _onNewParticipantJoined();
 
     AppUtils.log('_updateHostOnJoin');
+    AppUtils.log('Complete join data: $data');
+
     roomId = data['roomId'];
+    AppUtils.log('RoomId set to: $roomId');
+    AppUtils.log('HostId is: $hostId');
+
+    // Check if title is already in the join response
+    final titleInJoinData = data['title'];
+    AppUtils.log('Title in join data: $titleInJoinData');
+
     AppUtils.log({'channel': 'onLiveJoined', 'data': data}, show: _showLog);
     final participants = List<Map<String, dynamic>>.from(
       data['participants'] ?? [],
     );
     _addUsersToMappingList(participants);
     _liveCount.value = data['participantCount'] ?? 0;
+
+    // Fetch live room info to get the title from backend
+    if (roomId != null && hostId != null) {
+      AppUtils.log(
+        'Fetching live room info for roomId: $roomId, hostId: $hostId',
+      );
+      _repo.getLiveRoomInfo(hostId!, roomId!);
+    } else {
+      AppUtils.log('Cannot fetch room info - roomId: $roomId, hostId: $hostId');
+    }
   }
 
   void _onJoin() {
@@ -489,10 +638,22 @@ class AgoraChatCtrl extends GetxController {
     });
     _repo.onLiveStart((data) {
       AppUtils.logg('onLiveStart');
+      AppUtils.logg('Complete onLiveStart data:');
       AppUtils.logg(data);
+
+      // Check if title is in the start response
+      final titleInStartData = data['title'];
+      AppUtils.log('Title in onLiveStart data: $titleInStartData');
+
       _updateHostOnJoin(data);
       _repo.unsubscribe(SocketKey.startLive);
       updateLiveBroadCasterCountByHost(liveStreamCtrl.getBroadcasters.length);
+
+      // For host: also fetch room info to get the title after starting live
+      if (liveStreamCtrl.isHost && roomId != null && hostId != null) {
+        AppUtils.log('Host started live, fetching room info for title...');
+        _repo.getLiveRoomInfo(hostId!, roomId!);
+      }
     });
   }
 
@@ -524,7 +685,6 @@ class AgoraChatCtrl extends GetxController {
     }
     hostGiftAmountTotal.value = 0;
     chatList.clear();
-    liveStreamTopic.value = ''; // Clear topic when leaving room
     _repo.leave();
     _repo.removeListenersOnLeaveLiveStream();
     _incomingLiveRequestToHostController.close();
@@ -677,6 +837,7 @@ class LiveStreamChannelModel {
   String? hostId;
   String? hostName;
   String? hostImage;
+  String? title;
 
   // flutter: │ 🐛       {
   // flutter: │ 🐛         "userId": "687a274d642948724b3e7ca2",
@@ -699,6 +860,7 @@ class LiveStreamChannelModel {
     this.hostName,
     this.hostId,
     this.hostImage,
+    this.title,
   });
 
   factory LiveStreamChannelModel.fromJson(Map<String, dynamic> json) =>
@@ -707,5 +869,6 @@ class LiveStreamChannelModel {
         hostName: json['name'],
         channelId: json['roomId'],
         hostImage: json['image'],
+        title: json['title'],
       );
 }

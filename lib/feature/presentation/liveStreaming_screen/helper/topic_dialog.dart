@@ -32,7 +32,7 @@ class LiveStreamTopicDialog {
                 children: [
                   // Title
                   Text(
-                    "Set Live Stream Topic",
+                    "Set Live Stream Title",
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -44,7 +44,7 @@ class LiveStreamTopicDialog {
 
                   // Description
                   Text(
-                    "Enter a topic for your live stream (optional)",
+                    "Enter a title for your live stream (optional)",
                     style: TextStyle(fontSize: 14, color: AppColors.grey),
                   ),
 

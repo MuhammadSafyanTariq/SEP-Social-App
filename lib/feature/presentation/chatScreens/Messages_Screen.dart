@@ -874,4 +874,12 @@ class _MessageScreenState extends State<MessageScreen> {
       ],
     );
   }
+
+  @override
+  void dispose() {
+    AppUtils.log('🗑️ Messages_Screen disposing - ensuring chat cleanup');
+    ctrl.onLeaveChatRoom();
+    _focusNode.dispose();
+    super.dispose();
+  }
 }

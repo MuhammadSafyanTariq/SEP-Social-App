@@ -333,6 +333,8 @@ class FirebaseServices {
             channelId: roomId,
             hostId: hostId,
             hostName: hostName,
+            title:
+                _payloadData?['title'], // Include title from notification data
           ),
           role,
           connectionCallBack,

@@ -1,4 +1,3 @@
-import 'package:sep/feature/presentation/game_screens/fruit_ninja_game/components/throw_fruit.dart';
 import 'package:sep/feature/presentation/game_screens/fruit_ninja_game/fruit_game.dart';
 
 class FlySpawner {

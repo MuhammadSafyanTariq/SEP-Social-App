@@ -106,7 +106,7 @@ class AuthCtrl extends GetxController {
       final error = response.getError;
       if (error != null) {
         AppUtils.toastError(
-          error is Exception ? error : Exception('Unknown error'),
+          error,
         );
       } else {
         AppUtils.toastError(response.getError!);
@@ -136,7 +136,7 @@ class AuthCtrl extends GetxController {
 
       if (error != null) {
         AppUtils.toastError(
-          error is Exception ? error : Exception('Unknown error'),
+          error,
         );
       } else {
         AppUtils.toastError(response.getError!);

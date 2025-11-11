@@ -15,7 +15,8 @@ import 'package:sep/feature/data/models/dataModels/post_data.dart';
 import 'package:sep/feature/presentation/liveStreaming_screen/broad_cast_video.dart';
 import 'package:sep/feature/presentation/liveStreaming_screen/live_stream_ctrl.dart';
 import 'package:sep/feature/presentation/liveStreaming_screen/helper/topic_dialog.dart';
-import 'package:sep/feature/presentation/controller/agora_chat_ctrl.dart';
+import 'package:sep/feature/presentation/chatScreens/ImagePreviewScreen.dart';
+
 import 'package:sep/utils/extensions/contextExtensions.dart';
 import 'package:sep/utils/extensions/extensions.dart';
 
@@ -237,21 +238,32 @@ class _ProfileScreenState extends State<ProfileScreen>
           Positioned(
             bottom: -50,
             left: MediaQuery.of(context).size.width / 2 - 60,
-            child: Container(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 4),
-              ),
-              child: CircleAvatar(
-                radius: 56,
-                backgroundColor: Colors.grey[300],
-                backgroundImage:
-                    profileCtrl.profileImageData.network?.isNotEmpty == true
-                    ? NetworkImage(profileCtrl.profileImageData.network!)
-                    : AssetImage(AppImages.dummyProfile) as ImageProvider,
-                child: profileCtrl.profileImageData.network?.isEmpty ?? true
-                    ? Icon(Icons.person, size: 60, color: Colors.grey[600])
-                    : null,
+            child: GestureDetector(
+              onTap: () {
+                if (profileCtrl.profileImageData.network?.isNotEmpty == true) {
+                  context.pushNavigator(
+                    ImagePreviewScreen(
+                      imageUrl: profileCtrl.profileImageData.network!,
+                    ),
+                  );
+                }
+              },
+              child: Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 4),
+                ),
+                child: CircleAvatar(
+                  radius: 56,
+                  backgroundColor: Colors.grey[300],
+                  backgroundImage:
+                      profileCtrl.profileImageData.network?.isNotEmpty == true
+                      ? NetworkImage(profileCtrl.profileImageData.network!)
+                      : AssetImage(AppImages.dummyProfile) as ImageProvider,
+                  child: profileCtrl.profileImageData.network?.isEmpty ?? true
+                      ? Icon(Icons.person, size: 60, color: Colors.grey[600])
+                      : null,
+                ),
               ),
             ),
           ),
@@ -420,14 +432,13 @@ class _ProfileScreenState extends State<ProfileScreen>
                       return;
                     }
 
-                    // Store the topic in controller
-                    AgoraChatCtrl.find.liveStreamTopic.value = topic;
-                    print('Topic stored: $topic');
+                    print('Topic will be sent to backend: $topic');
 
                     print('Navigating to BroadCastVideo...');
                     context.pushNavigator(
                       BroadCastVideo(
                         clientRole: ClientRoleType.clientRoleBroadcaster,
+                        title: topic, // Pass title to BroadCastVideo
                         isHost: true,
                       ),
                     );

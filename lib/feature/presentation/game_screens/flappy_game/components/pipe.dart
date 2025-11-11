@@ -2,8 +2,6 @@ import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 import 'package:flame/flame.dart';
 import 'package:sep/components/styles/appImages.dart';
-
-import '../game/assets.dart';
 import '../game/configuration.dart';
 import '../game/flappy_bird_game.dart';
 import '../game/pipe_position.dart';

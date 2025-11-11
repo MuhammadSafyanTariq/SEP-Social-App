@@ -13,6 +13,7 @@ class BroadCastVideo extends StatefulWidget {
   final String? hostName;
   final ClientRoleType clientRole;
   final bool isHost;
+  final String? title;
 
   const BroadCastVideo({
     super.key,
@@ -20,6 +21,7 @@ class BroadCastVideo extends StatefulWidget {
     this.hostId,
     this.hostName,
     this.isHost = false,
+    this.title,
   });
 
   @override
@@ -57,11 +59,11 @@ class _BroadCastVideoState extends State<BroadCastVideo> {
       });
       print('BroadCastVideo: Set _isInitializing to false');
 
-      // if(widget.clientRole == ClientRoleType.clientRoleAudience || (widget.hostId ?? '') == Preferences.uid ){
-      if (!widget.isHost) {
-        AppUtils.log('testing step 1111   ${widget.isHost}');
-        _createChatConnection();
-      }
+      // Always create chat connection for both host and participants
+      AppUtils.log(
+        'Creating chat connection for user. isHost: ${widget.isHost}',
+      );
+      _createChatConnection();
 
       print('BroadCastVideo: _initializeBroadcast completed successfully');
     } catch (e) {
@@ -76,6 +78,7 @@ class _BroadCastVideoState extends State<BroadCastVideo> {
     AgoraChatCtrl.find.connectAndJoin(
       widget.hostId ?? Preferences.uid ?? '',
       Preferences.profile?.name ?? 'Guest',
+      title: widget.title,
     );
   }
 

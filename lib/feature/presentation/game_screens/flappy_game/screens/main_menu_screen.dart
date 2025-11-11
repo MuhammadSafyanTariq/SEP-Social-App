@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // For SystemNavigator.pop()
 import 'package:sep/utils/extensions/contextExtensions.dart';
 
 import '../game/assets.dart';

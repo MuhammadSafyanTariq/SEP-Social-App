@@ -310,6 +310,8 @@ class ChatSampleState extends State<ChatSample> {
                         channelId: data.channelId,
                         hostId: data.sender?.id,
                         hostName: data.sender?.name,
+                        title:
+                            null, // Title will be retrieved from backend live channel list
                       ),
                       ClientRoleType.clientRoleBroadcaster,
                       connectionCallBack,

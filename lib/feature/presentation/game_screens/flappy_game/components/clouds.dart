@@ -2,8 +2,6 @@ import 'package:flame/components.dart';
 import 'package:flame/flame.dart';
 import 'package:flame/parallax.dart';
 import 'package:sep/components/styles/appImages.dart';
-
-import '../game/assets.dart';
 import '../game/configuration.dart';
 import '../game/flappy_bird_game.dart';
 

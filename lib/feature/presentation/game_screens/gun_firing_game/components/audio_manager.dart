@@ -3,7 +3,6 @@ import 'package:flame/components.dart';
 import 'package:flame_audio/flame_audio.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:sep/utils/appUtils.dart';
-import 'package:flutter/services.dart';
 
 class AudioManager extends Component {
   bool musicEnabled = true;

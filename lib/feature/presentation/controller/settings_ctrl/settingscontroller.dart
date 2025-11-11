@@ -1,12 +1,7 @@
-import 'package:flutter/cupertino.dart';
-import 'package:get/get.dart';
-import 'package:sep/feature/data/repository/iAuthRepository.dart';
-import 'package:sep/feature/domain/respository/authRepository.dart';
-import 'package:sep/feature/presentation/screens/loading.dart';
-import 'package:sep/utils/appUtils.dart';
+// ignore_for_file: unused_local_variable
 
-import '../../../../services/storage/preferences.dart';
-import '../../../data/models/dataModels/profile_data/profile_data_model.dart';
+import 'package:get/get.dart';
+import 'package:sep/utils/appUtils.dart';
 import '../../../data/repository/iTempRepository.dart';
 import '../../../domain/respository/templateRepository.dart';
 
@@ -50,7 +45,7 @@ class SettingsCtrl extends GetxController {
       } else {
         final error = response.getError;
         if (error != null) {
-          AppUtils.toastError(error is Exception ? error.toString() : "Unknown error");
+          AppUtils.toastError(error.toString());
         } else {
           AppUtils.toastError("Failed to send message");
         }
@@ -80,7 +75,7 @@ class SettingsCtrl extends GetxController {
     } else {
       final error = response.getError;
       if (error != null) {
-        AppUtils.toastError(error is Exception ? error : Exception('Unknown error'));
+        AppUtils.toastError(error);
       } else {
         AppUtils.toastError(response.getError!);
       }
@@ -126,7 +121,7 @@ class SettingsCtrl extends GetxController {
     } else {
       final error = response.getError;
       if (error != null) {
-        AppUtils.toastError(error is Exception ? error : Exception('Unknown error'));
+        AppUtils.toastError(error);
       } else {
         AppUtils.toastError(response.getError!);
       }
@@ -148,7 +143,7 @@ class SettingsCtrl extends GetxController {
     } else {
       final error = response.getError;
       if (error != null) {
-        AppUtils.toastError(error is Exception ? error : Exception('Unknown error'));
+        AppUtils.toastError(error);
       } else {
         AppUtils.toastError(response.getError!);
       }

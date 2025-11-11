@@ -1,5 +1,3 @@
-
-
 import 'package:flutter/material.dart';
 import 'package:sep/components/coreComponents/AppButton.dart';
 import 'package:sep/components/styles/textStyles.dart';
@@ -8,13 +6,11 @@ import 'package:sep/feature/presentation/controller/auth_Controller/profileCtrl.
 import 'package:sep/services/networking/urls.dart';
 import 'package:sep/utils/extensions/contextExtensions.dart';
 import 'package:sep/utils/extensions/extensions.dart';
-import 'package:sep/utils/extensions/size.dart';
 import 'package:sep/utils/extensions/textStyle.dart';
 import 'package:sep/utils/extensions/widget.dart';
 import '../../../components/coreComponents/ImageView.dart'; // Make sure this imports the correct image component
 import '../../../components/coreComponents/TextView.dart';
 import '../../../components/styles/appColors.dart';
-import '../../../components/styles/appImages.dart';
 
 class Block extends StatelessWidget {
   String? name;
