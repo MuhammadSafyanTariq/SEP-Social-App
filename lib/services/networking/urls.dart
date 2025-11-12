@@ -171,4 +171,9 @@ class Urls {
 
   // Orders
   static const String sellerOrders = '/api/order/seller-orders';
+
+  // Jobs
+  static const String jobs = '/api/jobs';
+  static String getJobById(String jobId) => '/api/jobs/$jobId';
+  static String deleteJob(String jobId) => '/api/jobs/$jobId';
 }

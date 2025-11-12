@@ -30,6 +30,7 @@ import '../profileScreens/profileScreen.dart';
 import '../profileScreens/setting/noInternetScreen.dart';
 import '../profileScreens/setting/setting.dart';
 import '../wallet/wallet_screen.dart';
+import '../jobs/jobs_screen.dart';
 import 'contentScreen.dart';
 import 'CommonBannerAdWidget.dart';
 
@@ -379,6 +380,28 @@ class _HomeScreenState extends State<HomeScreen> {
                       decoration: BoxDecoration(shape: BoxShape.circle),
                       child: Icon(
                         Icons.notifications_none_rounded,
+                        size: 24,
+                        color: AppColors.primaryColor,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () {
+                      context.pushNavigator(JobsScreen());
+                    },
+                    borderRadius: BorderRadius.circular(24),
+                    child: Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(shape: BoxShape.circle),
+                      child: Icon(
+                        Icons.work_outline_rounded,
                         size: 24,
                         color: AppColors.primaryColor,
                       ),
