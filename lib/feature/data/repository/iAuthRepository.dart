@@ -129,6 +129,7 @@ class IAuthRepository implements AuthRepository {
     required String bio,
     required String country,
     required String webSite,
+    required String referralCode,
   }) async {
     try {
       AppUtils.log("🔧 Repository registerUser called");
@@ -168,6 +169,7 @@ class IAuthRepository implements AuthRepository {
         'website': webSite,
         'deviceToken': Preferences.fcmToken ?? '',
         'deviceType': AppUtils.deviceType,
+        'referralCode': referralCode.isNotEmpty ? referralCode : null,
       };
 
       AppUtils.log("📤 Final request body: $requestBody");

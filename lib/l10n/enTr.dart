@@ -56,6 +56,7 @@ Map<String, String> enTr = {
   AppStrings.pleaseEnterPhoneNumber: "Please Enter Phone Number",
   AppStrings.pleaseEnterValidPhoneNumber: "Please enter a valid phone number",
   AppStrings.searchCountry: "Search Country",
+  AppStrings.enterReferralCode: "Enter referral code (optional)",
   AppStrings.cnontinue: "Continue",
   AppStrings.male: "Male",
   AppStrings.female: "Female",
@@ -320,4 +321,22 @@ Map<String, String> enTr = {
       "Explore our Visual world and beauty of our app.",
   AppStrings.exploreVisualWorldTwitter:
       "Explore our Visual world and beauty of our app.",
+
+  // Referral strings
+  AppStrings.referFriend: "Refer a Friend",
+  AppStrings.participateReferral: "Participate in Referral Program",
+  AppStrings.referralDescription:
+      "Join our referral program and earn rewards by inviting friends!",
+  AppStrings.shareCode: "Share Code",
+  AppStrings.referralProgramDetails: "Referral Program Details",
+  AppStrings.leaderboard: "Leaderboard",
+  AppStrings.topReferrers: "Top Referrers This Month",
+  AppStrings.invitesCount: "invites",
+  AppStrings.noLeaderboardData: "No leaderboard data available",
+  AppStrings.monthlyWinners: "Monthly Winners",
+  AppStrings.selectWinnerMonth: "Select Month",
+  AppStrings.selectWinnerYear: "Select Year",
+  AppStrings.noWinnersData: "No winners data available for this month",
+  AppStrings.winner: "Winner",
+  AppStrings.previousMonthWinners: "Previous Month Winners",
 };

@@ -1,13 +1,15 @@
 import '../components/styles/app_strings.dart';
 
-Map<String,String> bnTr = {
+Map<String, String> bnTr = {
   AppStrings.sep: "সেপ্টেম্বর",
   AppStrings.sports: "খেলা",
   AppStrings.perception: "ধারণা",
   AppStrings.entertainment: "বিনোদন",
-  AppStrings.push: "সীমা অতিক্রম করুন, চ্যালেঞ্জ গ্রহণ করুন—খেলা আপনাকে চ্যাম্পিয়ন করে তুলবে!",
+  AppStrings.push:
+      "সীমা অতিক্রম করুন, চ্যালেঞ্জ গ্রহণ করুন—খেলা আপনাকে চ্যাম্পিয়ন করে তুলবে!",
   AppStrings.unwind: "বিশ্রাম নিন, হাসুন এবং স্মৃতি তৈরি করুন—বিনোদন তার সেরা!",
-  AppStrings.shaping: "ভবিষ্যত গঠন, একটি সিদ্ধান্ত একসাথে—ধারণা আমাদের সবার উপর প্রভাব ফেলে।",
+  AppStrings.shaping:
+      "ভবিষ্যত গঠন, একটি সিদ্ধান্ত একসাথে—ধারণা আমাদের সবার উপর প্রভাব ফেলে।",
   AppStrings.getStart: "শুরু করুন",
   AppStrings.next: "পরবর্তী",
   AppStrings.skip: "এড়িয়ে যান",
@@ -20,7 +22,8 @@ Map<String,String> bnTr = {
   AppStrings.emailNotFound: "ইমেইল পাওয়া যায়নি",
   AppStrings.somethingWentWrong: "কিছু ভুল হয়েছে। আবার চেষ্টা করুন।",
   AppStrings.forgotPass: "পাসওয়ার্ড ভুলে গেছেন",
-  AppStrings.enterYourRegisteredEmail: "যাচাই করার জন্য আপনার নিবন্ধিত ইমেইল লিখুন। আমরা আপনার ইমেইলে ৪-সংখ্যার কোড পাঠাব।",
+  AppStrings.enterYourRegisteredEmail:
+      "যাচাই করার জন্য আপনার নিবন্ধিত ইমেইল লিখুন। আমরা আপনার ইমেইলে ৪-সংখ্যার কোড পাঠাব।",
   AppStrings.sendCode: "কোড পাঠান",
   AppStrings.failedToSendResend: "ওটিপি পুনরায় পাঠাতে ব্যর্থ।",
   AppStrings.verificationCode: "যাচাইকরণ কোড",
@@ -47,15 +50,18 @@ Map<String,String> bnTr = {
   AppStrings.pleaseEnterValidEmail: "অনুগ্রহ করে একটি বৈধ ইমেইল ঠিকানা লিখুন",
   AppStrings.phone: "ফোন",
   AppStrings.pleaseEnterPhoneNumber: "অনুগ্রহ করে ফোন নম্বর লিখুন",
-  AppStrings.pleaseEnterValidPhoneNumber: "অনুগ্রহ করে একটি বৈধ ফোন নম্বর লিখুন",
+  AppStrings.pleaseEnterValidPhoneNumber:
+      "অনুগ্রহ করে একটি বৈধ ফোন নম্বর লিখুন",
   AppStrings.searchCountry: "দেশ অনুসন্ধান করুন",
-  AppStrings.cnontinue: "চালিয়ে যান",
+  AppStrings.enterReferralCode: "রেফারেল কোড লিখুন (ঐচ্ছিক)",
+  AppStrings.cnontinue: "চালিয়ে যান",
   AppStrings.male: "পুরুষ",
   AppStrings.female: "নারী",
   AppStrings.other: "অন্যান্য",
   AppStrings.selectGender: "আপনার লিঙ্গ নির্বাচন করুন",
   AppStrings.pleaseAcceptTerms: "অনুগ্রহ করে শর্তাবলীতে সম্মতি দিন।",
-  AppStrings.pleaseAgreePrivacyPolicy: "অনুগ্রহ করে গোপনীয়তা নীতিতে সম্মতি দিন।",
+  AppStrings.pleaseAgreePrivacyPolicy:
+      "অনুগ্রহ করে গোপনীয়তা নীতিতে সম্মতি দিন।",
   AppStrings.pleaseEnterDateOfBirth: "অনুগ্রহ করে আপনার জন্মতারিখ লিখুন।",
   AppStrings.pleaseSelectGender: "অনুগ্রহ করে আপনার লিঙ্গ নির্বাচন করুন।",
   AppStrings.addProfile: "প্রোফাইল যোগ করুন",
@@ -67,7 +73,8 @@ Map<String,String> bnTr = {
   AppStrings.dateSelect: "মাস/দিন/বছর",
   AppStrings.pleaseEnterYourDate: "অনুগ্রহ করে আপনার জন্ম তারিখ লিখুন।",
   AppStrings.pleaseEnterYourPassword: "অনুগ্রহ করে আপনার পাসওয়ার্ড লিখুন",
-  AppStrings.passwordMustNotContainSpace: "পাসওয়ার্ডে ফাঁকা স্থান থাকতে পারবে না",
+  AppStrings.passwordMustNotContainSpace:
+      "পাসওয়ার্ডে ফাঁকা স্থান থাকতে পারবে না",
   AppStrings.passwordMustBeAtLeast: "পাসওয়ার্ড অন্তত ৪ অক্ষরের হতে হবে",
   AppStrings.confirmYourPass: "আপনার পাসওয়ার্ড নিশ্চিত করুন",
   AppStrings.pleaseConfirmYourPass: "অনুগ্রহ করে আপনার পাসওয়ার্ড নিশ্চিত করুন",
@@ -82,10 +89,12 @@ Map<String,String> bnTr = {
   AppStrings.congratulation: "অভিনন্দন!",
   AppStrings.noPostYet: "এখনও কোনো পোস্ট নেই",
   AppStrings.whenSomeOne: "যখন কেউ পোস্ট করবে, আপনি এখানে দেখতে পারবেন।",
-  AppStrings.yourAccountIsReady: "আপনার অ্যাকাউন্ট ব্যবহার করার জন্য প্রস্তুত। কয়েক সেকেন্ডের মধ্যে আপনাকে হোম পেজে পুনঃনির্দেশিত করা হবে।",
+  AppStrings.yourAccountIsReady:
+      "আপনার অ্যাকাউন্ট ব্যবহার করার জন্য প্রস্তুত। কয়েক সেকেন্ডের মধ্যে আপনাকে হোম পেজে পুনঃনির্দেশিত করা হবে।",
   AppStrings.pinCode: "পিন কোড :",
   AppStrings.changes: "পরিবর্তন করুন",
-  AppStrings.hurryYouHave: "তাড়াতাড়ি করুন! আপনি আপনার অর্ডারের জন্য বিনামূল্যে ডেলিভারি আনলক করেছেন।",
+  AppStrings.hurryYouHave:
+      "তাড়াতাড়ি করুন! আপনি আপনার অর্ডারের জন্য বিনামূল্যে ডেলিভারি আনলক করেছেন।",
   AppStrings.addDelivaryAddress: "ডেলিভারি ঠিকানা যোগ করুন",
   AppStrings.itemsForDelivery: "ডেলিভারির জন্য আইটেম",
   AppStrings.orderSummary: "অর্ডার সংক্ষেপ",
@@ -94,4 +103,21 @@ Map<String,String> bnTr = {
   AppStrings.totalAmount: "মোট পরিমাণ",
   AppStrings.proceedToCheckout: "চেকআউট করুন",
 
+  // Referral strings
+  AppStrings.referFriend: "বন্ধুদের রেফার করুন",
+  AppStrings.participateReferral: "রেফারেল প্রোগ্রামে অংশগ্রহণ করুন",
+  AppStrings.referralDescription:
+      "আমাদের রেফারেল প্রোগ্রামে যোগ দিন এবং বন্ধুদের আমন্ত্রণ জানিয়ে পুরস্কার অর্জন করুন!",
+  AppStrings.shareCode: "কোড শেয়ার করুন",
+  AppStrings.referralProgramDetails: "রেফারেল প্রোগ্রাম বিবরণ",
+  AppStrings.leaderboard: "লিডারবোর্ড",
+  AppStrings.topReferrers: "এই মাসের শীর্ষ রেফারার",
+  AppStrings.invitesCount: "আমন্ত্রণ",
+  AppStrings.noLeaderboardData: "লিডারবোর্ড ডেটা উপলব্ধ নেই",
+  AppStrings.monthlyWinners: "মাসিক বিজয়ীরা",
+  AppStrings.selectWinnerMonth: "মাস নির্বাচন করুন",
+  AppStrings.selectWinnerYear: "বছর নির্বাচন করুন",
+  AppStrings.noWinnersData: "এই মাসের জন্য কোন বিজয়ীর তথ্য নেই",
+  AppStrings.winner: "বিজয়ী",
+  AppStrings.previousMonthWinners: "গত মাসের বিজয়ীরা",
 };

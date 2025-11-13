@@ -5,7 +5,6 @@ import '../../../../utils/appUtils.dart';
 import '../../../data/models/dataModels/responseDataModel.dart';
 import '../../../data/models/dataModels/signupModel.dart';
 
-
 class SignupController extends GetxController {
   RxString imagePath = ''.obs;
 
@@ -14,6 +13,7 @@ class SignupController extends GetxController {
   var phone = ''.obs;
   var countryCode = ''.obs;
   var profileImagePath = ''.obs;
+  var referralCode = ''.obs;
 
   final Urls _apiMethod = Urls();
 
@@ -35,6 +35,10 @@ class SignupController extends GetxController {
 
   void updateProfileImage(String path) {
     profileImagePath.value = path;
+  }
+
+  void updateReferralCode(String newReferralCode) {
+    referralCode.value = newReferralCode;
   }
 
   void updateImage(String newImagePath) {

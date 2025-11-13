@@ -91,6 +91,7 @@ class _EmailLoginFormState extends State<EmailLoginForm> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _referralCodeController = TextEditingController();
   final IAuthRepository authRepository = IAuthRepository();
   RxString _selectedCountryCode = RxString('+1 ');
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
@@ -109,6 +110,9 @@ class _EmailLoginFormState extends State<EmailLoginForm> {
     _phoneController.addListener(() {
       signupController.updatePhone(_phoneController.text);
       isValid.value = _formKey.currentState?.validate() ?? false;
+    });
+    _referralCodeController.addListener(() {
+      signupController.updateReferralCode(_referralCodeController.text);
     });
   }
 
@@ -162,6 +166,7 @@ class _EmailLoginFormState extends State<EmailLoginForm> {
     _nameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
+    _referralCodeController.dispose();
     super.dispose();
   }
 
@@ -291,6 +296,11 @@ class _EmailLoginFormState extends State<EmailLoginForm> {
             // Phone Field
             _buildPhoneField(),
 
+            SizedBox(height: 16.sdp),
+
+            // Referral Code Field (Optional)
+            _buildReferralCodeField(),
+
             SizedBox(height: 30.sdp),
 
             _buildContinueButton(),
@@ -312,6 +322,23 @@ class _EmailLoginFormState extends State<EmailLoginForm> {
       onChange: (countryCode, phoneNumber) {
         _selectedCountryCode.value = countryCode;
       },
+    );
+  }
+
+  Widget _buildReferralCodeField() {
+    return EditText(
+      hint: AppStrings.enterReferralCode.tr,
+      hintStyle: 16.txtRegularGrey,
+      inputType: TextInputType.text,
+      radius: 20,
+      prefixIcon: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.card_giftcard, size: 20.sdp, color: AppColors.grey),
+        ],
+      ),
+      controller: _referralCodeController,
+      validator: null, // Optional field, no validation required
     );
   }
 

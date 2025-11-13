@@ -176,4 +176,9 @@ class Urls {
   static const String jobs = '/api/jobs';
   static String getJobById(String jobId) => '/api/jobs/$jobId';
   static String deleteJob(String jobId) => '/api/jobs/$jobId';
+
+  // Referral
+  static const String referralParticipate = '/api/referral/participate';
+  static const String referralLeaderboard = '/api/referral/leaderboard';
+  static const String referralWinners = '/api/referral/winners';
 }

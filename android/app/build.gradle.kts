@@ -26,13 +26,13 @@ plugins {
 android {
     namespace = "com.app.sep"
 //    compileSdk = flutter.compileSdkVersion
-    compileSdk = 36
+    compileSdk = 34
 //    ndkVersion = flutter.ndkVersion
-    ndkVersion = "27.0.12077973"
+    ndkVersion = "26.1.10909125"
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
         isCoreLibraryDesugaringEnabled = true
     }
 
@@ -55,7 +55,7 @@ android {
 //    }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11.toString()
+        jvmTarget = JavaVersion.VERSION_17.toString()
     }
 
     defaultConfig {
@@ -66,7 +66,7 @@ android {
 //        minSdk = flutter.minSdkVersion
         minSdk = 24
 //        targetSdk = flutter.targetSdkVersion
-        targetSdk = 36
+        targetSdk = 34
 //        versionCode = flutter.versionCode
 //        versionName = flutter.versionName
         versionCode = 15
@@ -105,5 +105,6 @@ flutter {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
-//    implementation 'com.google.android.play:core:1.10.3’
+    implementation("org.jetbrains.kotlin:kotlin-stdlib:1.9.24")
+//    implementation 'com.google.android.play:core:1.10.3'
 }

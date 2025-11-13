@@ -84,6 +84,7 @@ class AuthCtrl extends GetxController {
     String image,
     String bio,
     String webSite,
+    String referralCode,
   ) async {
     final response = await _repo.registerUser(
       name: name,
@@ -97,6 +98,7 @@ class AuthCtrl extends GetxController {
       image: image,
       bio: bio,
       webSite: webSite,
+      referralCode: referralCode,
     );
     AppUtils.log(">>>>>>>>$image");
 
@@ -105,9 +107,7 @@ class AuthCtrl extends GetxController {
     } else {
       final error = response.getError;
       if (error != null) {
-        AppUtils.toastError(
-          error,
-        );
+        AppUtils.toastError(error);
       } else {
         AppUtils.toastError(response.getError!);
       }
@@ -135,9 +135,7 @@ class AuthCtrl extends GetxController {
       final error = response.getError;
 
       if (error != null) {
-        AppUtils.toastError(
-          error,
-        );
+        AppUtils.toastError(error);
       } else {
         AppUtils.toastError(response.getError!);
       }

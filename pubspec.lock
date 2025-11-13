@@ -725,10 +725,10 @@ packages:
     dependency: "direct main"
     description:
       name: fl_downloader
-      sha256: e3f0696f7b22933baeae3c99d806c3a6f11507ab6c2bf74b4c580abf8e036f80
+      sha256: "7e28207e959c5d327b3776b7320f88cb475224946e40bcc335a0f7414f7cc563"
       url: "https://pub.dev"
     source: hosted
-    version: "2.0.2"
+    version: "2.1.0"
   flame:
     dependency: "direct main"
     description:

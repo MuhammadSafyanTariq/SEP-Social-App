@@ -53,6 +53,7 @@ class AppStrings {
   static const String pleaseEnterValidPhoneNumber =
       'pleaseEnterValidPhoneNumber';
   static const String searchCountry = 'searchCountry';
+  static const String enterReferralCode = 'enterReferralCode';
   static const String cnontinue = 'continueAction';
   static const String male = 'male';
   static const String female = 'female';
@@ -326,6 +327,25 @@ class AppStrings {
   static const String featuredGames = 'Featured Games';
   static const String flappyBird = 'Flappy Bird';
   static const String shootingRush = 'Shooting Rush';
+
+  // Referral strings
+  static const String referFriend = 'Refer a Friend';
+  static const String participateReferral = 'Participate in Referral Program';
+  static const String referralDescription =
+      'Join our referral program and earn rewards by inviting friends!';
+  static const String shareCode = 'Share Code';
+  static const String referralProgramDetails = 'Referral Program Details';
+  static const String leaderboard = 'Leaderboard';
+  static const String topReferrers = 'Top Referrers This Month';
+  static const String invitesCount = 'invites';
+  static const String noLeaderboardData = 'No leaderboard data available';
+  static const String monthlyWinners = 'Monthly Winners';
+  static const String selectWinnerMonth = 'Select Month';
+  static const String selectWinnerYear = 'Select Year';
+  static const String noWinnersData =
+      'No winners data available for this month';
+  static const String winner = 'Winner';
+  static const String previousMonthWinners = 'Previous Month Winners';
 
   // FAQ-related strings
   static const String faqTitle = 'FAQ';

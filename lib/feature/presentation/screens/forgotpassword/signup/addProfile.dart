@@ -276,6 +276,7 @@ class _AddProfileState extends State<AddProfile> {
             signupController.imagePath.value,
             bioController.text.trim(),
             webUrlController.text.trim(),
+            signupController.referralCode.value,
           )
           .applyLoader;
 

@@ -48,6 +48,7 @@ abstract class AuthRepository {
     required String bio,
     required String country,
     required String webSite,
+    required String referralCode,
   });
 
   Future<ResponseData<ForgetpasswordModel>> forgotPassword({
