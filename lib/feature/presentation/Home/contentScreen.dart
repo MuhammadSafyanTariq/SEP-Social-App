@@ -54,13 +54,52 @@ class _HomeScreenState extends State<Contentscreen> {
     return categoryName;
   }
 
+  // Helper method to sort categories in the specified order
+  List<Categories> _sortCategories(List<Categories> categories) {
+    // Define the desired order
+    const order = [
+      'sports',
+      'entertainment',
+      'perception',
+      'politics',
+      'advertisement',
+      'others',
+      'other',
+    ];
+
+    return categories..sort((a, b) {
+      final aName = a.name?.toLowerCase() ?? '';
+      final bName = b.name?.toLowerCase() ?? '';
+
+      final aIndex = order.indexOf(aName);
+      final bIndex = order.indexOf(bName);
+
+      // If both are in the order list, sort by their position
+      if (aIndex != -1 && bIndex != -1) {
+        return aIndex.compareTo(bIndex);
+      }
+
+      // If only a is in the order list, it comes first
+      if (aIndex != -1) return -1;
+
+      // If only b is in the order list, it comes first
+      if (bIndex != -1) return 1;
+
+      // If neither is in the order list, sort alphabetically
+      return aName.compareTo(bName);
+    });
+  }
+
   List<Categories> get categories {
     final list = CreatePostCtrl.find.getCategories;
     final filtered = list
         .where((cat) => cat.name?.toLowerCase() != 'other')
         .toList();
 
-    return [Categories(id: null, name: 'All'), ...filtered];
+    // Sort the filtered categories
+    final sorted = _sortCategories(filtered);
+
+    return [Categories(id: null, name: 'All'), ...sorted];
   }
 
   Rx<Categories> selectedCategory = Rx(Categories(id: null, name: 'All'));
@@ -89,8 +128,13 @@ class _HomeScreenState extends State<Contentscreen> {
     AppUtils.log(
       'Selected categruyyyyyy--------${selectedCategory.value.toJson()}',
     );
+
+    // Reset pagination when loading initial posts or filtering by category
+    setState(() => isLoadingMore = false);
+
     await profileCtrl.globalList(
       offset: 1,
+      isLoadMore: false,
       selectedCat: selectedCategory.value,
     );
 

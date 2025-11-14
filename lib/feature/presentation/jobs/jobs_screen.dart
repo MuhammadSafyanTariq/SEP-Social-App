@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:sep/components/coreComponents/AppButton.dart';
@@ -14,9 +16,68 @@ import 'package:sep/services/networking/apiMethods.dart';
 import 'package:sep/services/storage/preferences.dart';
 import 'package:sep/utils/appUtils.dart';
 import 'package:sep/utils/extensions/contextExtensions.dart';
+import 'package:sep/feature/presentation/Home/CommonBannerAdWidget.dart';
 
-class JobsScreen extends StatelessWidget {
+class JobsScreen extends StatefulWidget {
   const JobsScreen({super.key});
+
+  @override
+  State<JobsScreen> createState() => _JobsScreenState();
+}
+
+class _JobsScreenState extends State<JobsScreen> {
+  Timer? _adTimer;
+  bool _showAd = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _startAdTimer();
+  }
+
+  void _startAdTimer() {
+    // Show ad every 2 minutes
+    _adTimer = Timer.periodic(Duration(minutes: 2), (timer) {
+      if (mounted) {
+        setState(() {
+          _showAd = true;
+        });
+
+        // Hide ad after 30 seconds
+        Future.delayed(Duration(seconds: 30), () {
+          if (mounted) {
+            setState(() {
+              _showAd = false;
+            });
+          }
+        });
+      }
+    });
+
+    // Show ad immediately on first load
+    Future.delayed(Duration(seconds: 2), () {
+      if (mounted) {
+        setState(() {
+          _showAd = true;
+        });
+
+        // Hide after 30 seconds
+        Future.delayed(Duration(seconds: 30), () {
+          if (mounted) {
+            setState(() {
+              _showAd = false;
+            });
+          }
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _adTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -256,6 +317,46 @@ class JobsScreen extends StatelessWidget {
                             )
                           : const SizedBox.shrink(),
                     ),
+
+                    // Banner Ad (conditionally shown)
+                    if (_showAd)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: CommonBannerAdWidget(
+                                adUnitId: Platform.isAndroid
+                                    ? 'ca-app-pub-3940256099942544/6300978111'
+                                    : 'ca-app-pub-3940256099942544/2934735716',
+                              ),
+                            ),
+                            SizedBox(width: 8),
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _showAd = false;
+                                });
+                              },
+                              child: Container(
+                                padding: EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade200,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.close,
+                                  size: 16,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
 
                     // Jobs list
                     Expanded(

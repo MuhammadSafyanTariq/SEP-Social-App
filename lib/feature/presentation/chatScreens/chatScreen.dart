@@ -1399,6 +1399,11 @@ class _ChatScreenState extends State<ChatScreen> {
       return "🎉 Shared a celebration";
     }
 
+    // Check if it's a profile share message
+    if (content.startsWith('SEP#Profile:')) {
+      return "👤 Shared a profile";
+    }
+
     if (isImage) {
       return "📷 Image";
     } else if (isVideo) {

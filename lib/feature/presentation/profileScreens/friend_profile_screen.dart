@@ -1,6 +1,8 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:sep/feature/presentation/controller/chat_ctrl.dart';
 import 'package:get/get_state_manager/src/rx_flutter/rx_obx_widget.dart';
 import 'package:get/instance_manager.dart';
 import 'package:sep/components/coreComponents/AppButton.dart';
@@ -187,6 +189,364 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
     );
     profileData.refresh();
     LoaderUtils.dismiss();
+  }
+
+  // Block user functionality
+  void _showBlockConfirmationDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+          title: Row(
+            children: [
+              Icon(Icons.block_outlined, color: Colors.red, size: 28),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Block User',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          content: Text(
+            'Are you sure you want to block ${profileData.value.name ?? "this user"}? They will not be able to see your profile or contact you.',
+            style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+              },
+              child: Text(
+                'Cancel',
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              onPressed: () async {
+                Navigator.of(dialogContext).pop();
+                await _blockUser();
+              },
+              child: Text(
+                'Block',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _blockUser() async {
+    try {
+      LoaderUtils.show();
+      await profileCtrl.unblockBlockUser(
+        userId: profileData.value.id!,
+        refreshList: false,
+      );
+      LoaderUtils.dismiss();
+      AppUtils.toast('User blocked successfully');
+
+      // Navigate back to previous screen
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      LoaderUtils.dismiss();
+      AppUtils.toast('Failed to block user');
+    }
+  }
+
+  // Report user functionality
+  void _showReportDialog(BuildContext context) {
+    final TextEditingController titleController = TextEditingController();
+    final TextEditingController messageController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+          title: Row(
+            children: [
+              Icon(Icons.report_outlined, color: Colors.red, size: 28),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Report User',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Please provide details about why you are reporting ${profileData.value.name ?? "this user"}',
+                  style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                ),
+                SizedBox(height: 16),
+                TextField(
+                  controller: titleController,
+                  decoration: InputDecoration(
+                    labelText: 'Reason',
+                    hintText: 'e.g., Inappropriate content',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 12,
+                    ),
+                  ),
+                  maxLength: 50,
+                ),
+                SizedBox(height: 12),
+                TextField(
+                  controller: messageController,
+                  decoration: InputDecoration(
+                    labelText: 'Additional Details (Optional)',
+                    hintText: 'Provide more information...',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 12,
+                    ),
+                  ),
+                  maxLines: 3,
+                  maxLength: 200,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+              },
+              child: Text(
+                'Cancel',
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              onPressed: () async {
+                if (titleController.text.trim().isEmpty) {
+                  AppUtils.toast('Please provide a reason');
+                  return;
+                }
+                Navigator.of(dialogContext).pop();
+                await _reportUser(
+                  titleController.text.trim(),
+                  messageController.text.trim().isEmpty
+                      ? null
+                      : messageController.text.trim(),
+                );
+              },
+              child: Text(
+                'Submit Report',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _reportUser(String title, String? message) async {
+    try {
+      LoaderUtils.show();
+      await profileCtrl.reportUser(profileData.value.id!, title, message);
+      LoaderUtils.dismiss();
+      AppUtils.toast('User reported successfully');
+    } catch (e) {
+      LoaderUtils.dismiss();
+      AppUtils.toast('Failed to report user');
+    }
+  }
+
+  // Share profile functionality - Send profile card to friends in chat
+  void _shareProfile() {
+    _showFriendSelector();
+  }
+
+  void _showFriendSelector() {
+    final profileCtrl = ProfileCtrl.find;
+
+    // Load friends lists if not already loaded
+    if (profileCtrl.myFollowingList.isEmpty) {
+      profileCtrl.getMyFollowings();
+    }
+    if (profileCtrl.myFollowersList.isEmpty) {
+      profileCtrl.getMyFollowers();
+    }
+
+    showModalBottomSheet(
+      context: Get.context!,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        minChildSize: 0.5,
+        maxChildSize: 0.9,
+        expand: false,
+        builder: (_, controller) => Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(20),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Send Profile To',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: Obx(() {
+                // Combine both followers and following lists
+                final allFriends = <ProfileDataModel>[
+                  ...profileCtrl.myFollowingList,
+                  ...profileCtrl.myFollowersList,
+                ];
+
+                // Remove duplicates and filter out current user and the profile being viewed
+                final uniqueFriends = <String, ProfileDataModel>{};
+                for (var friend in allFriends) {
+                  if (friend.id != null &&
+                      friend.id != Preferences.uid && // Exclude yourself
+                      friend.id != profileData.value.id) {
+                    // Exclude the profile being viewed
+                    uniqueFriends[friend.id!] = friend;
+                  }
+                }
+
+                final friends = uniqueFriends.values.toList();
+
+                if (friends.isEmpty) {
+                  return const Center(child: Text('No friends to share with'));
+                }
+
+                return ListView.builder(
+                  controller: controller,
+                  itemCount: friends.length,
+                  itemBuilder: (context, index) {
+                    final friend = friends[index];
+
+                    return ListTile(
+                      leading: CircleAvatar(
+                        backgroundImage: friend.image != null
+                            ? NetworkImage(
+                                AppUtils.configImageUrl(friend.image!),
+                              )
+                            : null,
+                        child: friend.image == null
+                            ? Text(friend.name?[0].toUpperCase() ?? 'U')
+                            : null,
+                      ),
+                      title: Text(friend.name ?? 'Unknown'),
+                      subtitle: Text(friend.email ?? ''),
+                      onTap: () {
+                        Navigator.pop(context);
+                        _sendProfileToFriend(friend);
+                      },
+                    );
+                  },
+                );
+              }),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _sendProfileToFriend(ProfileDataModel friend) async {
+    try {
+      // First, get or create chat with this friend
+      final chatCtrl = ChatCtrl.find;
+
+      // Find existing chat with this friend
+      final existingChat = chatCtrl.recentChat.firstWhereOrNull(
+        (chat) => chat.users?.contains(friend.id) == true,
+      );
+
+      if (existingChat != null) {
+        // Use existing chat
+        chatCtrl.singleChatId = existingChat.id;
+      } else {
+        // Create new chat - you may need to implement this in your ChatCtrl
+        // For now, we'll show an error if no chat exists
+        AppUtils.toast('Please start a conversation with ${friend.name} first');
+        return;
+      }
+
+      // Encode profile data as JSON
+      final profileJson = profileData.value.toJson();
+      final jsonString = json.encode(profileJson);
+      final message = 'SEP#Profile:$jsonString';
+
+      // Send the message
+      chatCtrl.sendTextMsg(message);
+
+      // Show success message
+      AppUtils.toast('Profile shared successfully');
+    } catch (e) {
+      AppUtils.toast('Failed to share profile');
+    }
   }
 
   Widget profileInfo() {
@@ -560,7 +920,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
                           title: Text('Report User'),
                           onTap: () {
                             Navigator.pop(context);
-                            // Add report functionality
+                            _showReportDialog(context);
                           },
                         ),
                         ListTile(
@@ -571,7 +931,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
                           title: Text('Block User'),
                           onTap: () {
                             Navigator.pop(context);
-                            // Add block functionality
+                            _showBlockConfirmationDialog(context);
                           },
                         ),
                         ListTile(
@@ -579,7 +939,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
                           title: Text('Share Profile'),
                           onTap: () {
                             Navigator.pop(context);
-                            // Add share functionality
+                            _shareProfile();
                           },
                         ),
                       ],

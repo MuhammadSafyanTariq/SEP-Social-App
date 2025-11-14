@@ -152,6 +152,9 @@ class IAuthRepository implements AuthRepository {
       AppUtils.log(
         "  - deviceType: ${AppUtils.deviceType} (${AppUtils.deviceType.runtimeType})",
       );
+      AppUtils.log(
+        "  - referralCode: ${referralCode} (${referralCode.runtimeType})",
+      );
 
       AppUtils.log("🚀 Making API call to: ${Urls.register}");
 
@@ -169,7 +172,7 @@ class IAuthRepository implements AuthRepository {
         'website': webSite,
         'deviceToken': Preferences.fcmToken ?? '',
         'deviceType': AppUtils.deviceType,
-        'referralCode': referralCode.isNotEmpty ? referralCode : null,
+        'referredByCode': referralCode.isNotEmpty ? referralCode : null,
       };
 
       AppUtils.log("📤 Final request body: $requestBody");

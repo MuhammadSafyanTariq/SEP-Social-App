@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -27,6 +28,7 @@ import 'package:sep/utils/extensions/widget.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../controller/auth_Controller/product_ctrl.dart';
+import '../Home/CommonBannerAdWidget.dart';
 
 class SportsProduct extends StatefulWidget {
   const SportsProduct({super.key});
@@ -56,6 +58,8 @@ class _SportsProductState extends State<SportsProduct>
   String? myShopId; // Store user's shop ID to filter out their shop's products
 
   Timer? _debounce;
+  Timer? _adTimer;
+  bool _showAd = false;
 
   @override
   void initState() {
@@ -67,8 +71,47 @@ class _SportsProductState extends State<SportsProduct>
       }
     });
     _fetchMyShopId(); // Fetch user's shop ID
+    _startAdTimer(); // Start ad timer
     WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
       loadData(isRefresh: true).applyLoader;
+    });
+  }
+
+  void _startAdTimer() {
+    // Show ad every 2 minutes
+    _adTimer = Timer.periodic(Duration(minutes: 2), (timer) {
+      if (mounted) {
+        setState(() {
+          _showAd = true;
+        });
+
+        // Hide ad after 30 seconds
+        Future.delayed(Duration(seconds: 30), () {
+          if (mounted) {
+            setState(() {
+              _showAd = false;
+            });
+          }
+        });
+      }
+    });
+
+    // Show ad immediately on first load
+    Future.delayed(Duration(seconds: 2), () {
+      if (mounted) {
+        setState(() {
+          _showAd = true;
+        });
+
+        // Hide after 30 seconds
+        Future.delayed(Duration(seconds: 30), () {
+          if (mounted) {
+            setState(() {
+              _showAd = false;
+            });
+          }
+        });
+      }
     });
   }
 
@@ -309,6 +352,41 @@ class _SportsProductState extends State<SportsProduct>
       padding: 12.all,
       child: Column(
         children: [
+          // Banner Ad (conditionally shown)
+          if (_showAd) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: CommonBannerAdWidget(
+                    adUnitId: Platform.isAndroid
+                        ? 'ca-app-pub-3940256099942544/6300978111'
+                        : 'ca-app-pub-3940256099942544/2934735716',
+                  ),
+                ),
+                SizedBox(width: 8),
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _showAd = false;
+                    });
+                  },
+                  child: Container(
+                    padding: EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade200,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.close,
+                      size: 16,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            8.height,
+          ],
           EditText(
             controller: _search,
             hint: AppStrings.search.tr,
@@ -411,6 +489,41 @@ class _SportsProductState extends State<SportsProduct>
       padding: 16.all,
       child: Column(
         children: [
+          // Banner Ad (conditionally shown)
+          if (_showAd) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: CommonBannerAdWidget(
+                    adUnitId: Platform.isAndroid
+                        ? 'ca-app-pub-3940256099942544/6300978111'
+                        : 'ca-app-pub-3940256099942544/2934735716',
+                  ),
+                ),
+                SizedBox(width: 8),
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _showAd = false;
+                    });
+                  },
+                  child: Container(
+                    padding: EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade200,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.close,
+                      size: 16,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            16.height,
+          ],
           // My Store and Order History Buttons in Row
           Row(
             children: [

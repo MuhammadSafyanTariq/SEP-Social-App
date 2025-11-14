@@ -26,7 +26,7 @@ plugins {
 android {
     namespace = "com.app.sep"
 //    compileSdk = flutter.compileSdkVersion
-    compileSdk = 34
+    compileSdk = 36
 //    ndkVersion = flutter.ndkVersion
     ndkVersion = "26.1.10909125"
 
@@ -66,7 +66,7 @@ android {
 //        minSdk = flutter.minSdkVersion
         minSdk = 24
 //        targetSdk = flutter.targetSdkVersion
-        targetSdk = 34
+        targetSdk = 36
 //        versionCode = flutter.versionCode
 //        versionName = flutter.versionName
         versionCode = 15

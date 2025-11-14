@@ -75,6 +75,42 @@ class _AddPollState extends State<AddPoll> {
     return areAllValid(list);
   }
 
+  // Helper method to sort categories in the specified order
+  List<Categories> _sortCategories(List<Categories> categories) {
+    // Define the desired order
+    const order = [
+      'sports',
+      'entertainment',
+      'perception',
+      'politics',
+      'advertisement',
+      'others',
+      'other',
+    ];
+
+    return categories..sort((a, b) {
+      final aName = a.name?.toLowerCase() ?? '';
+      final bName = b.name?.toLowerCase() ?? '';
+
+      final aIndex = order.indexOf(aName);
+      final bIndex = order.indexOf(bName);
+
+      // If both are in the order list, sort by their position
+      if (aIndex != -1 && bIndex != -1) {
+        return aIndex.compareTo(bIndex);
+      }
+
+      // If only a is in the order list, it comes first
+      if (aIndex != -1) return -1;
+
+      // If only b is in the order list, it comes first
+      if (bIndex != -1) return 1;
+
+      // If neither is in the order list, sort alphabetically
+      return aName.compareTo(bName);
+    });
+  }
+
   Future<void> fetchCategories() async {
     try {
       // Show a loading spinner or some kind of loader before fetching
@@ -84,9 +120,11 @@ class _AddPollState extends State<AddPoll> {
 
       // After fetching, check if categories list is empty or null and handle accordingly
       setState(() {
-        categories = CreatePostCtrl.find.getCategories.isNotEmpty
-            ? CreatePostCtrl.find.getCategories
-            : [];
+        categories = _sortCategories(
+          CreatePostCtrl.find.getCategories.isNotEmpty
+              ? CreatePostCtrl.find.getCategories
+              : [],
+        );
       });
 
       // Check the fetched categories (you can use logging to ensure correct data)

@@ -25,6 +25,8 @@ import '../helpers/chat_message_helper.dart';
 import 'ImagePreviewScreen.dart';
 import 'VideoPreviewScreen.dart';
 import 'celebration_chat_card.dart';
+import 'profile_chat_card.dart';
+import 'dart:convert';
 
 final GlobalKey<ChatSampleState> singleMessageScreenChatOperationKey =
     GlobalKey<ChatSampleState>();
@@ -265,6 +267,7 @@ class ChatSampleState extends State<ChatSample> {
         content.endsWith(".avi");
 
     final bool isCelebration = content.startsWith('SEP#Celebrate');
+    final bool isProfileCard = content.startsWith('SEP#Profile:');
 
     Widget liveStreamCard() {
       return Obx(() {
@@ -550,6 +553,8 @@ class ChatSampleState extends State<ChatSample> {
                             content: content,
                             isSentByUser: isSentByUser,
                           )
+                        : isProfileCard
+                        ? _buildProfileCard(content, isSentByUser)
                         : ConstrainedBox(
                             constraints: BoxConstraints(
                               maxWidth: MediaQuery.of(context).size.width * 0.8,
@@ -760,6 +765,16 @@ class ChatSampleState extends State<ChatSample> {
             ),
         ],
       ),
+    );
+  }
+
+  Widget _buildProfileCard(String content, bool isSentByUser) {
+    final jsonString = content.substring('SEP#Profile:'.length);
+    final profileJson = json.decode(jsonString);
+    final profileData = ProfileDataModel.fromJson(profileJson);
+    return ProfileChatCard(
+      profileData: profileData,
+      isSentByUser: isSentByUser,
     );
   }
 

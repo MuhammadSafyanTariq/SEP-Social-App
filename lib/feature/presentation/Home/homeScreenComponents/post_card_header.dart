@@ -488,6 +488,42 @@ class PostCardHeader extends StatelessWidget {
                         style: 12.txtRegularGrey,
                       ),
                     ),
+                    // Advertisement tag
+                    if (data.categoryId == '68eb8453d5e284efb554b401')
+                      Container(
+                        margin: EdgeInsets.only(top: 4),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.greenlight.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: AppColors.greenlight,
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.campaign,
+                              size: 12,
+                              color: AppColors.greenlight,
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              'Sponsored Content',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.greenlight,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                   ],
                 ),
               ],
