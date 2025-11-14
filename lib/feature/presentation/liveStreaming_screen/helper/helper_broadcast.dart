@@ -125,8 +125,21 @@ OutlineInputBorder get _inputBorder => OutlineInputBorder(
   borderSide: BorderSide(color: AppColors.grey, width: 2),
 );
 
-class ChatInputBox extends StatelessWidget {
+class ChatInputBox extends StatefulWidget {
+  const ChatInputBox({Key? key}) : super(key: key);
+
+  @override
+  State<ChatInputBox> createState() => _ChatInputBoxState();
+}
+
+class _ChatInputBoxState extends State<ChatInputBox> {
   final TextEditingController _msgCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _msgCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -138,7 +151,7 @@ class ChatInputBox extends StatelessWidget {
       child: TextFormField(
         onTapOutside: (event) => FocusScope.of(context).unfocus(),
         controller: _msgCtrl,
-        maxLines: null,
+        maxLines: 1,
         style: 14.txtRegularBlack.withShadow(AppColors.grey),
         decoration: InputDecoration(
           hintText: 'Type something...',
@@ -149,23 +162,21 @@ class ChatInputBox extends StatelessWidget {
           enabledBorder: _inputBorder,
           focusedBorder: _inputBorder,
           filled: true,
-          suffixIcon: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ImageView(
-                onTap: () {
-                  final text = _msgCtrl.getText;
-                  if (text.isNotNullEmpty) {
-                    AgoraChatCtrl.find.sendMessage(text);
-                    _msgCtrl.clear();
-                  }
-                },
-                url: 'assets/images/sendmsg.png',
-                size: 40,
-                margin: EdgeInsets.only(right: 10, top: 3),
-              ),
-            ],
+          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          suffixIcon: GestureDetector(
+            onTap: () {
+              final text = _msgCtrl.getText;
+              if (text.isNotNullEmpty) {
+                AgoraChatCtrl.find.sendMessage(text);
+                _msgCtrl.clear();
+              }
+            },
+            child: Padding(
+              padding: EdgeInsets.all(8),
+              child: ImageView(url: 'assets/images/sendmsg.png', size: 24),
+            ),
           ),
+          suffixIconConstraints: BoxConstraints(minWidth: 40, minHeight: 40),
         ),
       ),
     );

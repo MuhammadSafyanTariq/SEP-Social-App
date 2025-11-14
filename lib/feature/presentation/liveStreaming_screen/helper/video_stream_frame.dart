@@ -87,6 +87,10 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
   bool _rightControlsCollapsed = false;
   bool _keyboardVisible = false;
 
+  // Pagination state for video grid
+  int _currentVideoPage = 0;
+  static const int _maxUsersPerPage = 4;
+
   void onJoinHandler() {
     if (ctrl.isHost && !chatConnected) {
       ctrl.streamCtrl.listen((value) {
@@ -222,24 +226,75 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
       backgroundColor: Colors.transparent,
       body: Stack(
         children: [
-          Positioned.fill(child: _buildCameraView()),
-          Obx(
-            () => Positioned(
-              right: 0,
-              top: context.getHeight / 2.5,
-              bottom: context.getHeight * 0.15,
-              child: loopCounts > 0 ? coinAnimation() : SizedBox(),
-            ),
+          // Main Content: Video Grid and Chat Sections
+          Column(
+            children: [
+              // TOP HALF: Video Grid Section
+              Expanded(flex: 1, child: _buildCameraView()),
+
+              // BOTTOM HALF: Messaging Section
+              Expanded(
+                flex: 1,
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Color(
+                          0xFF1a1a2e,
+                        ).withValues(alpha: 0.95), // Dark blue-purple
+                        Color(
+                          0xFF16213e,
+                        ).withValues(alpha: 0.98), // Deeper dark blue
+                      ],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                    ),
+                    border: Border(
+                      top: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      // Chat Messages (takes most of bottom half)
+                      Expanded(child: _buildChatList(context)),
+
+                      // Chat Input Box and Controls (compact at bottom)
+                      _buildBottomBar(),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
-          _chatSectionAndLiveButton(context),
+
+          // Overlays that span entire screen
+          // Coin Animation
+          Obx(
+            () => loopCounts > 0
+                ? Positioned(
+                    right: 0,
+                    top: context.getHeight / 5,
+                    bottom: context.getHeight / 2,
+                    child: coinAnimation(),
+                  )
+                : SizedBox.shrink(),
+          ),
+
+          // App Bar (Host info, Live status, Close button)
           widget.clientRole == ClientRoleType.clientRoleAudience
               ? _buildAppBar(context, isLiveNow)
               : Obx(() => _buildAppBar(context, isLiveNow)),
+
+          // Video Controls (Right side) - Overlay entire screen
           _buildVideoControls(context),
+
+          // Left Action Buttons (for Host) - Overlay entire screen
           _leftActionButtonsForHost(),
         ],
       ),
-
       floatingActionButtonLocation: FloatingActionButtonLocation.miniEndTop,
     );
   }
@@ -316,6 +371,99 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
       );
     }
 
+    // Pagination: Show max 4 users per page
+    final totalPages = (count / _maxUsersPerPage).ceil();
+
+    // Ensure current page is valid
+    if (_currentVideoPage >= totalPages) {
+      _currentVideoPage = totalPages - 1;
+    }
+    if (_currentVideoPage < 0) {
+      _currentVideoPage = 0;
+    }
+
+    final startIndex = _currentVideoPage * _maxUsersPerPage;
+    final endIndex = (startIndex + _maxUsersPerPage).clamp(0, count);
+    final visibleUsers = uids.sublist(startIndex, endIndex);
+
+    return Stack(
+      children: [
+        // Video Grid
+        _buildGridForUsers(visibleUsers),
+
+        // Pagination Controls (only show if more than 4 users)
+        if (totalPages > 1)
+          Positioned(
+            bottom: 16,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.6),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Previous button
+                    IconButton(
+                      icon: Icon(Icons.chevron_left, color: Colors.white),
+                      onPressed: _currentVideoPage > 0
+                          ? () {
+                              setState(() {
+                                _currentVideoPage--;
+                              });
+                            }
+                          : null,
+                      padding: EdgeInsets.zero,
+                      constraints: BoxConstraints(),
+                    ),
+
+                    SizedBox(width: 8),
+
+                    // Page indicator
+                    Text(
+                      '${_currentVideoPage + 1} / $totalPages',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+
+                    SizedBox(width: 8),
+
+                    // Next button
+                    IconButton(
+                      icon: Icon(Icons.chevron_right, color: Colors.white),
+                      onPressed: _currentVideoPage < totalPages - 1
+                          ? () {
+                              setState(() {
+                                _currentVideoPage++;
+                              });
+                            }
+                          : null,
+                      padding: EdgeInsets.zero,
+                      constraints: BoxConstraints(),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildGridForUsers(List<RemoteUserAgora> uids) {
+    int count = uids.length;
+
+    if (count == 0) {
+      return SizedBox();
+    }
+
     List<Widget> rows = [];
 
     if (count == 1) {
@@ -326,7 +474,7 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
     }
 
     if (count == 2) {
-      // Two users: stacked full width
+      // Two users: stacked full width or side by side
       return Column(
         children: [
           Expanded(child: _agoraVideoViewWidget(uid: uids[0])),
@@ -335,32 +483,48 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
       );
     }
 
-    int startIndex = 0;
-
-    if (count % 2 != 0) {
-      // Odd number: First full-width, rest in pairs
-      rows.add(Expanded(child: _agoraVideoViewWidget(uid: uids[0])));
-      startIndex = 1;
-    }
-
-    // Render remaining in pairs
-    for (int i = startIndex; i < count; i += 2) {
-      rows.add(
-        Expanded(
-          child: Row(
-            children: [
-              Expanded(child: _agoraVideoViewWidget(uid: uids[i])),
-              if (i + 1 < count)
-                Expanded(child: _agoraVideoViewWidget(uid: uids[i + 1]))
-              else
-                Expanded(child: SizedBox()), // filler to maintain layout
-            ],
+    if (count == 3) {
+      // Three users: first full width, bottom two side by side
+      return Column(
+        children: [
+          Expanded(child: _agoraVideoViewWidget(uid: uids[0])),
+          Expanded(
+            child: Row(
+              children: [
+                Expanded(child: _agoraVideoViewWidget(uid: uids[1])),
+                Expanded(child: _agoraVideoViewWidget(uid: uids[2])),
+              ],
+            ),
           ),
-        ),
+        ],
       );
     }
 
-    return Column(children: rows);
+    if (count == 4) {
+      // Four users: 2x2 grid
+      return Column(
+        children: [
+          Expanded(
+            child: Row(
+              children: [
+                Expanded(child: _agoraVideoViewWidget(uid: uids[0])),
+                Expanded(child: _agoraVideoViewWidget(uid: uids[1])),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Row(
+              children: [
+                Expanded(child: _agoraVideoViewWidget(uid: uids[2])),
+                Expanded(child: _agoraVideoViewWidget(uid: uids[3])),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
+    return SizedBox();
   }
 
   Widget _agoraVideoViewWidget({required RemoteUserAgora uid}) {
@@ -491,19 +655,6 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
     );
   }
 
-  Widget _chatSectionAndLiveButton(BuildContext context) {
-    return Positioned(
-      bottom: 0,
-      left: 0,
-      right: 0,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        mainAxisSize: MainAxisSize.min,
-        children: [_buildChatList(context), _buildBottomBar()],
-      ),
-    );
-  }
-
   Widget _buildBottomBar() {
     return !ctrl.isHost
         ? _chatBox()
@@ -530,26 +681,37 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
   }
 
   Widget _chatBox() {
-    return Padding(
-      padding:
-          EdgeInsets.symmetric(horizontal: 16) +
-          EdgeInsets.only(bottom: context.bottomSafeArea + 20, top: 5),
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.3),
+        border: Border(
+          top: BorderSide(color: Colors.white.withValues(alpha: 0.2), width: 1),
+        ),
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Expanded(child: ChatInputBox()),
+          Expanded(
+            child: Container(
+              constraints: BoxConstraints(maxHeight: 40),
+              child: ChatInputBox(),
+            ),
+          ),
           Visibility(
             visible: !ctrl.isHost,
             child: GestureDetector(
               onTap: openTokenBottomSheet,
               child: Container(
-                margin: EdgeInsets.only(left: 16),
-                padding: EdgeInsets.all(8),
+                margin: EdgeInsets.only(left: 8),
+                padding: EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(30),
-                  border: Border.all(color: AppColors.white),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: AppColors.white.withValues(alpha: 0.5),
+                  ),
                 ),
-                child: ImageView(url: AppImages.token, size: 24),
+                child: ImageView(url: AppImages.token, size: 20),
               ),
             ),
           ),
@@ -573,7 +735,7 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
                         }
                       }
                     : null,
-                margin: EdgeInsets.only(left: 16),
+                margin: EdgeInsets.only(left: 8),
                 url:
                     ctrl.streamCtrl.value.clientRole ==
                         ClientRoleType.clientRoleAudience
@@ -581,7 +743,7 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
                       // offVideo
                       AppImages.videoRequest
                     : AppImages.offVideo,
-                size: 40,
+                size: 32,
                 tintColor: ctrl.videoRequestButtonEnable.isTrue
                     ? (ctrl.streamCtrl.value.clientRole ==
                               ClientRoleType.clientRoleAudience
@@ -713,165 +875,163 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
   }
 
   Widget _buildChatList(BuildContext context) {
-    return Obx(
-      () => Container(
-        height: context.getHeight * 0.3,
-        decoration: chatCtrl.chatList.isNotEmpty
-            ? BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    AppColors.grey.withValues(
-                      alpha: 0.00,
-                    ), // Much more transparent at top  // Reduced opacity
-                    AppColors.grey.withValues(
-                      alpha: 0.2,
-                    ), // Less opaque at bottom
-                  ],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(20),
-                  bottomRight: Radius.circular(20),
-                ),
-              )
-            : null,
-        child: Obx(() {
-          final messages = chatCtrl.chatList;
-          return ListView.separated(
-            reverse: true,
-            shrinkWrap: true,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            itemCount: messages.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
-            itemBuilder: (_, index) {
-              final msg = messages.reversed.toList()[index];
+    return Container(
+      // Takes available space in bottom half
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Obx(() {
+        final messages = chatCtrl.chatList;
 
-              if (msg.type == 'system') {
-                return Center(
-                  child: TextView(
-                    text: msg.message ?? '',
-                    style: 14.txtBoldWhite.withShadow(AppColors.grey),
+        // Debug: Show message count
+        print('Chat messages count: ${messages.length}');
+
+        if (messages.isEmpty) {
+          return Center(
+            child: TextView(
+              text: 'No messages yet. Start chatting!',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.6),
+                fontSize: 14,
+              ),
+            ),
+          );
+        }
+
+        return ListView.separated(
+          reverse: true,
+          shrinkWrap: true,
+          padding: const EdgeInsets.only(bottom: 8),
+          itemCount: messages.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 8),
+          itemBuilder: (_, index) {
+            final msg = messages.reversed.toList()[index];
+
+            if (msg.type == 'system') {
+              return Center(
+                child: TextView(
+                  text: msg.message ?? '',
+                  style: 14.txtBoldWhite.withShadow(AppColors.grey),
+                ),
+              );
+            }
+            if (msg.type == 'liveRequest') {
+              final liveRequestStatus = LiveRequestStatus.values.indexWhere(
+                (element) => element.name == msg.message,
+              );
+
+              return Column(
+                children: [
+                  Row(
+                    children: [
+                      _userImage(msg.userId),
+                      Expanded(
+                        child: TextView(
+                          text: liveRequestStatus == 0
+                              ? '${msg.userName} sent a request to be in your live video.'
+                              : liveRequestStatus == 1
+                              ? '${msg.userName} is live in video'
+                              : liveRequestStatus == 2
+                              ? 'Host rejected live request'
+                              : liveRequestStatus == 3
+                              ? 'UserName joined the live video.'
+                              : liveRequestStatus == 4
+                              ? 'request Expired'
+                              : liveRequestStatus == 5
+                              ? '${msg.userName} leave from live video.'
+                              : liveRequestStatus == 6
+                              ? 'Admin remove ${msg.userName} from live video'
+                              : '',
+                          style: 14.txtBoldWhite.withShadow(AppColors.grey),
+                        ),
+                      ),
+                      Visibility(
+                        visible:
+                            Preferences.uid == msg.userId &&
+                            liveRequestStatus == 0,
+                        child: _requestBtn('Requested', AppColors.grey, () {}),
+                      ),
+                    ],
                   ),
-                );
-              }
-              if (msg.type == 'liveRequest') {
-                final liveRequestStatus = LiveRequestStatus.values.indexWhere(
-                  (element) => element.name == msg.message,
-                );
-
-                return Column(
-                  children: [
-                    Row(
+                  Visibility(
+                    visible: ctrl.isHost && liveRequestStatus == 0,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        _userImage(msg.userId),
-                        Expanded(
-                          child: TextView(
-                            text: liveRequestStatus == 0
-                                ? '${msg.userName} sent a request to be in your live video.'
-                                : liveRequestStatus == 1
-                                ? '${msg.userName} is live in video'
-                                : liveRequestStatus == 2
-                                ? 'Host rejected live request'
-                                : liveRequestStatus == 3
-                                ? 'UserName joined the live video.'
-                                : liveRequestStatus == 4
-                                ? 'request Expired'
-                                : liveRequestStatus == 5
-                                ? '${msg.userName} leave from live video.'
-                                : liveRequestStatus == 6
-                                ? 'Admin remove ${msg.userName} from live video'
-                                : '',
-                            style: 14.txtBoldWhite.withShadow(AppColors.grey),
-                          ),
-                        ),
-                        Visibility(
-                          visible:
-                              Preferences.uid == msg.userId &&
-                              liveRequestStatus == 0,
-                          child: _requestBtn(
-                            'Requested',
-                            AppColors.grey,
-                            () {},
-                          ),
-                        ),
+                        _requestBtn('Approve', AppColors.green, () {
+                          acceptLiveRequestByHost(msg);
+                        }),
+                        SizedBox(width: 16),
+                        _requestBtn('Reject', AppColors.red, () {
+                          declineLiveRequestByHost(msg);
+                        }),
                       ],
                     ),
-                    Visibility(
-                      visible: ctrl.isHost && liveRequestStatus == 0,
+                  ),
+                ],
+              );
+            }
+            if (msg.type == GiftTokenEnum.giftToken.name) {
+              return Container(
+                margin: EdgeInsets.symmetric(vertical: 4),
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.amber.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.amber.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    _userImage(msg.userId),
+                    Expanded(
                       child: Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
                         children: [
-                          _requestBtn('Approve', AppColors.green, () {
-                            acceptLiveRequestByHost(msg);
-                          }),
-                          SizedBox(width: 16),
-                          _requestBtn('Reject', AppColors.red, () {
-                            declineLiveRequestByHost(msg);
-                          }),
+                          TextView(
+                            text: '${msg.userName} sent ',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                              shadows: [
+                                Shadow(
+                                  color: Colors.black54,
+                                  offset: Offset(1, 1),
+                                  blurRadius: 2,
+                                ),
+                              ],
+                            ),
+                          ),
+                          TextView(
+                            text: '${msg.message}',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.amber,
+                              shadows: [
+                                Shadow(
+                                  color: Colors.black54,
+                                  offset: Offset(1, 1),
+                                  blurRadius: 2,
+                                ),
+                              ],
+                            ),
+                          ),
+                          SizedBox(width: 4),
+                          ImageView(url: AppImages.token, size: 20),
                         ],
                       ),
                     ),
                   ],
-                );
-              }
-              if (msg.type == GiftTokenEnum.giftToken.name) {
-                return Container(
-                  margin: EdgeInsets.symmetric(vertical: 4),
-                  padding: EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.amber.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: Colors.amber.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      _userImage(msg.userId),
-                      Expanded(
-                        child: Row(
-                          children: [
-                            TextView(
-                              text: '${msg.userName} sent ',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
-                                shadows: [
-                                  Shadow(
-                                    color: Colors.black54,
-                                    offset: Offset(1, 1),
-                                    blurRadius: 2,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            TextView(
-                              text: '${msg.message}',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.amber,
-                                shadows: [
-                                  Shadow(
-                                    color: Colors.black54,
-                                    offset: Offset(1, 1),
-                                    blurRadius: 2,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            SizedBox(width: 4),
-                            ImageView(url: AppImages.token, size: 20),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }
-              return Column(
+                ),
+              );
+            }
+            return Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
@@ -885,13 +1045,21 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
                       ),
                     ],
                   ),
-                  TextView(text: msg.message ?? '', style: 14.txtMediumWhite),
+                  SizedBox(height: 4),
+                  TextView(
+                    text: msg.message ?? '',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ],
-              );
-            },
-          );
-        }),
-      ),
+              ),
+            );
+          },
+        );
+      }),
     );
   }
 
