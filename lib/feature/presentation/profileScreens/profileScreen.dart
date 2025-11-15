@@ -25,7 +25,7 @@ import '../../../utils/appUtils.dart';
 import '../../data/models/dataModels/profile_data/profile_data_model.dart';
 import '../Home/homeScreenComponents/pollCard.dart';
 import '../Home/homeScreenComponents/post_components.dart';
-import '../Home/video.dart';
+import '../profileScreens/setting/fullScreenVideoPlayer.dart';
 import '../controller/auth_Controller/profileCtrl.dart';
 import '../screens/post_browsing_listing.dart';
 import 'followers.dart';
@@ -794,9 +794,26 @@ class _ProfileScreenState extends State<ProfileScreen>
 
     return GestureDetector(
       onTap: () {
-        if (videoUrl != null) {
+        // Get all video URLs from the video posts list
+        final allVideoUrls = profileCtrl.profileVideoPostList
+            .where(
+              (p) =>
+                  p.files.isNotEmpty && p.files.first.file?.isNotEmpty == true,
+            )
+            .map((p) => AppUtils.configImageUrl(p.files.first.file!))
+            .toList();
+
+        if (allVideoUrls.isNotEmpty) {
+          // Find the index of the clicked video
+          final clickedIndex = videoUrl != null
+              ? allVideoUrls.indexOf(videoUrl)
+              : 0;
+
           context.pushNavigator(
-            VideoScreen(videoUrls: [videoUrl], initialIndex: 0),
+            FullScreenVideoPlayer(
+              videoUrls: allVideoUrls,
+              initialIndex: clickedIndex >= 0 ? clickedIndex : 0,
+            ),
           );
         }
       },

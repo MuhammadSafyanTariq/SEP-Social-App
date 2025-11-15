@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 import 'package:sep/utils/appUtils.dart';
-import 'package:sep/utils/extensions/contextExtensions.dart';
 import 'package:get/get.dart';
-import 'videoPlayerScreen.dart';
 
 // Global video controller manager
 class VideoControllerManager extends GetxController {
@@ -169,14 +167,6 @@ class _AutoPlayVideoPlayerState extends State<AutoPlayVideoPlayer> {
     });
   }
 
-  void _navigateToFullScreen(BuildContext context) {
-    if (_controller == null || !_isInitialized) return;
-
-    context.pushNavigator(
-      VideoPlayerScreen(videoUrl: widget.videoUrl, postId: widget.postId),
-    );
-  }
-
   void _toggleMute() {
     if (_controller == null || !_isInitialized) return;
 
@@ -215,75 +205,72 @@ class _AutoPlayVideoPlayerState extends State<AutoPlayVideoPlayer> {
     return VisibilityDetector(
       key: Key('video_${widget.postId}'),
       onVisibilityChanged: _handleVisibilityChanged,
-      child: GestureDetector(
-        onTap: () => _navigateToFullScreen(context),
-        child: AspectRatio(
-          aspectRatio: _controller!.value.aspectRatio,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              VideoPlayer(_controller!),
+      child: AspectRatio(
+        aspectRatio: _controller!.value.aspectRatio,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            VideoPlayer(_controller!),
 
-              // Corner Play/Pause button overlay
-              Positioned(
-                top: 8,
-                left: 8,
-                child: GestureDetector(
-                  onTap: _togglePlayPause,
-                  child: Container(
-                    padding: EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.7),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      _isPlaying ? Icons.pause : Icons.play_arrow,
-                      color: Colors.white,
-                      size: 20,
-                    ),
+            // Corner Play/Pause button overlay
+            Positioned(
+              top: 8,
+              left: 8,
+              child: GestureDetector(
+                onTap: _togglePlayPause,
+                child: Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.7),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    _isPlaying ? Icons.pause : Icons.play_arrow,
+                    color: Colors.white,
+                    size: 20,
                   ),
                 ),
               ),
+            ),
 
-              // Mute/Unmute button
-              Positioned(
-                top: 8,
-                right: 8,
-                child: GestureDetector(
-                  onTap: _toggleMute,
-                  child: Container(
-                    padding: EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.7),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      _isMuted ? Icons.volume_off : Icons.volume_up,
-                      color: Colors.white,
-                      size: 20,
-                    ),
+            // Mute/Unmute button
+            Positioned(
+              top: 8,
+              right: 8,
+              child: GestureDetector(
+                onTap: _toggleMute,
+                child: Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.7),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    _isMuted ? Icons.volume_off : Icons.volume_up,
+                    color: Colors.white,
+                    size: 20,
                   ),
                 ),
               ),
+            ),
 
-              // Progress indicator
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: VideoProgressIndicator(
-                  _controller!,
-                  allowScrubbing: true,
-                  colors: VideoProgressColors(
-                    playedColor: Colors.red,
-                    bufferedColor: Colors.grey,
-                    backgroundColor: Colors.white.withOpacity(0.3),
-                  ),
-                  padding: EdgeInsets.symmetric(vertical: 2),
+            // Progress indicator
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: VideoProgressIndicator(
+                _controller!,
+                allowScrubbing: true,
+                colors: VideoProgressColors(
+                  playedColor: Colors.red,
+                  bufferedColor: Colors.grey,
+                  backgroundColor: Colors.white.withOpacity(0.3),
                 ),
+                padding: EdgeInsets.symmetric(vertical: 2),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

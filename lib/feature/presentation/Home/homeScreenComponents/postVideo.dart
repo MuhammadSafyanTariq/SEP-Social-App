@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:sep/feature/data/models/dataModels/post_data.dart';
 import 'package:sep/feature/presentation/Home/homeScreenComponents/auto_play_video_player.dart';
 import 'package:sep/feature/presentation/Home/homeScreenComponents/post_card_header.dart';
 import 'package:sep/feature/presentation/Home/homeScreenComponents/read_more_text.dart';
-import 'package:sep/feature/presentation/Home/homeScreenComponents/videoPlayerScreen.dart';
+import 'package:sep/feature/presentation/Home/reels_video_screen.dart';
+import 'package:sep/feature/presentation/controller/auth_Controller/profileCtrl.dart';
 import 'package:sep/utils/appUtils.dart';
 import 'package:sep/utils/extensions/contextExtensions.dart';
 import 'package:sep/utils/extensions/extensions.dart';
@@ -54,15 +56,33 @@ class PostVideo extends StatelessWidget {
               width: context.getWidth,
               child: GestureDetector(
                 onTap: () async {
-                  // Navigate to full screen video player
-                  final result = await context.pushNavigator(
-                    VideoPlayerScreen(
-                      videoUrl: videoUrl!.fileUrl!,
-                      postId: postId,
-                    ),
-                  );
-                  if (result == true && view != null) {
-                    view!();
+                  // Get all video posts from global post list
+                  final allVideoPosts = ProfileCtrl.find.globalPostList
+                      .where(
+                        (post) =>
+                            post.files.isNotEmpty &&
+                            post.files.first.type == 'video' &&
+                            post.files.first.file?.isNotEmpty == true,
+                      )
+                      .toList();
+
+                  if (allVideoPosts.isNotEmpty) {
+                    // Find the index of current video post
+                    final clickedIndex = allVideoPosts.indexWhere(
+                      (post) => post.id == data.id,
+                    );
+
+                    // Navigate to Instagram-like reels screen
+                    final result = await context.pushNavigator(
+                      ReelsVideoScreen(
+                        initialPosts: allVideoPosts,
+                        initialIndex: clickedIndex >= 0 ? clickedIndex : 0,
+                      ),
+                    );
+
+                    if (result == true && view != null) {
+                      view!();
+                    }
                   }
                 },
                 child: AutoPlayVideoPlayer(
