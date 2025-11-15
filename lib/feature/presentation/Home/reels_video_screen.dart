@@ -24,7 +24,8 @@ class ReelsVideoScreen extends StatefulWidget {
   State<ReelsVideoScreen> createState() => _ReelsVideoScreenState();
 }
 
-class _ReelsVideoScreenState extends State<ReelsVideoScreen> with WidgetsBindingObserver {
+class _ReelsVideoScreenState extends State<ReelsVideoScreen>
+    with WidgetsBindingObserver {
   late PageController _pageController;
   VideoPlayerController? _controller;
   ChewieController? _chewieController;
@@ -48,8 +49,9 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen> with WidgetsBinding
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (!mounted) return;
-    
-    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
       // Pause video when app goes to background or screen is not active
       if (_controller != null && _controller!.value.isInitialized) {
         _controller!.pause();
@@ -156,18 +158,18 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen> with WidgetsBinding
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    
+
     // Pause and dispose video controllers
     if (_controller != null && _controller!.value.isInitialized) {
       _controller!.pause();
     }
-    
+
     _chewieController?.dispose();
     _chewieController = null;
-    
+
     _controller?.dispose();
     _controller = null;
-    
+
     _pageController.dispose();
     super.dispose();
   }
@@ -273,7 +275,7 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen> with WidgetsBinding
                         _chewieController != null
                     ? GestureDetector(
                         onTap: () {
-                          if (_controller != null && 
+                          if (_controller != null &&
                               _controller!.value.isInitialized &&
                               _chewieController != null) {
                             if (_controller!.value.isPlaying) {
@@ -351,7 +353,8 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen> with WidgetsBinding
                           CircleAvatar(
                             radius: 20,
                             backgroundColor: Colors.grey[300],
-                            backgroundImage: (user?.image != null && user!.image!.isNotEmpty)
+                            backgroundImage:
+                                (user?.image != null && user!.image!.isNotEmpty)
                                 ? NetworkImage(
                                     user.image!.startsWith('http')
                                         ? user.image!
@@ -386,7 +389,10 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen> with WidgetsBinding
                       if (post.content?.isNotEmpty == true)
                         ReadMoreText(
                           text: post.content!,
-                          textStyle: TextStyle(color: Colors.white, fontSize: 14),
+                          textStyle: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                          ),
                           maxLines: 3,
                         ),
                     ],
