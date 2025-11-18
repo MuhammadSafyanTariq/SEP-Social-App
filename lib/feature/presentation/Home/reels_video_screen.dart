@@ -6,7 +6,6 @@ import 'package:sep/feature/data/models/dataModels/post_data.dart';
 import 'package:sep/feature/presentation/controller/auth_Controller/profileCtrl.dart';
 import 'package:sep/feature/presentation/Home/comment.dart';
 import 'package:sep/utils/appUtils.dart';
-import 'package:sep/utils/extensions/contextExtensions.dart';
 import 'package:sep/feature/presentation/Home/homeScreenComponents/read_more_text.dart';
 import 'package:sep/services/networking/urls.dart';
 
@@ -208,10 +207,17 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
       return;
     }
 
-    final height = MediaQuery.of(context).size.height * 0.6;
+    // Pause video when opening comments
+    if (_controller != null && _controller!.value.isInitialized) {
+      _controller!.pause();
+    }
 
-    context.openBottomSheet(
-      Container(
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.75,
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.only(
@@ -219,30 +225,32 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
             topRight: Radius.circular(20),
           ),
         ),
-        child: SizedBox(
-          height: height,
-          child: CommentScreen(
-            onCommentAdded: (int newCount) {
-              setState(() {
-                final index = _posts.indexWhere((p) => p.id == post.id);
-                if (index != -1) {
-                  _posts[index] = post.copyWith(commentCount: newCount);
-                }
-              });
-            },
-            postId: postId,
-            updatePostOnAction: (commentCount) {
-              setState(() {
-                final index = _posts.indexWhere((p) => p.id == post.id);
-                if (index != -1) {
-                  _posts[index] = post.copyWith(commentCount: commentCount);
-                }
-              });
-            },
-          ),
+        child: CommentScreen(
+          onCommentAdded: (int newCount) {
+            setState(() {
+              final index = _posts.indexWhere((p) => p.id == post.id);
+              if (index != -1) {
+                _posts[index] = post.copyWith(commentCount: newCount);
+              }
+            });
+          },
+          postId: postId,
+          updatePostOnAction: (commentCount) {
+            setState(() {
+              final index = _posts.indexWhere((p) => p.id == post.id);
+              if (index != -1) {
+                _posts[index] = post.copyWith(commentCount: commentCount);
+              }
+            });
+          },
         ),
       ),
-    );
+    ).then((_) {
+      // Resume video when comments are closed
+      if (mounted && _controller != null && _controller!.value.isInitialized) {
+        _controller!.play();
+      }
+    });
   }
 
   @override
@@ -314,9 +322,17 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
               Positioned(
                 top: MediaQuery.of(context).padding.top + 10,
                 left: 10,
-                child: IconButton(
-                  icon: Icon(Icons.close, color: Colors.white, size: 30),
-                  onPressed: () => Navigator.pop(context),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.5),
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    icon: Icon(Icons.close, color: Colors.white, size: 28),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                  ),
                 ),
               ),
 
@@ -331,8 +347,9 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
                       begin: Alignment.bottomCenter,
                       end: Alignment.topCenter,
                       colors: [
-                        Colors.black.withOpacity(0.8),
-                        Colors.black.withOpacity(0.6),
+                        Colors.black.withOpacity(0.9),
+                        Colors.black.withOpacity(0.7),
+                        Colors.black.withOpacity(0.3),
                         Colors.transparent,
                       ],
                     ),
@@ -387,13 +404,23 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
 
                       // Caption
                       if (post.content?.isNotEmpty == true)
-                        ReadMoreText(
-                          text: post.content!,
-                          textStyle: TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
+                        Container(
+                          padding: EdgeInsets.only(right: 80),
+                          child: ReadMoreText(
+                            text: post.content!,
+                            textStyle: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              shadows: [
+                                Shadow(
+                                  offset: Offset(0, 1),
+                                  blurRadius: 3,
+                                  color: Colors.black.withOpacity(0.8),
+                                ),
+                              ],
+                            ),
+                            maxLines: 3,
                           ),
-                          maxLines: 3,
                         ),
                     ],
                   ),

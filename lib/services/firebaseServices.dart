@@ -182,10 +182,14 @@ class FirebaseServices {
       // Logger().d(message.notification?.body);
 
       if (message.notification != null) {
-        // Check if this is a celebration message and customize the notification text
+        // Check if this is a special message and customize the notification text
         String notificationBody = message.notification?.body ?? '';
         if (notificationBody.startsWith('SEP#Celebrate')) {
           notificationBody = '🎉 Shared a celebration';
+        } else if (notificationBody.startsWith('SEP#Profile:')) {
+          notificationBody = '👤 Shared a profile';
+        } else if (notificationBody.startsWith('SEP#Post:')) {
+          notificationBody = '📝 Shared a post';
         }
 
         _flutterLocalNotificationsPlugin.show(

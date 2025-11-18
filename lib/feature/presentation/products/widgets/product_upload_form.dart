@@ -39,6 +39,8 @@ class _ProductUploadFormState extends State<ProductUploadForm> {
   final RxList<String> selectedImages = RxList([]);
   final RxBool isAvailable = RxBool(true);
   final RxBool isUploading = RxBool(false);
+  final RxBool noUrlAvailable = RxBool(false);
+  final _sellerDetailsController = TextEditingController();
 
   @override
   void dispose() {
@@ -47,6 +49,7 @@ class _ProductUploadFormState extends State<ProductUploadForm> {
     _priceController.dispose();
     _categoryController.dispose();
     _linkController.dispose();
+    _sellerDetailsController.dispose();
     super.dispose();
   }
 
@@ -130,7 +133,11 @@ class _ProductUploadFormState extends State<ProductUploadForm> {
       // Concatenate category with suffix based on product type
       String categoryValue = _categoryController.text.trim();
       if (widget.isDropship) {
-        categoryValue = "$categoryValue+drop+${_linkController.text.trim()}";
+        // If no URL checkbox is checked, use seller details instead
+        final linkOrDetails = noUrlAvailable.value
+            ? _sellerDetailsController.text.trim()
+            : _linkController.text.trim();
+        categoryValue = "$categoryValue+drop+$linkOrDetails";
       } else {
         categoryValue = "$categoryValue+simple";
       }
@@ -289,25 +296,127 @@ class _ProductUploadFormState extends State<ProductUploadForm> {
 
             // Product Link (only for dropship)
             if (widget.isDropship) ...[
-              TextView(
-                text: "Product Link *",
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black,
+              // Checkbox for "Don't have a URL?"
+              Obx(
+                () => Row(
+                  children: [
+                    Checkbox(
+                      value: noUrlAvailable.value,
+                      onChanged: (value) {
+                        noUrlAvailable.value = value ?? false;
+                        // Clear the other field when switching
+                        if (noUrlAvailable.value) {
+                          _linkController.clear();
+                        } else {
+                          _sellerDetailsController.clear();
+                        }
+                      },
+                      activeColor: AppColors.btnColor,
+                    ),
+                    Expanded(
+                      child: TextView(
+                        text: "Don't have a URL?",
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               8.height,
-              EditText(
-                controller: _linkController,
-                hint: "Enter product link (e.g., https://example.com/product)",
-                inputType: TextInputType.url,
-                validator: (value) {
-                  if (value?.trim().isEmpty ?? true) {
-                    return "Product link is required for dropshipping";
-                  }
-                  return null;
-                },
+
+              // Show URL field or Seller Details field based on checkbox
+              Obx(
+                () => !noUrlAvailable.value
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          TextView(
+                            text: "Product Link *",
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black,
+                            ),
+                          ),
+                          8.height,
+                          EditText(
+                            controller: _linkController,
+                            hint:
+                                "Enter product link (e.g., https://example.com/product)",
+                            inputType: TextInputType.url,
+                            validator: (value) {
+                              if (!noUrlAvailable.value &&
+                                  (value?.trim().isEmpty ?? true)) {
+                                return "Product link is required for dropshipping";
+                              }
+                              return null;
+                            },
+                          ),
+                        ],
+                      )
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          TextView(
+                            text: "Seller Contact Details *",
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black,
+                            ),
+                          ),
+                          8.height,
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.blue[50],
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: Colors.blue[200]!,
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.info_outline,
+                                  color: Colors.blue[700],
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    "Provide seller's contact information for buyers to reach out directly.",
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.blue[900],
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          8.height,
+                          EditText(
+                            controller: _sellerDetailsController,
+                            hint:
+                                "Enter seller contact details (e.g., Phone: +1234567890, Email: seller@example.com, WhatsApp: +1234567890)",
+                            noOfLines: 5,
+                            validator: (value) {
+                              if (noUrlAvailable.value &&
+                                  (value?.trim().isEmpty ?? true)) {
+                                return "Seller contact details are required";
+                              }
+                              return null;
+                            },
+                          ),
+                        ],
+                      ),
               ),
               16.height,
             ],

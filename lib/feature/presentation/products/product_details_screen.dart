@@ -142,6 +142,158 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     }
   }
 
+  bool _isValidUrl(String? text) {
+    if (text == null || text.isEmpty) return false;
+    try {
+      final uri = Uri.parse(text);
+      return uri.hasScheme && (uri.scheme == 'http' || uri.scheme == 'https');
+    } catch (e) {
+      return false;
+    }
+  }
+
+  void _showSellerContactDialog(String contactDetails) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Icon
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.orange[50],
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.contact_phone,
+                    size: 40,
+                    color: Colors.orange[700],
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Title
+                const Text(
+                  "Seller Contact Information",
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black87,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 12),
+
+                // Info message
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue[50],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        size: 18,
+                        color: Colors.blue[700],
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          "Contact the seller directly to purchase this product.",
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.blue[900],
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Contact details box
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50],
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey[300]!),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.person, size: 18, color: Colors.grey[600]),
+                          const SizedBox(width: 8),
+                          Text(
+                            "Contact Details",
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey[600],
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        contactDetails,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.black87,
+                          height: 1.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Close button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.btnColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: const Text(
+                      "Got it",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -622,36 +774,125 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                   ),
                 ),
 
-                // Dropship link button
+                // Dropship link button or seller contact details
                 if (isDropship &&
                     dropshipLink != null &&
                     dropshipLink.isNotEmpty) ...[
                   const SizedBox(height: 28),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: () => _openDropshipLink(dropshipLink!),
-                      icon: const Icon(Icons.open_in_new, size: 18),
-                      label: const Text(
-                        "View on Supplier Website",
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
+
+                  // Check if dropshipLink is a valid URL or seller contact details
+                  if (_isValidUrl(dropshipLink))
+                    // Show button to open URL
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () => _openDropshipLink(dropshipLink!),
+                        icon: const Icon(Icons.open_in_new, size: 18),
+                        label: const Text(
+                          "View on Supplier Website",
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.orange,
+                          side: const BorderSide(
+                            color: Colors.orange,
+                            width: 1.5,
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
                       ),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.orange,
-                        side: const BorderSide(
-                          color: Colors.orange,
-                          width: 1.5,
+                    )
+                  else
+                    // Show seller contact details in a box
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.contact_phone,
+                              color: AppColors.btnColor,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            const Text(
+                              "Seller Contact Information",
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ],
                         ),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+                        const SizedBox(height: 12),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.orange[50],
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Colors.orange[200]!,
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Icon(
+                                    Icons.info_outline,
+                                    color: Colors.orange[700],
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      "This is a dropship product. Contact the seller directly using the information below:",
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.orange[900],
+                                        fontWeight: FontWeight.w500,
+                                        height: 1.4,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: Colors.orange[100]!,
+                                  ),
+                                ),
+                                child: Text(
+                                  dropshipLink,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.black87,
+                                    height: 1.5,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
+                      ],
                     ),
-                  ),
                 ],
 
                 const SizedBox(height: 28),
@@ -829,8 +1070,14 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                       if (isDropship &&
                           dropshipLink != null &&
                           dropshipLink.isNotEmpty) {
-                        // For dropship products, open the external link
-                        _openDropshipLink(dropshipLink);
+                        // Check if it's a URL or seller contact details
+                        if (_isValidUrl(dropshipLink)) {
+                          // For dropship products with URL, open the external link
+                          _openDropshipLink(dropshipLink);
+                        } else {
+                          // For dropship with seller details, show contact info dialog
+                          _showSellerContactDialog(dropshipLink);
+                        }
                       } else {
                         // For simple products, navigate to payment screen
                         _navigateToPaymentScreen();
@@ -856,14 +1103,20 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                 children: [
                   Icon(
                     isDropship
-                        ? Icons.open_in_new
+                        ? (_isValidUrl(dropshipLink ?? '')
+                              ? Icons.open_in_new
+                              : Icons.contact_phone)
                         : Icons.shopping_bag_outlined,
                     size: 22,
                   ),
                   const SizedBox(width: 10),
                   Text(
                     isAvailable
-                        ? (isDropship ? "View on Supplier Site" : "Buy Now")
+                        ? (isDropship
+                              ? (_isValidUrl(dropshipLink ?? '')
+                                    ? "View on Supplier Site"
+                                    : "Contact Seller")
+                              : "Buy Now")
                         : "Out of Stock",
                     style: const TextStyle(
                       fontSize: 17,

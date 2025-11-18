@@ -21,7 +21,8 @@ import '../controller/auth_Controller/auth_ctrl.dart';
 import '../profileScreens/friend_profile_screen.dart';
 
 class Search extends StatefulWidget {
-  const Search({super.key});
+  final bool autoFocus;
+  const Search({super.key, this.autoFocus = false});
 
   @override
   State<Search> createState() => _SearchState();
@@ -29,6 +30,7 @@ class Search extends StatefulWidget {
 
 class _SearchState extends State<Search> {
   final _searchController = TextEditingController();
+  final _focusNode = FocusNode();
   final _authCtrl = AuthCtrl.find;
 
   final _debounce = RxString('');
@@ -59,6 +61,13 @@ class _SearchState extends State<Search> {
     });
 
     _authCtrl.searchUserInProfile('', page: 1, limit: 20);
+
+    // Auto focus if requested
+    if (widget.autoFocus) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _focusNode.requestFocus();
+      });
+    }
   }
 
   Future<void> _loadMoreUsers() async {
@@ -101,6 +110,7 @@ class _SearchState extends State<Search> {
   @override
   void dispose() {
     _searchController.dispose();
+    _focusNode.dispose();
     _refreshController.dispose();
     super.dispose();
   }
@@ -129,6 +139,7 @@ class _SearchState extends State<Search> {
               ),
               child: EditText(
                 controller: _searchController,
+                node: _focusNode,
                 hint: 'Search users...',
                 hintStyle: 14.txtMediumgrey,
                 radius: 20,

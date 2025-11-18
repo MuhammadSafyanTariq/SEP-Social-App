@@ -78,17 +78,53 @@ class IChatRepo implements ChatRepo {
     required String chatId,
     required String type,
   }) {
-    // AppUtils.log('Socket calling deleteMessage: $messageId, $chatId, $type');
+    AppUtils.log('Socket calling deleteMessage: $messageId, $chatId, $type');
     _socket.callEvent(SocketKey.deleteMessages, {
-      'messageIds': messageId,
+      'messageIds': [messageId], // Send as array to match backend API
       'userId': Preferences.uid,
       'chatId': chatId,
-      'types': type,
+      'types': type, // 'all' for delete for everyone, 'one' for delete for me
+    });
+  }
+
+  @override
+  void deleteMultipleMessages({
+    required List<String> messageIds,
+    required String chatId,
+    required String type,
+  }) {
+    AppUtils.log(
+      'Socket calling deleteMultipleMessages: ${messageIds.length} messages, $chatId, $type',
+    );
+    _socket.callEvent(SocketKey.deleteMessages, {
+      'messageIds': messageIds, // Send array of message IDs
+      'userId': Preferences.uid,
+      'chatId': chatId,
+      'types': type, // 'all' for delete for everyone, 'one' for delete for me
     });
   }
 
   @override
   void deleteMessageListener({required Function(dynamic p1) data}) {
     _socket.listen(SocketKey.deleteMessages, data);
+  }
+
+  @override
+  void deleteChat({required String chatId}) {
+    AppUtils.log('Deleting chat: $chatId');
+    _socket.callEvent(SocketKey.deleteChat, {
+      'chatId': chatId,
+      'userId': Preferences.uid,
+    });
+  }
+
+  @override
+  void deleteChatListener({required Function(dynamic p1) data}) {
+    _socket.listen(SocketKey.deleteChat, data);
+  }
+
+  @override
+  bool isConnected() {
+    return _socket.isConnected;
   }
 }

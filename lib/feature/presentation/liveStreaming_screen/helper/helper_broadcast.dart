@@ -134,51 +134,101 @@ class ChatInputBox extends StatefulWidget {
 
 class _ChatInputBoxState extends State<ChatInputBox> {
   final TextEditingController _msgCtrl = TextEditingController();
+  final FocusNode _focusNode = FocusNode();
 
   @override
   void dispose() {
     _msgCtrl.dispose();
+    _focusNode.dispose();
     super.dispose();
+  }
+
+  void _sendMessage() {
+    final text = _msgCtrl.getText;
+    if (text.isNotNullEmpty) {
+      AgoraChatCtrl.find.sendMessage(text);
+      _msgCtrl.clear();
+      // Unfocus to close keyboard after sending
+      _focusNode.unfocus();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.zero,
+    // Get screen width for responsive sizing
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
 
-      // EdgeInsets.symmetric(horizontal: 16) +
-      //     EdgeInsets.only(bottom: context.bottomSafeArea, top: 5)
-      child: TextFormField(
-        onTapOutside: (event) => FocusScope.of(context).unfocus(),
-        controller: _msgCtrl,
-        maxLines: 1,
-        style: 14.txtRegularBlack.withShadow(AppColors.grey),
-        decoration: InputDecoration(
-          hintText: 'Type something...',
-          // hintStyle: 14.txtBoldGrey,
-          hintStyle: 14.txtRegularRetake1,
-          border: _inputBorder,
-          fillColor: AppColors.grey.withValues(alpha: 0.45),
-          enabledBorder: _inputBorder,
-          focusedBorder: _inputBorder,
-          filled: true,
-          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          suffixIcon: GestureDetector(
-            onTap: () {
-              final text = _msgCtrl.getText;
-              if (text.isNotNullEmpty) {
-                AgoraChatCtrl.find.sendMessage(text);
-                _msgCtrl.clear();
-              }
-            },
-            child: Padding(
-              padding: EdgeInsets.all(8),
-              child: ImageView(url: 'assets/images/sendmsg.png', size: 24),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Container(
+          constraints: BoxConstraints(
+            maxHeight: 48,
+            maxWidth: constraints.maxWidth,
+          ),
+          child: TextFormField(
+            focusNode: _focusNode,
+            onTapOutside: (event) => FocusScope.of(context).unfocus(),
+            controller: _msgCtrl,
+            maxLines: 1,
+            textInputAction: TextInputAction.send,
+            onFieldSubmitted: (_) => _sendMessage(),
+            style: TextStyle(
+              fontSize: isSmallScreen ? 13 : 14,
+              color: Colors.black87,
+              fontWeight: FontWeight.w500,
+              shadows: [
+                Shadow(
+                  color: Colors.white.withOpacity(0.5),
+                  offset: Offset(0, 0),
+                  blurRadius: 2,
+                ),
+              ],
+            ),
+            decoration: InputDecoration(
+              hintText: 'Type something...',
+              hintStyle: TextStyle(
+                fontSize: isSmallScreen ? 12 : 13,
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w400,
+              ),
+              border: _inputBorder,
+              fillColor: Colors.white.withOpacity(0.9),
+              enabledBorder: _inputBorder,
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(50),
+                borderSide: BorderSide(color: AppColors.btnColor, width: 2),
+              ),
+              filled: true,
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: isSmallScreen ? 12 : 16,
+                vertical: isSmallScreen ? 6 : 10,
+              ),
+              suffixIcon: GestureDetector(
+                onTap: _sendMessage,
+                child: Container(
+                  margin: EdgeInsets.only(right: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.btnColor,
+                    shape: BoxShape.circle,
+                  ),
+                  padding: EdgeInsets.all(isSmallScreen ? 8 : 10),
+                  child: Icon(
+                    Icons.send_rounded,
+                    color: Colors.white,
+                    size: isSmallScreen ? 18 : 20,
+                  ),
+                ),
+              ),
+              suffixIconConstraints: BoxConstraints(
+                minWidth: isSmallScreen ? 44 : 48,
+                minHeight: isSmallScreen ? 44 : 48,
+              ),
+              isDense: true,
             ),
           ),
-          suffixIconConstraints: BoxConstraints(minWidth: 40, minHeight: 40),
-        ),
-      ),
+        );
+      },
     );
   }
 }

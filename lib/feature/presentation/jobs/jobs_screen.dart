@@ -8,6 +8,7 @@ import 'package:sep/components/coreComponents/appBar2.dart';
 import 'package:sep/components/styles/appColors.dart';
 import 'package:sep/feature/data/models/dataModels/job_model/job_model.dart';
 import 'package:sep/feature/presentation/controller/jobs_controller.dart';
+import 'package:sep/feature/presentation/controller/chat_ctrl.dart';
 import 'package:sep/feature/presentation/jobs/post_job_screen.dart';
 import 'package:sep/feature/presentation/jobs/worker_profile_screen.dart';
 import 'package:sep/feature/presentation/chatScreens/Messages_Screen.dart';
@@ -918,11 +919,17 @@ class _JobsScreenState extends State<JobsScreen> {
                   AppButton(
                     label: 'Contact',
                     buttonColor: AppColors.primaryColor,
-                    onTap: () {
-                      Navigator.pop(context);
+                    onTap: () async {
                       final userId = job.userId;
                       if (userId != null && userId.isNotEmpty) {
-                        _navigateToChatScreen(context, userId, job);
+                        // Store the navigator before async operations
+                        final navigator = Navigator.of(context);
+
+                        // Close the bottom sheet first
+                        navigator.pop();
+
+                        // Start fetching user details and check for existing chat
+                        _navigateToChat(userId, job);
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
@@ -935,34 +942,31 @@ class _JobsScreenState extends State<JobsScreen> {
                     },
                   ),
                 ] else if (job.userId == Preferences.uid) ...[
-                  // Show a different message for own jobs
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: AppColors.primaryColor.withOpacity(0.3),
+                  // Show Edit and Delete buttons for own jobs
+                  Row(
+                    children: [
+                      Expanded(
+                        child: AppButton(
+                          label: 'Edit',
+                          buttonColor: AppColors.btnColor,
+                          onTap: () {
+                            Navigator.pop(context);
+                            _editJob(context, job);
+                          },
+                        ),
                       ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.info_outline,
-                          color: AppColors.primaryColor,
-                          size: 20,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: AppButton(
+                          label: 'Delete',
+                          buttonColor: Colors.red,
+                          onTap: () {
+                            Navigator.pop(context);
+                            _deleteJob(context, job);
+                          },
                         ),
-                        const SizedBox(width: 8),
-                        TextView(
-                          text: 'This is your job posting',
-                          style: TextStyle(
-                            color: AppColors.primaryColor,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ],
               ],
@@ -1144,18 +1148,32 @@ class _JobsScreenState extends State<JobsScreen> {
     );
   }
 
-  void _navigateToChatScreen(
-    BuildContext context,
-    String userId,
-    JobModel job,
-  ) async {
+  void _navigateToChat(String userId, JobModel job) async {
     try {
-      // Validate input parameters
-      if (userId.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Invalid user ID. Cannot start chat.')),
-        );
-        return;
+      AppUtils.log('🔍 Checking for existing chat with userId: $userId');
+
+      // Get the chat controller
+      final chatCtrl = ChatCtrl.find;
+
+      // Refresh recent chats to get latest data
+      chatCtrl.fireRecentChatEvent();
+
+      // Wait a moment for recent chats to load
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      // Check if there's an existing chat with this user
+      String? existingChatId;
+      for (var recentChat in chatCtrl.recentChat) {
+        if (recentChat.users?.contains(userId) == true &&
+            recentChat.users?.contains(Preferences.uid) == true) {
+          existingChatId = recentChat.id;
+          AppUtils.log('✅ Found existing chat ID: $existingChatId');
+          break;
+        }
+      }
+
+      if (existingChatId == null) {
+        AppUtils.log('📝 No existing chat found, will create new chat');
       }
 
       // Get user details for the chat
@@ -1170,6 +1188,10 @@ class _JobsScreenState extends State<JobsScreen> {
             userDetails['profileImage']?.toString() ??
             userDetails['image']?.toString();
 
+        AppUtils.log(
+          'User details fetched - Name: $userName, Image: $userImage',
+        );
+
         // Create ProfileDataModel for the job poster
         final profileData = ProfileDataModel(
           id: userId,
@@ -1177,33 +1199,221 @@ class _JobsScreenState extends State<JobsScreen> {
           image: userImage,
         );
 
-        // Navigate to MessageScreen
-        if (!context.mounted) return;
+        // Navigate to MessageScreen with existing chatId if found
+        AppUtils.log(
+          'Navigating to MessageScreen${existingChatId != null ? " with existing chat ID: $existingChatId" : " (new chat)"}',
+        );
 
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => MessageScreen(
-              data: profileData,
-              chatId: null, // Let the chat system generate a new chat ID
-            ),
+        Get.to(
+          () => MessageScreen(
+            data: profileData,
+            chatId: existingChatId, // Pass existing chatId or null for new chat
           ),
         );
+        AppUtils.log('Navigation to MessageScreen completed');
       } else {
         // Fallback if user details can't be fetched
-        if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Unable to load user details. Please try again.'),
-          ),
-        );
+        AppUtils.logEr('User details are null for userId: $userId');
+        AppUtils.toastError('Unable to load user details. Please try again.');
       }
     } catch (e) {
       AppUtils.logEr('Error navigating to chat: $e');
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error opening chat. Please try again.')),
-      );
+      AppUtils.toastError('Error opening chat. Please try again.');
     }
+  }
+
+  void _navigateToChatScreenImmediate(String userId, JobModel job) async {
+    try {
+      AppUtils.log('Starting chat with userId: $userId');
+
+      // Get user details for the chat
+      final userDetails = await _getUserDetails(userId);
+
+      if (userDetails != null) {
+        final userName =
+            userDetails['name']?.toString() ??
+            userDetails['username']?.toString() ??
+            'Job Poster';
+        final userImage =
+            userDetails['profileImage']?.toString() ??
+            userDetails['image']?.toString();
+
+        AppUtils.log(
+          'User details fetched - Name: $userName, Image: $userImage',
+        );
+
+        // Create ProfileDataModel for the job poster
+        final profileData = ProfileDataModel(
+          id: userId,
+          name: userName,
+          image: userImage,
+        );
+
+        // Navigate to MessageScreen using Get.context which is always available
+        AppUtils.log('Navigating to MessageScreen with profile data');
+
+        Get.to(() => MessageScreen(data: profileData));
+        AppUtils.log('Navigation to MessageScreen completed');
+      } else {
+        // Fallback if user details can't be fetched
+        AppUtils.logEr('User details are null for userId: $userId');
+        AppUtils.toastError('Unable to load user details. Please try again.');
+      }
+    } catch (e) {
+      AppUtils.logEr('Error navigating to chat: $e');
+      AppUtils.toastError('Error opening chat. Please try again.');
+    }
+  }
+
+  void _navigateToChatScreen(
+    BuildContext context,
+    String userId,
+    JobModel job,
+  ) async {
+    try {
+      // Validate input parameters
+      if (userId.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Invalid user ID. Cannot start chat.')),
+        );
+        return;
+      }
+
+      AppUtils.log('Starting chat with userId: $userId');
+
+      // Get user details for the chat
+      final userDetails = await _getUserDetails(userId);
+
+      if (userDetails != null) {
+        final userName =
+            userDetails['name']?.toString() ??
+            userDetails['username']?.toString() ??
+            'Job Poster';
+        final userImage =
+            userDetails['profileImage']?.toString() ??
+            userDetails['image']?.toString();
+
+        AppUtils.log(
+          'User details fetched - Name: $userName, Image: $userImage',
+        );
+
+        // Create ProfileDataModel for the job poster
+        final profileData = ProfileDataModel(
+          id: userId,
+          name: userName,
+          image: userImage,
+        );
+
+        // Navigate to MessageScreen using the same method as friend profile
+        AppUtils.log('Navigating to MessageScreen with profile data');
+
+        try {
+          context.pushNavigator(MessageScreen(data: profileData));
+          AppUtils.log('Navigation to MessageScreen completed');
+        } catch (navError) {
+          AppUtils.logEr('Navigation error: $navError');
+        }
+      } else {
+        // Fallback if user details can't be fetched
+        AppUtils.logEr('User details are null for userId: $userId');
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Unable to load user details. Please try again.'),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      AppUtils.logEr('Error navigating to chat: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error opening chat. Please try again.'),
+          ),
+        );
+      }
+    }
+  }
+
+  void _editJob(BuildContext context, JobModel job) {
+    final controller = Get.find<JobsController>();
+
+    // Pre-fill the form with existing job data
+    controller.jobTitleController.text = job.jobTitle;
+    controller.jobCountryController.text = job.country;
+    controller.jobCityController.text = job.city;
+    controller.jobDescriptionController.text = job.description;
+    controller.jobContactController.text = job.contact;
+    controller.selectedJobTypeForPost.value = job.jobType;
+
+    // Navigate to edit screen (reuse PostJobScreen with edit mode)
+    context.pushNavigator(PostJobScreen(editMode: true, jobToEdit: job));
+  }
+
+  void _deleteJob(BuildContext context, JobModel job) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const TextView(
+            text: 'Delete Job',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+          content: const TextView(
+            text:
+                'Are you sure you want to delete this job posting? This action cannot be undone.',
+            style: TextStyle(color: Colors.grey),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const TextView(
+                text: 'Cancel',
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(context); // Close dialog
+
+                try {
+                  final controller = Get.find<JobsController>();
+                  final success = await controller.deleteJob(job.id!);
+
+                  if (success && context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Job deleted successfully'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Failed to delete job: $e'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+              },
+              child: const TextView(
+                text: 'Delete',
+                style: TextStyle(
+                  color: Colors.red,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 }

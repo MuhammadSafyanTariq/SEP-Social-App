@@ -11,13 +11,10 @@ import 'package:sep/services/storage/preferences.dart';
 import 'package:sep/utils/appUtils.dart';
 import 'package:sep/utils/extensions/extensions.dart';
 import 'package:sep/utils/extensions/size.dart';
-import 'package:sep/utils/extensions/textStyle.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
-import '../../../components/coreComponents/ImageView.dart';
 import '../../../components/styles/appColors.dart';
-import '../../../components/styles/appImages.dart';
 import '../../data/models/dataModels/chat_msg_model/chat_msg_model.dart';
 import '../../data/models/dataModels/profile_data/profile_data_model.dart';
 import '../controller/agora_chat_ctrl.dart';
@@ -26,6 +23,7 @@ import 'ImagePreviewScreen.dart';
 import 'VideoPreviewScreen.dart';
 import 'celebration_chat_card.dart';
 import 'profile_chat_card.dart';
+import 'chat_post_card.dart';
 import 'dart:convert';
 
 final GlobalKey<ChatSampleState> singleMessageScreenChatOperationKey =
@@ -137,7 +135,8 @@ class ChatSampleState extends State<ChatSample> {
   @override
   void initState() {
     super.initState();
-    ChatCtrl.find.isSingleChatLoading.value = false;
+    // Don't set loading to false here - let the controller manage it
+    // ChatCtrl.find.isSingleChatLoading.value = false;
 
     ChatCtrl.find.isSingleChatLoading.listen((value) {
       if (!value) {
@@ -182,50 +181,126 @@ class ChatSampleState extends State<ChatSample> {
 
               // ,
               onLoading: () => getList(isLoadMore: true),
-              child: Obx(
-                () => ListView.builder(
-                  physics: NeverScrollableScrollPhysics(),
-                  shrinkWrap: true,
-                  // physics: NeverScrollableScrollPhysics(),
-                  reverse: true,
-                  itemCount: _ctrl.chatMessages.length,
-                  itemBuilder: (context, index) {
-                    final message = _ctrl.chatMessages[index];
-                    final isSelected = _selectedMessage.contains(message);
+              child: Obx(() {
+                // Show loading indicator when chat is loading
+                if (_ctrl.isSingleChatLoading.value &&
+                    _ctrl.chatMessages.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            AppColors.primaryColor,
+                          ),
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          'Loading messages...',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
 
-                    // Use helper to determine if message is sent by current user
-                    final isSentByUser =
-                        ChatMessageHelper.isMessageSentByCurrentUser(message);
+                return Stack(
+                  children: [
+                    ListView.builder(
+                      physics: NeverScrollableScrollPhysics(),
+                      shrinkWrap: true,
+                      // physics: NeverScrollableScrollPhysics(),
+                      reverse: true,
+                      itemCount: _ctrl.chatMessages.length,
+                      itemBuilder: (context, index) {
+                        final message = _ctrl.chatMessages[index];
+                        final isSelected = _selectedMessage.contains(message);
 
-                    // Debug logging for message alignment
-                    AppUtils.log('Message alignment debug:');
-                    AppUtils.log('Message sender ID: ${message.sender?.id}');
-                    AppUtils.log('Current user ID: ${Preferences.uid}');
-                    AppUtils.log('Is sent by user: $isSentByUser');
-                    AppUtils.log('Message content: ${message.content}');
+                        // Use helper to determine if message is sent by current user
+                        final isSentByUser =
+                            ChatMessageHelper.isMessageSentByCurrentUser(
+                              message,
+                            );
 
-                    return _buildMessage(
-                      context,
-                      message.content ?? '',
-                      isSentByUser,
-                      isSelected,
-                      () {
-                        setState(() {
-                          if (_selectedMessage.contains(message)) {
-                            _selectedMessage.remove(message);
-                          } else {
-                            _selectedMessage.add(message);
-                          }
-                        });
+                        // Debug logging for message alignment
+                        AppUtils.log('Message alignment debug:');
+                        AppUtils.log(
+                          'Message sender ID: ${message.sender?.id}',
+                        );
+                        AppUtils.log('Current user ID: ${Preferences.uid}');
+                        AppUtils.log('Is sent by user: $isSentByUser');
+                        AppUtils.log('Message content: ${message.content}');
+
+                        return _buildMessage(
+                          context,
+                          message.content ?? '',
+                          isSentByUser,
+                          isSelected,
+                          () {
+                            setState(() {
+                              if (_selectedMessage.contains(message)) {
+                                _selectedMessage.remove(message);
+                              } else {
+                                _selectedMessage.add(message);
+                              }
+                            });
+                          },
+                          message.senderTime ?? "",
+                          message.senderTime ?? "",
+                          message,
+                          widget.peerUser,
+                        );
                       },
-                      message.senderTime ?? "",
-                      message.senderTime ?? "",
-                      message,
-                      widget.peerUser,
-                    );
-                  },
-                ),
-              ),
+                    ),
+                    // Loading overlay when fetching messages
+                    if (_ctrl.isSingleChatLoading.value &&
+                        _ctrl.chatMessages.isNotEmpty)
+                      Positioned.fill(
+                        child: Container(
+                          color: Colors.black.withOpacity(0.3),
+                          child: Center(
+                            child: Container(
+                              padding: EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.1),
+                                    blurRadius: 10,
+                                    offset: Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  CircularProgressIndicator(
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      AppColors.primaryColor,
+                                    ),
+                                  ),
+                                  SizedBox(height: 12),
+                                  Text(
+                                    'Fetching messages...',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey.shade700,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              }),
             ),
           ),
           if (_selectedMessage.isNotEmpty)
@@ -268,6 +343,17 @@ class ChatSampleState extends State<ChatSample> {
 
     final bool isCelebration = content.startsWith('SEP#Celebrate');
     final bool isProfileCard = content.startsWith('SEP#Profile:');
+    final bool isPostCard = content.startsWith('SEP#Post:');
+
+    // Parse post reference from SEP#Post:postId format
+    String? postId;
+
+    if (isPostCard) {
+      // Extract postId from SEP#Post:postId
+      postId = content.substring('SEP#Post:'.length).trim();
+      AppUtils.log('✅ Parsed post reference:');
+      AppUtils.log('  - postId: $postId');
+    }
 
     Widget liveStreamCard() {
       return Obx(() {
@@ -555,6 +641,11 @@ class ChatSampleState extends State<ChatSample> {
                           )
                         : isProfileCard
                         ? _buildProfileCard(content, isSentByUser)
+                        : isPostCard && postId != null
+                        ? ChatPostCard(
+                            postId: postId,
+                            isSentByUser: isSentByUser,
+                          )
                         : ConstrainedBox(
                             constraints: BoxConstraints(
                               maxWidth: MediaQuery.of(context).size.width * 0.8,

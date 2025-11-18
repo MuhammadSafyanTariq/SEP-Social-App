@@ -7,6 +7,8 @@ import 'package:sep/feature/presentation/Home/homeScreenComponents/postVideo.dar
 import 'package:sep/feature/presentation/Home/homeScreenComponents/celebrationCard.dart';
 import 'package:sep/feature/presentation/Home/homeScreenComponents/post_components.dart';
 import 'package:sep/feature/presentation/controller/auth_Controller/profileCtrl.dart';
+import 'package:sep/services/storage/preferences.dart';
+import 'package:sep/utils/appUtils.dart';
 import 'package:sep/utils/extensions/contextExtensions.dart';
 
 class PostDetailScreen extends StatefulWidget {
@@ -32,6 +34,29 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     super.initState();
     postData = widget.postData;
 
+    // Check if current user has liked the post by checking likes array
+    if (postData.isLikedByUser == null &&
+        postData.likes != null &&
+        postData.likes!.isNotEmpty) {
+      bool isLikedByCurrentUser = postData.likes!.any((like) {
+        if (like is Map) {
+          return like['userId'] == Preferences.uid ||
+              like['_id'] == Preferences.uid;
+        } else if (like is String) {
+          return like == Preferences.uid;
+        }
+        return false;
+      });
+
+      AppUtils.log('🔍 PostDetailScreen - Checking likes array');
+      AppUtils.log('  - Current user: ${Preferences.uid}');
+      AppUtils.log('  - Likes array length: ${postData.likes!.length}');
+      AppUtils.log('  - isLikedByCurrentUser: $isLikedByCurrentUser');
+
+      // Update postData with correct isLikedByUser status
+      postData = postData.copyWith(isLikedByUser: isLikedByCurrentUser);
+    }
+
     // If openComments is true, show comments sheet after build
     if (widget.openComments) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -53,11 +78,11 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
 
     final footer = postFooter(
       context: context,
-      item: item, // Pass the current state item which has updated counts
+      item: postData, // Use current state postData instead of item parameter
       postLiker: (postId) {
         // Update like status immediately
-        final count = item.likeCount ?? 0;
-        final isLiked = item.isLikedByUser ?? false;
+        final count = postData.likeCount ?? 0;
+        final isLiked = postData.isLikedByUser ?? false;
 
         setState(() {
           postData = postData.copyWith(
@@ -77,8 +102,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       },
       updatePostOnAction: (commentCount) {
         // Refresh full post data from server
-        if (item.id != null) {
-          ProfileCtrl.find.getSinglePostData(item.id!).then((updatedPost) {
+        if (postData.id != null) {
+          ProfileCtrl.find.getSinglePostData(postData.id!).then((updatedPost) {
             setState(() {
               postData = updatedPost;
             });

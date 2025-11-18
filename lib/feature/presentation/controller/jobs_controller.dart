@@ -423,4 +423,71 @@ class JobsController extends GetxController {
     if (type == 'all') return allJobs.length;
     return allJobs.where((job) => job.jobType == type).length;
   }
+
+  /// Delete a job
+  Future<bool> deleteJob(String jobId) async {
+    try {
+      isLoading.value = true;
+
+      final success = await JobsApiService.deleteJob(jobId);
+
+      if (success) {
+        // Remove from local lists
+        allJobs.removeWhere((job) => job.id == jobId);
+        _filterJobsLocally(); // Refresh filtered list
+
+        AppUtils.toast('Job deleted successfully!');
+        return true;
+      } else {
+        AppUtils.toastError('Failed to delete job');
+        return false;
+      }
+    } catch (e) {
+      AppUtils.toastError('Failed to delete job: $e');
+      return false;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /// Update an existing job
+  Future<bool> updateJob(JobModel job) async {
+    try {
+      isPosting.value = true;
+
+      final updatedJob = await JobsApiService.updateJob(
+        jobId: job.id!,
+        jobTitle: jobTitleController.text.trim(),
+        country: jobCountryController.text.trim(),
+        city: jobCityController.text.trim(),
+        jobType: selectedJobTypeForPost.value,
+        description: jobDescriptionController.text.trim(),
+        contact: jobContactController.text.trim(),
+      );
+
+      // Update in local lists
+      final index = allJobs.indexWhere((j) => j.id == job.id);
+      if (index != -1) {
+        allJobs[index] = updatedJob;
+        _filterJobsLocally(); // Refresh filtered list
+      }
+
+      // Clear form on success
+      jobTitleController.clear();
+      jobCountryController.clear();
+      jobCityController.clear();
+      jobDescriptionController.clear();
+      jobContactController.clear();
+      selectedJobTypeForPost.value = '';
+      acceptTerms.value = false;
+
+      AppUtils.toast('Job updated successfully!');
+      return true;
+    } catch (e) {
+      AppUtils.toastError('Failed to update job: $e');
+      return false;
+    } finally {
+      isPosting.value = false;
+    }
+  }
 }

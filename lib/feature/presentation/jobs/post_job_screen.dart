@@ -5,11 +5,15 @@ import 'package:sep/components/coreComponents/EditText.dart';
 import 'package:sep/components/coreComponents/TextView.dart';
 import 'package:sep/components/coreComponents/appBar2.dart';
 import 'package:sep/components/styles/appColors.dart';
+import 'package:sep/feature/data/models/dataModels/job_model/job_model.dart';
 import 'package:sep/feature/presentation/controller/jobs_controller.dart';
 import 'package:sep/utils/extensions/widget.dart';
 
 class PostJobScreen extends StatelessWidget {
-  const PostJobScreen({super.key});
+  final bool editMode;
+  final JobModel? jobToEdit;
+
+  const PostJobScreen({super.key, this.editMode = false, this.jobToEdit});
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +25,7 @@ class PostJobScreen extends StatelessWidget {
             children: [
               // Custom AppBar2
               AppBar2(
-                title: 'Post a Job',
+                title: editMode ? 'Edit Job' : 'Post a Job',
                 titleStyle: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w600,
@@ -385,12 +389,12 @@ class PostJobScreen extends StatelessWidget {
                             child: Obx(
                               () => AppButton(
                                 label: controller.isPosting.value
-                                    ? 'Posting...'
-                                    : 'Post Job',
+                                    ? (editMode ? 'Updating...' : 'Posting...')
+                                    : (editMode ? 'Update Job' : 'Post Job'),
                                 buttonColor: AppColors.primaryColor,
                                 isLoading: controller.isPosting.value,
                                 onTap: () =>
-                                    _validateAndPostJob(context, controller),
+                                    _validateAndSubmitJob(context, controller),
                               ),
                             ),
                           ),
@@ -409,7 +413,7 @@ class PostJobScreen extends StatelessWidget {
     );
   }
 
-  void _validateAndPostJob(
+  void _validateAndSubmitJob(
     BuildContext context,
     JobsController controller,
   ) async {
@@ -473,23 +477,34 @@ class PostJobScreen extends StatelessWidget {
       return;
     }
 
-    // Post job
+    // Submit job (post or update)
     try {
-      final success = await controller.postJob();
+      final success = editMode && jobToEdit != null
+          ? await controller.updateJob(jobToEdit!)
+          : await controller.postJob();
+
       if (success) {
         Navigator.pop(context);
-        _showMessage(context, 'Job posted successfully!', isError: false);
+        _showMessage(
+          context,
+          editMode ? 'Job updated successfully!' : 'Job posted successfully!',
+          isError: false,
+        );
       } else {
         _showMessage(
           context,
-          'Failed to post job. Please try again.',
+          editMode
+              ? 'Failed to update job. Please try again.'
+              : 'Failed to post job. Please try again.',
           isError: true,
         );
       }
     } catch (e) {
       _showMessage(
         context,
-        'Error posting job: ${e.toString()}',
+        editMode
+            ? 'Error updating job: ${e.toString()}'
+            : 'Error posting job: ${e.toString()}',
         isError: true,
       );
     }

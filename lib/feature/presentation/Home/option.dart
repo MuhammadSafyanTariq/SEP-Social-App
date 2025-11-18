@@ -1,18 +1,15 @@
-import 'dart:io';
 import 'dart:ui';
-import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:sep/components/appLoader.dart';
 import 'package:sep/components/styles/textStyles.dart';
 import 'package:sep/feature/presentation/controller/auth_Controller/profileCtrl.dart';
+import 'package:sep/feature/presentation/controller/chat_ctrl.dart';
 import 'package:sep/utils/appUtils.dart';
 import 'package:sep/utils/extensions/contextExtensions.dart';
 import 'package:sep/utils/extensions/extensions.dart';
 import 'package:sep/utils/extensions/textStyle.dart';
 import 'package:sep/utils/extensions/widget.dart';
-import 'package:share_plus/share_plus.dart';
 import '../../../components/coreComponents/AppButton.dart';
+import '../../../components/coreComponents/ImageView.dart';
 import '../../../components/coreComponents/TextView.dart';
 import '../../../components/styles/appColors.dart';
 import '../../../services/storage/preferences.dart';
@@ -52,8 +49,9 @@ class Options extends StatelessWidget {
         InkWell(
           onTap: onTap, // Assigning onTap function
           splashColor: AppColors.Grey.withOpacity(0.2), // Adds touch feedback
-          borderRadius:
-              BorderRadius.circular(8), // Slight rounding for better UX
+          borderRadius: BorderRadius.circular(
+            8,
+          ), // Slight rounding for better UX
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
             child: Row(
@@ -68,6 +66,140 @@ class Options extends StatelessWidget {
         if (!isLast) Divider(thickness: 1, color: AppColors.Grey),
       ],
     );
+  }
+
+  void _showShareToFriendsDialog(BuildContext context) {
+    final chatCtrl = ChatCtrl.find;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Container(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.7,
+            ),
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextView(text: 'Share to Chat', style: 18.txtSBoldprimary),
+                    IconButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(),
+                      icon: Icon(Icons.close),
+                    ),
+                  ],
+                ),
+                Divider(),
+                Expanded(
+                  child: chatCtrl.recentChat.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.chat_bubble_outline,
+                                size: 64,
+                                color: AppColors.grey,
+                              ),
+                              SizedBox(height: 16),
+                              TextView(
+                                text: 'No chats available',
+                                style: 16.txtMediumprimary,
+                              ),
+                            ],
+                          ),
+                        )
+                      : ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: chatCtrl.recentChat.length,
+                          itemBuilder: (context, index) {
+                            final chat = chatCtrl.recentChat[index];
+                            final otherUser = chat.userDetails?.firstWhere(
+                              (user) => user.id != Preferences.uid,
+                              orElse: () => chat.userDetails!.first,
+                            );
+
+                            return ListTile(
+                              leading: CircleAvatar(
+                                backgroundImage:
+                                    otherUser?.image != null &&
+                                        otherUser!.image!.isNotEmpty
+                                    ? NetworkImage(
+                                        AppUtils.configImageUrl(
+                                          otherUser.image!,
+                                        ),
+                                      )
+                                    : null,
+                                child:
+                                    otherUser?.image == null ||
+                                        otherUser!.image!.isEmpty
+                                    ? Icon(Icons.person)
+                                    : null,
+                              ),
+                              title: TextView(
+                                text: otherUser?.name ?? 'Unknown',
+                                style: 16.txtMediumprimary,
+                              ),
+                              onTap: () {
+                                Navigator.of(dialogContext).pop();
+                                _sharePostToChat(context, chat.id, otherUser);
+                              },
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _sharePostToChat(
+    BuildContext context,
+    String? chatId,
+    dynamic otherUser,
+  ) {
+    AppUtils.log('🎯 _sharePostToChat called');
+    AppUtils.log('   chatId: $chatId');
+    AppUtils.log('   otherUserId: ${otherUser?.id}');
+    AppUtils.log('   postData.id: ${postData.id}');
+    AppUtils.log('   postData.userId: ${postData.userId}');
+
+    if (chatId == null) {
+      AppUtils.toastError('Unable to share to this chat');
+      return;
+    }
+
+    if (postData.id == null || postData.userId == null) {
+      AppUtils.toastError('Post data incomplete');
+      return;
+    }
+
+    final chatCtrl = ChatCtrl.find;
+
+    AppUtils.log('✅ Chat controller found, joining chat...');
+
+    // Join the chat first
+    chatCtrl.joinSingleChat(otherUser?.id, chatId);
+
+    // Show immediate feedback
+    AppUtils.toast('Sharing post...');
+
+    // Wait a moment for the chat to initialize then send the post
+    Future.delayed(Duration(milliseconds: 800), () {
+      AppUtils.log('⏰ Delayed callback executing, about to send post...');
+      // Send only post ID (post data already contains userId)
+      chatCtrl.sendPostMessage(postData.id!);
+    });
   }
 
   // late var loginUserId = Preferences.profile?.id.toString();
@@ -97,8 +229,8 @@ class Options extends StatelessWidget {
                       // Example: Perform mute functionality
                     },
                   ),
-            // : Container(),
 
+            // : Container(),
             Visibility(
               visible: false,
               child: _buildOption(
@@ -149,25 +281,28 @@ class Options extends StatelessWidget {
                               child: Column(
                                 children: [
                                   Padding(
-                                    padding:
-                                        const EdgeInsets.symmetric(vertical: 4),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 4,
+                                    ),
                                     child: Center(
                                       child: Container(
                                         width: 70,
                                         height: 5,
                                         decoration: BoxDecoration(
                                           color: AppColors.grey,
-                                          borderRadius:
-                                              BorderRadius.circular(10),
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
                                         ),
                                       ),
                                     ),
                                   ),
                                   Expanded(
-                                      child: ReportSheet(
-                                    postUserId: postUserId!,
-                                    postId: postId!,
-                                  )),
+                                    child: ReportSheet(
+                                      postUserId: postUserId!,
+                                      postId: postId!,
+                                    ),
+                                  ),
                                 ],
                               ),
                             );
@@ -201,8 +336,9 @@ class Options extends StatelessWidget {
                             child: Column(
                               children: [
                                 Padding(
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 6),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 6,
+                                  ),
                                   child: Center(
                                     child: Container(
                                       width: 70,
@@ -231,82 +367,13 @@ class Options extends StatelessWidget {
                     },
                     isLast: true,
                   ),
-            Divider(
-              color: AppColors.grey,
-            ),
+            Divider(color: AppColors.grey),
             _buildOption(
               text: 'Share',
               style: 17.txtMediumBlack,
               onTap: () async {
-                final fileUrl = postData.files?.first.file.fileUrl ?? "";
-
-                if (fileUrl.isEmpty) {
-                  AppUtils.log("No file to share");
-                  return;
-                }
-
-                AppUtils.log("shareFile::$fileUrl");
-
-                String appLink = Platform.isAndroid
-                    ? "https://play.google.com/store/apps/details?id=com.app.sep"
-                    : "https://apps.apple.com/in/app/sep-media/id6743032925";
-
-                String textToShare = '''
-Check out this post by ${data.name}
-
-Download the app: $appLink
-''';
-                AppLoader.showLoader(context);
-
-                try {
-                  final response = await http.get(Uri.parse(fileUrl));
-                  final bytes = response.bodyBytes;
-                  final tempDir = await getTemporaryDirectory();
-
-                  String extension = fileUrl.split('.').last.toLowerCase();
-                  String mimeType;
-
-                  switch (extension) {
-                    case 'mp4':
-                    case 'mov':
-                    case 'avi':
-                      mimeType = 'video/$extension';
-                      extension = 'mp4';
-                      break;
-                    case 'jpg':
-                    case 'jpeg':
-                    case 'png':
-                      mimeType = 'image/$extension';
-                      break;
-                    default:
-                      mimeType = 'application/octet-stream';
-                  }
-
-                  final filePath = '${tempDir.path}/shared_file.$extension';
-                  final localFile = File(filePath);
-                  await localFile.writeAsBytes(bytes);
-                  Navigator.of(context).pop();
-                  final xFile = XFile(
-                    localFile.path,
-                    name: 'shared_file.$extension',
-                    mimeType: mimeType,
-                  );
-
-                  final box = context.findRenderObject() as RenderBox?;
-                  final result = await SharePlus.instance.share(
-                    ShareParams(
-                      text: textToShare,
-                      files: [xFile],
-                      sharePositionOrigin:
-                          box!.localToGlobal(Offset.zero) & box.size,
-                    ),
-                  );
-
-                  AppUtils.log("Share result: ${result.status}");
-                } catch (e) {
-                  AppLoader.hideLoader(context);
-                  AppUtils.log("Error sharing: $e");
-                }
+                Navigator.of(context).pop();
+                _showShareToFriendsDialog(context);
               },
             ),
           ],
@@ -321,7 +388,7 @@ class ReportSheet extends StatefulWidget {
   final String postId;
 
   const ReportSheet({Key? key, required this.postUserId, required this.postId})
-      : super(key: key);
+    : super(key: key);
 
   @override
   _ReportSheetState createState() => _ReportSheetState();
@@ -344,7 +411,7 @@ class _ReportSheetState extends State<ReportSheet> {
     'Unauthorized Sales',
     'Privacy Violations',
     'Underage Use',
-    "Other"
+    "Other",
   ];
 
   int? selectedIndex;
@@ -360,10 +427,7 @@ class _ReportSheetState extends State<ReportSheet> {
           children: [
             8.height,
             Center(
-              child: TextView(
-                text: "Report",
-                style: 20.txtMediumBlack,
-              ),
+              child: TextView(text: "Report", style: 20.txtMediumBlack),
             ),
             25.height,
             Expanded(
@@ -389,9 +453,8 @@ class _ReportSheetState extends State<ReportSheet> {
                       physics: NeverScrollableScrollPhysics(),
                       itemCount: options.length,
                       shrinkWrap: true,
-                      separatorBuilder: (context, index) => SizedBox(
-                        height: 16,
-                      ),
+                      separatorBuilder: (context, index) =>
+                          SizedBox(height: 16),
                       itemBuilder: (context, index) {
                         return Stack(
                           children: [
@@ -406,11 +469,14 @@ class _ReportSheetState extends State<ReportSheet> {
                                 ),
                                 index == options.length - 1
                                     ? Padding(
-                                        padding:
-                                            const EdgeInsets.only(right: 12.0),
-                                        child: Icon(Icons.arrow_forward_ios,
-                                            size: 16,
-                                            color: AppColors.btnColor),
+                                        padding: const EdgeInsets.only(
+                                          right: 12.0,
+                                        ),
+                                        child: Icon(
+                                          Icons.arrow_forward_ios,
+                                          size: 16,
+                                          color: AppColors.btnColor,
+                                        ),
                                       )
                                     : Checkbox(
                                         value: selectedIndex == index,
@@ -418,34 +484,39 @@ class _ReportSheetState extends State<ReportSheet> {
                                         checkColor: Colors.white,
                                         onChanged: (bool? value) {
                                           setState(() {
-                                            selectedIndex =
-                                                value! ? index : null;
+                                            selectedIndex = value!
+                                                ? index
+                                                : null;
                                           });
                                         },
                                         materialTapTargetSize:
                                             MaterialTapTargetSize.shrinkWrap,
                                         shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(50),
+                                          borderRadius: BorderRadius.circular(
+                                            50,
+                                          ),
                                         ),
                                         side: BorderSide(
-                                            color: AppColors.btnColor),
-                                      )
+                                          color: AppColors.btnColor,
+                                        ),
+                                      ),
                               ],
                             ),
-                            Positioned.fill(child: GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  selectedIndex = index;
-                                });
+                            Positioned.fill(
+                              child: GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    selectedIndex = index;
+                                  });
 
-                                if (index == options.length - 1) {
-                                  context.replaceNavigator(OtherReport(
-                                    postId: widget.postId,
-                                  ));
-                                }
-                              },
-                            ))
+                                  if (index == options.length - 1) {
+                                    context.replaceNavigator(
+                                      OtherReport(postId: widget.postId),
+                                    );
+                                  }
+                                },
+                              ),
+                            ),
                           ],
                         );
                       },
@@ -459,22 +530,24 @@ class _ReportSheetState extends State<ReportSheet> {
                 if (selectedIndex != null) {
                   final title = options[selectedIndex!];
                   ProfileCtrl.find
-                      .reportPostRequest(
-                      widget.postId, title, null)
+                      .reportPostRequest(widget.postId, title, null)
                       .applyLoader
                       .then((value) {
-                    ProfileCtrl.find.globalPostList.removeWhere((element)=> element.id == widget.postId);
-                    ProfileCtrl.find.globalPostList.refresh();
-                    context.pop();
-                  }).catchError((error){
-                    AppUtils.toastError(error);
-                  });
+                        ProfileCtrl.find.globalPostList.removeWhere(
+                          (element) => element.id == widget.postId,
+                        );
+                        ProfileCtrl.find.globalPostList.refresh();
+                        context.pop();
+                      })
+                      .catchError((error) {
+                        AppUtils.toastError(error);
+                      });
                 }
               },
               margin: EdgeInsets.only(bottom: context.bottomSafeArea + 10),
               label: 'Done',
               buttonColor: AppColors.greenlight,
-            )
+            ),
           ],
         ),
       ),

@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_chat_types/flutter_chat_types.dart' show PreviewData;
 import 'package:flutter_link_previewer/flutter_link_previewer.dart';
-import 'package:sep/components/coreComponents/TextView.dart';
 import 'package:sep/components/styles/textStyles.dart';
 import 'package:get/get.dart';
 import 'package:sep/utils/extensions/size.dart';
@@ -48,10 +47,7 @@ class _ReadMoreTextState extends State<ReadMoreText> {
             enableAnimation: true,
             onPreviewDataFetched: (data) {
               setState(() {
-                previewDataMap = {
-                  ...previewDataMap,
-                  widget.text: data,
-                };
+                previewDataMap = {...previewDataMap, widget.text: data};
               });
             },
             previewData: previewDataMap[widget.text],
@@ -78,10 +74,13 @@ class _ReadMoreTextState extends State<ReadMoreText> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            TextView(
-              text: widget.text,
-              style: 16.txtSBoldprimary,
-              maxlines: isExpanded ? null : widget.maxLines,
+            Text(
+              widget.text,
+              style: widget.textStyle ?? 14.txtRegularBlack,
+              maxLines: isExpanded ? null : widget.maxLines,
+              overflow: isExpanded
+                  ? TextOverflow.visible
+                  : TextOverflow.ellipsis,
             ),
             if (showReadMore)
               GestureDetector(
@@ -90,9 +89,15 @@ class _ReadMoreTextState extends State<ReadMoreText> {
                     isExpanded = !isExpanded;
                   });
                 },
-                child: TextView(
-                  text: isExpanded ? "Read Less" : "Read More",
-                  style: 12.txtMediumbtncolor,
+                child: Padding(
+                  padding: EdgeInsets.only(top: 4),
+                  child: Text(
+                    isExpanded ? "Read Less" : "Read More",
+                    style: (widget.textStyle ?? 14.txtRegularBlack).copyWith(
+                      fontWeight: FontWeight.w600,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
                 ),
               ),
           ],

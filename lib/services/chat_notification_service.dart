@@ -33,6 +33,10 @@ class ChatNotificationService {
         }
       } else if (message.startsWith('SEP#Celebrate')) {
         notificationBody = 'shared a celebration';
+      } else if (message.startsWith('SEP#Profile:')) {
+        notificationBody = 'shared a profile';
+      } else if (message.startsWith('SEP#Post:')) {
+        notificationBody = 'shared a post';
       } else {
         // Regular text message - limit to 100 characters
         notificationBody = message.length > 100

@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:sep/feature/presentation/Home/searchScreen.dart';
+import 'package:sep/feature/presentation/Home/reels_screen.dart';
 import 'package:sep/feature/presentation/chatScreens/chatScreen.dart';
 import 'package:sep/feature/presentation/Home/homeScreenComponents/auto_play_video_player.dart';
 
@@ -349,7 +349,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: Colors.transparent,
                   child: InkWell(
                     onTap: () {
-                      context.pushNavigator(Search());
+                      context.pushNavigator(ReelsScreen());
                     },
                     borderRadius: BorderRadius.circular(24),
                     child: Container(
@@ -357,7 +357,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       height: 32,
                       decoration: BoxDecoration(shape: BoxShape.circle),
                       child: Icon(
-                        Icons.search_rounded,
+                        Icons.video_collection_outlined,
                         size: 24,
                         color: AppColors.primaryColor,
                       ),

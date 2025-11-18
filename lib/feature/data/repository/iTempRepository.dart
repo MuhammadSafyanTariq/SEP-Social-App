@@ -712,10 +712,15 @@ class ITempRepository implements TempRepository {
     try {
       AppUtils.log('getSinglePost - Requesting postId: $postId');
       AppUtils.log('getSinglePost - URL: ${Urls.deleteUserPost}');
+      AppUtils.log('getSinglePost - Current userId: ${Preferences.uid}');
 
       final response = await _apiMethod.get(
         url: Urls.deleteUserPost,
-        query: {'id': postId},
+        query: {
+          'id': postId,
+          'userId':
+              ?Preferences.uid, // Include userId to get isLikedByUser status
+        },
       );
 
       AppUtils.log('getSinglePost - Full Response: ${response.data}');
@@ -729,8 +734,39 @@ class ITempRepository implements TempRepository {
         AppUtils.log(
           'getSinglePost - PostData ID after parsing: ${postData.id}',
         );
+        AppUtils.log(
+          'getSinglePost - isLikedByUser from API: ${postData.isLikedByUser}',
+        );
+        AppUtils.log(
+          'getSinglePost - Likes array length: ${postData.likes?.length ?? 0}',
+        );
 
-        return ResponseData<PostData>(isSuccess: true, data: postData);
+        // Check if current user has liked the post by scanning likes array
+        bool isLikedByCurrentUser = false;
+        if (postData.likes != null && postData.likes!.isNotEmpty) {
+          isLikedByCurrentUser = postData.likes!.any((like) {
+            if (like is Map) {
+              final userId = like['userId'] ?? like['_id'];
+              AppUtils.log('  - Checking like (Map): $userId');
+              return userId == Preferences.uid;
+            } else if (like is String) {
+              AppUtils.log('  - Checking like (String): $like');
+              return like == Preferences.uid;
+            }
+            return false;
+          });
+        }
+
+        AppUtils.log(
+          'getSinglePost - ✅ Checked likes array - isLikedByCurrentUser: $isLikedByCurrentUser',
+        );
+
+        // Update postData with correct isLikedByUser status
+        final updatedPostData = postData.copyWith(
+          isLikedByUser: isLikedByCurrentUser,
+        );
+
+        return ResponseData<PostData>(isSuccess: true, data: updatedPostData);
       } else {
         AppUtils.log('getSinglePost - API call failed: ${response.getError}');
         return ResponseData<PostData>(

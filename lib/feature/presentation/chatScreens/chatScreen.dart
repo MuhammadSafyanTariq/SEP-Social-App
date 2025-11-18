@@ -214,11 +214,49 @@ class _ChatScreenState extends State<ChatScreen> {
                                             children: [
                                               // A SlidableAction can have an icon and/or a label.
                                               SlidableAction(
-                                                onPressed: (context) {
-                                                  // TODO: Implement delete functionality
-                                                  print(
-                                                    'Delete chat: ${data.id}',
+                                                onPressed: (context) async {
+                                                  final shouldDelete = await showDialog<bool>(
+                                                    context: context,
+                                                    builder: (BuildContext context) {
+                                                      return AlertDialog(
+                                                        title: Text(
+                                                          'Delete Chat',
+                                                        ),
+                                                        content: Text(
+                                                          'Are you sure you want to delete this chat?',
+                                                        ),
+                                                        actions: [
+                                                          TextButton(
+                                                            onPressed: () =>
+                                                                Navigator.of(
+                                                                  context,
+                                                                ).pop(false),
+                                                            child: Text(
+                                                              'Cancel',
+                                                            ),
+                                                          ),
+                                                          TextButton(
+                                                            onPressed: () =>
+                                                                Navigator.of(
+                                                                  context,
+                                                                ).pop(true),
+                                                            child: Text(
+                                                              'Delete',
+                                                              style: TextStyle(
+                                                                color:
+                                                                    Colors.red,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      );
+                                                    },
                                                   );
+
+                                                  if (shouldDelete == true &&
+                                                      data.id != null) {
+                                                    ctrl.deleteChat(data.id!);
+                                                  }
                                                 },
                                                 backgroundColor: Color(
                                                   0xFFFE4A49,
@@ -420,11 +458,12 @@ class _ChatScreenState extends State<ChatScreen> {
                                             );
 
                                             // Handle deletion result
-                                            if (shouldDelete == true) {
-                                              // TODO: Implement actual chat deletion logic
-                                              // ctrl.deleteChat(data.id);
-                                              print('Chat deleted: ${data.id}');
-                                              ctrl.fireRecentChatEvent();
+                                            if (shouldDelete == true &&
+                                                data.id != null) {
+                                              ctrl.deleteChat(data.id!);
+                                            } else {
+                                              // Restore the item if not deleted
+                                              setState(() {});
                                             }
                                           },
                                           background: Container(
@@ -802,13 +841,9 @@ class _ChatScreenState extends State<ChatScreen> {
                                                     );
 
                                                     // Handle deletion result
-                                                    if (shouldDelete == true) {
-                                                      // TODO: Implement actual chat deletion logic
-                                                      // ctrl.deleteChat(data.id);
-                                                      print(
-                                                        'Chat deleted: ${data.id}',
-                                                      );
-                                                      ctrl.fireRecentChatEvent();
+                                                    if (shouldDelete == true &&
+                                                        data.id != null) {
+                                                      ctrl.deleteChat(data.id!);
                                                     }
                                                   },
                                                   backgroundColor:
@@ -1160,13 +1195,12 @@ class _ChatScreenState extends State<ChatScreen> {
                                               );
 
                                               // Handle deletion result
-                                              if (shouldDelete == true) {
-                                                // TODO: Implement actual chat deletion logic
-                                                // ctrl.deleteChat(data.id);
-                                                print(
-                                                  'Chat deleted: ${data.id}',
-                                                );
-                                                ctrl.fireRecentChatEvent();
+                                              if (shouldDelete == true &&
+                                                  data.id != null) {
+                                                ctrl.deleteChat(data.id!);
+                                              } else {
+                                                // Restore the item if not deleted
+                                                setState(() {});
                                               }
                                             },
                                             // background: Container(
@@ -1402,6 +1436,11 @@ class _ChatScreenState extends State<ChatScreen> {
     // Check if it's a profile share message
     if (content.startsWith('SEP#Profile:')) {
       return "👤 Shared a profile";
+    }
+
+    // Check if it's a post share message
+    if (content.startsWith('SEP#Post:')) {
+      return "📝 Shared a post";
     }
 
     if (isImage) {

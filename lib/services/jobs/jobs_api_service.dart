@@ -235,4 +235,118 @@ class JobsApiService {
       rethrow;
     }
   }
+
+  /// Delete a job
+  static Future<bool> deleteJob(String jobId) async {
+    try {
+      List<String> endpointsToTry = [
+        '/api/jobs/$jobId', // RESTful pattern
+        '/api/job/$jobId', // Singular version
+        '/api/jobs/delete/$jobId', // Explicit delete endpoint
+        '/api/deleteJob/$jobId', // Alternative pattern
+      ];
+
+      for (String endpoint in endpointsToTry) {
+        try {
+          AppUtils.log(
+            'Trying to delete job at endpoint: ${Urls.appApiBaseUrl}$endpoint',
+          );
+
+          final response = await _apiMethod.delete(
+            url: endpoint,
+            authToken: Preferences.authToken,
+          );
+
+          if (response.isSuccess && response.data != null) {
+            final responseData = response.data!;
+            final bool isSuccessful =
+                responseData['status'] == true ||
+                responseData['success'] == true;
+
+            if (isSuccessful) {
+              AppUtils.log('Job deleted successfully from $endpoint');
+              return true;
+            }
+          }
+        } catch (e) {
+          AppUtils.log('Endpoint $endpoint failed with exception: $e');
+          continue;
+        }
+      }
+
+      throw Exception('Failed to delete job from all endpoints');
+    } catch (e) {
+      AppUtils.logEr('Error deleting job: $e');
+      rethrow;
+    }
+  }
+
+  /// Update an existing job
+  static Future<JobModel> updateJob({
+    required String jobId,
+    required String jobTitle,
+    required String country,
+    required String city,
+    required String jobType,
+    required String description,
+    required String contact,
+  }) async {
+    try {
+      final requestBody = {
+        'jobTitle': jobTitle,
+        'country': country,
+        'city': city,
+        'jobType': jobType,
+        'description': description,
+        'contact': contact,
+      };
+
+      List<String> endpointsToTry = [
+        '/api/jobs/$jobId', // RESTful pattern with PUT
+        '/api/job/$jobId', // Singular version
+        '/api/jobs/update/$jobId', // Explicit update endpoint
+        '/api/updateJob/$jobId', // Alternative pattern
+      ];
+
+      Exception? lastException;
+
+      for (String endpoint in endpointsToTry) {
+        try {
+          AppUtils.log(
+            'Trying to update job at endpoint: ${Urls.appApiBaseUrl}$endpoint',
+          );
+
+          final response = await _apiMethod.put(
+            url: endpoint,
+            body: requestBody,
+            authToken: Preferences.authToken,
+            headers: {},
+          );
+
+          if (response.isSuccess && response.data != null) {
+            final responseData = response.data!;
+            final bool isSuccessful =
+                responseData['status'] == true &&
+                (responseData['code'] == 200 || responseData['code'] == 201);
+
+            if (isSuccessful && responseData['data'] is Map) {
+              AppUtils.log('Job updated successfully at $endpoint');
+              final jobData = responseData['data'] as Map<String, dynamic>;
+              return JobModel.fromJson(jobData);
+            }
+          }
+        } catch (e) {
+          AppUtils.log('Endpoint $endpoint failed with exception: $e');
+          lastException = Exception('$endpoint failed: $e');
+          continue;
+        }
+      }
+
+      throw lastException ??
+          Exception('Failed to update job from all endpoints');
+    } catch (e) {
+      AppUtils.logEr('Error updating job: $e');
+      rethrow;
+    }
+  }
 }

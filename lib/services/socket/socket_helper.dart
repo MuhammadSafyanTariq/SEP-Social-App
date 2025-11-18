@@ -9,6 +9,7 @@ enum SocketKey {
   sendMessage,
   getMessages,
   deleteMessages,
+  deleteChat,
 
   joinLiveChatRoom,
   sendLiveChatMessage,
@@ -67,8 +68,10 @@ class SocketHelper {
     socket = IO.io(connectUrl, <String, dynamic>{
       'autoConnect': false,
       'transports': ['websocket'],
-      'timeout': 5000, // 5 second timeout
-      'reconnection': false, // Disable auto-reconnection to prevent spam
+      'timeout': 10000, // 10 second timeout (increased for better reliability)
+      'reconnection': true, // Enable reconnection for better stability
+      'reconnectionAttempts': 3,
+      'reconnectionDelay': 1000,
     });
     socket.io.options?['extraHeaders'] = {
       'Authorization': Preferences.authToken,
@@ -150,4 +153,6 @@ class SocketHelper {
   }
 
   bool hasListener(SocketKey event) => socket.hasListeners(event.name);
+
+  bool get isConnected => socket.connected;
 }

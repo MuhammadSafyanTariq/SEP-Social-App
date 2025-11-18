@@ -235,36 +235,43 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
               // BOTTOM HALF: Messaging Section
               Expanded(
                 flex: 1,
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Color(
-                          0xFF1a1a2e,
-                        ).withValues(alpha: 0.95), // Dark blue-purple
-                        Color(
-                          0xFF16213e,
-                        ).withValues(alpha: 0.98), // Deeper dark blue
-                      ],
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                    ),
-                    border: Border(
-                      top: BorderSide(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        width: 2,
-                      ),
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      // Chat Messages (takes most of bottom half)
-                      Expanded(child: _buildChatList(context)),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    // Calculate responsive heights
+                    final screenHeight = MediaQuery.of(context).size.height;
+                    final keyboardHeight = MediaQuery.of(
+                      context,
+                    ).viewInsets.bottom;
+                    final isKeyboardOpen = keyboardHeight > 0;
 
-                      // Chat Input Box and Controls (compact at bottom)
-                      _buildBottomBar(),
-                    ],
-                  ),
+                    return Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Color(0xFF1a1a2e).withValues(alpha: 0.95),
+                            Color(0xFF16213e).withValues(alpha: 0.98),
+                          ],
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                        ),
+                        border: Border(
+                          top: BorderSide(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          // Chat Messages (takes most of bottom half)
+                          Expanded(child: _buildChatList(context)),
+
+                          // Chat Input Box and Controls (compact at bottom)
+                          _buildBottomBar(),
+                        ],
+                      ),
+                    );
+                  },
                 ),
               ),
             ],
@@ -300,9 +307,13 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
   }
 
   Widget _buildCameraView() {
-    return Obx(() {
-      return buildVideoGrid(ctrl.getBroadcasters);
-    });
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Obx(() {
+          return buildVideoGrid(ctrl.getBroadcasters);
+        });
+      },
+    );
   }
 
   Widget buildVideoGrid(List<RemoteUserAgora> uids) {
@@ -463,8 +474,6 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
     if (count == 0) {
       return SizedBox();
     }
-
-    List<Widget> rows = [];
 
     if (count == 1) {
       // One user: full screen
@@ -681,81 +690,119 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
   }
 
   Widget _chatBox() {
+    // Get screen dimensions for responsive sizing
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isSmallScreen = screenWidth < 360;
+    final isShortScreen = screenHeight < 700;
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: EdgeInsets.only(
+        left: isSmallScreen ? 8 : 12,
+        right: isSmallScreen ? 8 : 12,
+        top: isShortScreen ? 6 : 8,
+        bottom: keyboardHeight > 0 ? 8 : (isShortScreen ? 6 : 8),
+      ),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.3),
+        color: Colors.black.withValues(alpha: 0.4),
         border: Border(
           top: BorderSide(color: Colors.white.withValues(alpha: 0.2), width: 1),
         ),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Expanded(
-            child: Container(
-              constraints: BoxConstraints(maxHeight: 40),
-              child: ChatInputBox(),
-            ),
-          ),
-          Visibility(
-            visible: !ctrl.isHost,
-            child: GestureDetector(
-              onTap: openTokenBottomSheet,
+      child: SafeArea(
+        top: false,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
               child: Container(
-                margin: EdgeInsets.only(left: 8),
-                padding: EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: AppColors.white.withValues(alpha: 0.5),
+                constraints: BoxConstraints(
+                  maxHeight: isSmallScreen ? 44 : 48,
+                  minHeight: 40,
+                ),
+                child: ChatInputBox(),
+              ),
+            ),
+            // Spacing
+            SizedBox(width: isSmallScreen ? 6 : 8),
+
+            // Token button (for non-hosts)
+            Visibility(
+              visible: !ctrl.isHost,
+              child: GestureDetector(
+                onTap: openTokenBottomSheet,
+                child: Container(
+                  padding: EdgeInsets.all(isSmallScreen ? 5 : 6),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: AppColors.white.withValues(alpha: 0.5),
+                      width: 1.5,
+                    ),
+                    color: Colors.black.withOpacity(0.3),
+                  ),
+                  child: ImageView(
+                    url: AppImages.token,
+                    size: isSmallScreen ? 18 : 20,
                   ),
                 ),
-                child: ImageView(url: AppImages.token, size: 20),
               ),
             ),
-          ),
-          Visibility(
-            visible: !ctrl.isHost,
-            child: Obx(
-              () => ImageView(
-                onTap: ctrl.videoRequestButtonEnable.isTrue
-                    ? () {
-                        if (ctrl.streamCtrl.value.clientRole ==
-                            ClientRoleType.clientRoleAudience) {
-                          if (ctrl.getBroadcasters.length <
-                              broadCastUserMaxLimit) {
-                            openLiveRequestBS();
+
+            // Spacing before video request button
+            if (!ctrl.isHost) SizedBox(width: isSmallScreen ? 6 : 8),
+
+            // Video request button (for non-hosts)
+            Visibility(
+              visible: !ctrl.isHost,
+              child: Obx(
+                () => GestureDetector(
+                  onTap: ctrl.videoRequestButtonEnable.isTrue
+                      ? () {
+                          if (ctrl.streamCtrl.value.clientRole ==
+                              ClientRoleType.clientRoleAudience) {
+                            if (ctrl.getBroadcasters.length <
+                                broadCastUserMaxLimit) {
+                              openLiveRequestBS();
+                            }
+                          } else {
+                            ctrl.changeRole();
+                            AgoraChatCtrl.find.leaveAudienceLiveCamera(
+                              LiveRequestStatus.end,
+                            );
                           }
-                        } else {
-                          ctrl.changeRole();
-                          AgoraChatCtrl.find.leaveAudienceLiveCamera(
-                            LiveRequestStatus.end,
-                          );
                         }
-                      }
-                    : null,
-                margin: EdgeInsets.only(left: 8),
-                url:
-                    ctrl.streamCtrl.value.clientRole ==
-                        ClientRoleType.clientRoleAudience
-                    ?
-                      // offVideo
-                      AppImages.videoRequest
-                    : AppImages.offVideo,
-                size: 32,
-                tintColor: ctrl.videoRequestButtonEnable.isTrue
-                    ? (ctrl.streamCtrl.value.clientRole ==
+                      : null,
+                  child: Container(
+                    padding: EdgeInsets.all(isSmallScreen ? 6 : 8),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.black.withOpacity(0.3),
+                    ),
+                    child: ImageView(
+                      url:
+                          ctrl.streamCtrl.value.clientRole ==
                               ClientRoleType.clientRoleAudience
-                          ? ctrl.getBroadcasters.length < broadCastUserMaxLimit
-                                ? Colors.red
-                                : Colors.grey.withValues(alpha: 0.2)
-                          : Colors.red)
-                    : Colors.grey.withValues(alpha: 0.2),
+                          ? AppImages.videoRequest
+                          : AppImages.offVideo,
+                      size: isSmallScreen ? 24 : 28,
+                      tintColor: ctrl.videoRequestButtonEnable.isTrue
+                          ? (ctrl.streamCtrl.value.clientRole ==
+                                    ClientRoleType.clientRoleAudience
+                                ? ctrl.getBroadcasters.length <
+                                          broadCastUserMaxLimit
+                                      ? Colors.red
+                                      : Colors.grey.withValues(alpha: 0.2)
+                                : Colors.red)
+                          : Colors.grey.withValues(alpha: 0.2),
+                    ),
+                  ),
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -875,9 +922,16 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
   }
 
   Widget _buildChatList(BuildContext context) {
+    // Get screen dimensions for responsive padding
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
+
     return Container(
       // Takes available space in bottom half
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: EdgeInsets.symmetric(
+        horizontal: isSmallScreen ? 12 : 16,
+        vertical: isSmallScreen ? 6 : 8,
+      ),
       child: Obx(() {
         final messages = chatCtrl.chatList;
 

@@ -11,6 +11,7 @@ import 'package:sep/feature/data/models/dataModels/post_data.dart';
 import 'package:sep/feature/presentation/controller/agora_chat_ctrl.dart';
 import 'package:sep/utils/appUtils.dart';
 import 'package:sep/utils/extensions/extensions.dart';
+import 'package:sep/utils/extensions/contextExtensions.dart';
 import '../controller/auth_Controller/profileCtrl.dart';
 import '../controller/createpost/createpost_ctrl.dart';
 import '../widgets/profile_image.dart';
@@ -19,6 +20,7 @@ import 'homeScreenComponents/postCard.dart';
 import 'homeScreenComponents/postVideo.dart';
 import 'homeScreenComponents/post_components.dart';
 import 'homeScreenComponents/celebrationCard.dart';
+import 'searchScreen.dart';
 
 class Contentscreen extends StatefulWidget {
   final Function()? getLiveStreamList;
@@ -218,14 +220,64 @@ class _HomeScreenState extends State<Contentscreen> {
                 floating: true,
                 backgroundColor: Colors.white,
                 expandedHeight: AgoraChatCtrl.find.liveStreamChannels.isNotEmpty
-                    ? 130
-                    : 40,
+                    ? 220
+                    : 120,
                 flexibleSpace: SingleChildScrollView(
                   physics: NeverScrollableScrollPhysics(),
                   child: Padding(
                     padding: EdgeInsets.zero,
                     child: Column(
                       children: [
+                        // Clickable Search Bar
+                        GestureDetector(
+                          onTap: () {
+                            context.pushNavigator(
+                              const Search(autoFocus: true),
+                            );
+                          },
+                          child: Container(
+                            margin: EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
+                            ),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(25),
+                              border: Border.all(
+                                color: Colors.grey.shade300,
+                                width: 1,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.05),
+                                  blurRadius: 8,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.search,
+                                  color: Colors.grey.shade600,
+                                  size: 22,
+                                ),
+                                SizedBox(width: 12),
+                                Text(
+                                  'Search users...',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade600,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                         Visibility(
                           visible:
                               AgoraChatCtrl.find.liveStreamChannels.isNotEmpty,
