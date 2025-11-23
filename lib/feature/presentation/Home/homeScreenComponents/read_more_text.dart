@@ -93,7 +93,7 @@ class _ReadMoreTextState extends State<ReadMoreText> {
                   padding: EdgeInsets.only(top: 4),
                   child: Text(
                     isExpanded ? "Read Less" : "Read More",
-                    style: (widget.textStyle ?? 14.txtRegularBlack).copyWith(
+                    style: (widget.textStyle ?? 14.txtRegularbtncolor).copyWith(
                       fontWeight: FontWeight.w600,
                       decoration: TextDecoration.underline,
                     ),

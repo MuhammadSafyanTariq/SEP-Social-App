@@ -17,6 +17,9 @@ class PostJobScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Ensure controller is initialized
+    Get.put(JobsController());
+
     return GetBuilder<JobsController>(
       builder: (controller) {
         return Scaffold(

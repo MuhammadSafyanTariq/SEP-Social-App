@@ -653,56 +653,34 @@ class _AddPollState extends State<AddPoll> {
               SizedBox(height: 24),
 
               // Options Section
-              TextView(
-                text: "Options",
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.black87,
-                ),
-              ),
-              SizedBox(height: 8),
-
-              // Add Options Field
-              GestureDetector(
-                onTap: () {
-                  pollOptions.add(PollItemModel());
-                  pollOptions.refresh();
-                },
-                child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[50],
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.grey[300]!),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  TextView(
+                    text: "Options",
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.black87,
+                    ),
                   ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.playlist_add,
-                        color: Colors.grey[400],
-                        size: 20,
+                  GestureDetector(
+                    onTap: () {
+                      pollOptions.add(PollItemModel());
+                      pollOptions.refresh();
+                    },
+                    child: Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: AppColors.greenlight,
+                        borderRadius: BorderRadius.circular(16),
                       ),
-                      SizedBox(width: 12),
-                      Text(
-                        "Add Options...",
-                        style: TextStyle(color: Colors.grey[400], fontSize: 14),
-                      ),
-                      Spacer(),
-                      Container(
-                        width: 24,
-                        height: 24,
-                        decoration: BoxDecoration(
-                          color: AppColors.greenlight,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(Icons.add, color: Colors.white, size: 16),
-                      ),
-                    ],
+                      child: Icon(Icons.add, color: Colors.white, size: 20),
+                    ),
                   ),
-                ),
+                ],
               ),
-
               SizedBox(height: 16),
 
               // Poll Options List

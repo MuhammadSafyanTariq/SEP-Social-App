@@ -12,6 +12,7 @@ import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../components/coreComponents/TextView.dart';
 import '../../data/models/dataModels/product_data_model/product_data_model.dart';
+import '../../../services/networking/urls.dart';
 
 class Productdetailscreen extends StatefulWidget {
   final ProductDataModel data;
@@ -78,7 +79,18 @@ class _ProductDetailScreenState extends State<Productdetailscreen> {
                                 setState(() => _currentIndex = index);
                               },
                               itemBuilder: (context, index) {
-                                final imageUrl = data.images?[index] ?? '';
+                                final rawImageUrl = data.images?[index] ?? '';
+                                final fullImageUrl = rawImageUrl.isNotEmpty
+                                    ? Urls.getFullImageUrl(rawImageUrl)
+                                    : '';
+
+                                AppUtils.log(
+                                  'Product Detail - Raw Image: $rawImageUrl',
+                                );
+                                AppUtils.log(
+                                  'Product Detail - Full Image: $fullImageUrl',
+                                );
+
                                 return Padding(
                                   padding: EdgeInsets.symmetric(
                                     horizontal: 20.sdp,
@@ -101,11 +113,17 @@ class _ProductDetailScreenState extends State<Productdetailscreen> {
                                         16.sdp,
                                       ),
                                       child: ImageView(
-                                        url: imageUrl,
+                                        url: fullImageUrl.isNotEmpty
+                                            ? fullImageUrl
+                                            : AppImages.dummyProfile,
                                         height: 350.sdp,
                                         width: double.infinity,
                                         fit: BoxFit.cover,
-                                        imageType: ImageType.network,
+                                        imageType:
+                                            fullImageUrl.isNotEmpty &&
+                                                fullImageUrl.startsWith('http')
+                                            ? ImageType.network
+                                            : ImageType.asset,
                                         defaultImage: AppImages.dummyProfile,
                                       ),
                                     ),

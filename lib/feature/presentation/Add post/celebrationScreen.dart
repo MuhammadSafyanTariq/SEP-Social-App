@@ -1302,115 +1302,71 @@ class _CelebrationScreenState extends State<CelebrationScreen> {
                     // Draggable Text Overlay
                     Positioned(
                       left:
-                          MediaQuery.of(context).size.width * textPositionX -
-                          150,
+                          (MediaQuery.of(context).size.width * textPositionX) -
+                          100,
                       top:
-                          MediaQuery.of(context).size.width *
+                          (MediaQuery.of(context).size.width *
                               0.6 *
-                              textPositionY -
-                          60,
-                      child: Draggable(
-                        feedback: Material(
-                          color: Colors.transparent,
-                          child: Container(
-                            width: 300,
-                            height: 120,
-                            padding: EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                color: Colors.white.withOpacity(0.5),
-                                width: 2,
-                              ),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              _textController.text.isEmpty
-                                  ? "What are you celebrating?"
-                                  : _textController.text,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: textColorPresets[selectedColorIndex],
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ),
-                        childWhenDragging: Opacity(
-                          opacity: 0.3,
-                          child: Container(
-                            width: 300,
-                            height: 120,
-                            padding: EdgeInsets.all(16),
-                            child: TextField(
-                              controller: _textController,
-                              maxLength: _maxCharacters,
-                              maxLines: 5,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: textColorPresets[selectedColorIndex],
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                              ),
-                              decoration: InputDecoration(
-                                hintText: "What are you celebrating?",
-                                hintStyle: TextStyle(
-                                  color: textColorPresets[selectedColorIndex]
-                                      .withOpacity(0.6),
-                                  fontSize: 12,
-                                ),
-                                border: InputBorder.none,
-                                counterText: "",
-                              ),
-                            ),
-                          ),
-                        ),
-                        onDragEnd: (details) {
+                              textPositionY) -
+                          20,
+                      child: GestureDetector(
+                        onPanUpdate: (details) {
                           setState(() {
-                            // Calculate position as ratio (0.0 to 1.0) relative to container
+                            // Get container dimensions
                             final containerWidth = MediaQuery.of(
                               context,
                             ).size.width;
                             final containerHeight = containerWidth * 0.6;
 
-                            // Get the drag position and clamp to container bounds
-                            double newX =
-                                (details.offset.dx + 150) / containerWidth;
-                            double newY =
-                                (details.offset.dy + 60) / containerHeight;
+                            // Update position based on drag delta
+                            double deltaX = details.delta.dx / containerWidth;
+                            double deltaY = details.delta.dy / containerHeight;
 
-                            // Clamp values between 0.1 and 0.9 to keep text visible
-                            textPositionX = newX.clamp(0.1, 0.9);
-                            textPositionY = newY.clamp(0.1, 0.9);
+                            // Update position
+                            textPositionX = (textPositionX + deltaX).clamp(
+                              0.2,
+                              0.8,
+                            );
+                            textPositionY = (textPositionY + deltaY).clamp(
+                              0.15,
+                              0.85,
+                            );
 
                             AppUtils.log(
-                              "Text position updated: X=$textPositionX, Y=$textPositionY",
+                              "Dragging - X: $textPositionX, Y: $textPositionY",
                             );
                           });
                         },
                         child: Container(
-                          width: 300,
-                          height: 120,
-                          padding: EdgeInsets.all(16),
+                          width: 200,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                           child: TextField(
                             controller: _textController,
                             maxLength: _maxCharacters,
-                            maxLines: 5,
+                            maxLines: 1,
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              color: textColorPresets[selectedColorIndex],
+                              color: _textController.text.isEmpty
+                                  ? Colors.grey
+                                  : textColorPresets[selectedColorIndex],
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
                             ),
                             decoration: InputDecoration(
                               hintText: "What are you celebrating?",
                               hintStyle: TextStyle(
-                                color: textColorPresets[selectedColorIndex]
-                                    .withOpacity(0.6),
+                                color: Colors.grey.withOpacity(0.6),
                                 fontSize: 12,
                               ),
                               border: InputBorder.none,
                               counterText: "",
+                              contentPadding: EdgeInsets.zero,
                             ),
                             onChanged: (value) {
                               if (value.length > _maxCharacters) {

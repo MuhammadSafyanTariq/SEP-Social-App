@@ -451,19 +451,28 @@ class _SportsProductState extends State<SportsProduct>
                               product.images!.isNotEmpty &&
                               product.images![0].isNotEmpty;
 
-                          final imageUrl = hasImage
+                          final rawImageUrl = hasImage
                               ? product.images![0]
+                              : '';
+
+                          final fullImageUrl = hasImage
+                              ? Urls.getFullImageUrl(rawImageUrl)
                               : AppImages.dummyProfile;
 
-                          AppUtils.log("image>>>>>>${imageUrl}");
-                          final imageType = hasImage
+                          AppUtils.log("Raw Image URL: $rawImageUrl");
+                          AppUtils.log("Full Image URL: $fullImageUrl");
+
+                          final imageType =
+                              hasImage &&
+                                  fullImageUrl.isNotEmpty &&
+                                  !fullImageUrl.contains(AppImages.dummyProfile)
                               ? ImageType.network
                               : ImageType.asset;
 
                           return ProductCard(
                             link: product.checkouturl ?? "",
                             title: product.title ?? '',
-                            image: imageUrl,
+                            image: fullImageUrl,
                             imageType: imageType,
                             price: product.price ?? '',
                             desc: product.description ?? '',

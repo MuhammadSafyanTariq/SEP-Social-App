@@ -181,4 +181,14 @@ class Urls {
   static const String referralParticipate = '/api/referral/participate';
   static const String referralLeaderboard = '/api/referral/leaderboard';
   static const String referralWinners = '/api/referral/winners';
+
+  // Helper method to convert relative URLs to full URLs
+  static String getFullImageUrl(String url) {
+    if (url.isEmpty) return '';
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url; // Already a full URL
+    }
+    // Add base URL if it's a relative path
+    return '$appApiBaseUrl$url';
+  }
 }

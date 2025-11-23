@@ -21,7 +21,8 @@ import 'package:sep/utils/appUtils.dart';
 import 'flappy_game/FlameGameScreen.dart';
 
 class GameScreen extends StatefulWidget {
-  const GameScreen({Key? key}) : super(key: key);
+  final int initialTab;
+  const GameScreen({Key? key, this.initialTab = 0}) : super(key: key);
 
   @override
   _GameScreenState createState() => _GameScreenState();
@@ -59,7 +60,11 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(
+      length: 2,
+      vsync: this,
+      initialIndex: widget.initialTab.clamp(0, 1),
+    );
     _tabController.addListener(_onTabChanged);
     _initializeWinnersData();
     _checkUserReferralStatus();

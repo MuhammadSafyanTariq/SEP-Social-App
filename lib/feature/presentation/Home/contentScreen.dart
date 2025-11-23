@@ -404,16 +404,19 @@ class _HomeScreenState extends State<Contentscreen> {
               () => SliverList(
                 delegate: profileCtrl.globalPostList.isNotEmpty
                     ? SliverChildBuilderDelegate((context, index) {
-                        if (index < profileCtrl.globalPostList.length) {
-                          final post = profileCtrl.globalPostList[index];
+                        if (index < _getFilteredPosts().length) {
+                          final post = _getFilteredPosts()[index];
+                          // Find original index for state management
+                          final originalIndex = profileCtrl.globalPostList
+                              .indexOf(post);
                           return _buildPostWidget(
                             post,
                             () => _loadInitialPosts(),
-                            index,
+                            originalIndex >= 0 ? originalIndex : index,
                           );
                         }
                         return Container();
-                      }, childCount: profileCtrl.globalPostList.length)
+                      }, childCount: _getFilteredPosts().length)
                     : SliverChildBuilderDelegate(
                         (context, index) => Center(
                           child: TextView(
@@ -430,6 +433,52 @@ class _HomeScreenState extends State<Contentscreen> {
         ),
       ),
     );
+  }
+
+  // Filter and reorder posts to show advertisement posts after at least 5 posts
+  List<PostData> _getFilteredPosts() {
+    const advertisementCategoryId = '68eb8453d5e284efb554b401';
+    const minPostsBeforeAd = 5;
+
+    final allPosts = profileCtrl.globalPostList;
+
+    // Separate advertisement posts from regular posts
+    final regularPosts = allPosts
+        .where((post) => post.categoryId != advertisementCategoryId)
+        .toList();
+    final adPosts = allPosts
+        .where((post) => post.categoryId == advertisementCategoryId)
+        .toList();
+
+    // If we don't have enough regular posts, just show regular posts first
+    if (regularPosts.length < minPostsBeforeAd) {
+      return [...regularPosts, ...adPosts];
+    }
+
+    // Interleave advertisement posts after every 5 regular posts
+    final result = <PostData>[];
+    int regularIndex = 0;
+    int adIndex = 0;
+
+    while (regularIndex < regularPosts.length || adIndex < adPosts.length) {
+      // Add up to 5 regular posts
+      for (
+        int i = 0;
+        i < minPostsBeforeAd && regularIndex < regularPosts.length;
+        i++
+      ) {
+        result.add(regularPosts[regularIndex]);
+        regularIndex++;
+      }
+
+      // Add one advertisement post if available
+      if (adIndex < adPosts.length) {
+        result.add(adPosts[adIndex]);
+        adIndex++;
+      }
+    }
+
+    return result;
   }
 
   Future<String> getAddressFromCoordinates(
