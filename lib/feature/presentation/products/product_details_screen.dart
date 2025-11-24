@@ -10,7 +10,9 @@ import 'package:sep/services/networking/urls.dart';
 import 'package:sep/services/storage/preferences.dart';
 import 'package:sep/utils/appUtils.dart';
 import 'package:sep/feature/presentation/store/store_view_screen.dart';
-import 'package:sep/feature/presentation/products/checkout_screen.dart';
+import 'package:sep/feature/presentation/profileScreens/friend_profile_screen.dart';
+import 'package:sep/feature/data/models/dataModels/profile_data/profile_data_model.dart';
+// import 'package:sep/feature/presentation/products/checkout_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class ProductDetailsScreen extends StatefulWidget {
@@ -1009,6 +1011,9 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     final price =
         double.tryParse(productData!['price']?.toString() ?? '0') ?? 0.0;
     final totalPrice = price * quantity;
+    final shop = productData!['shopId'] as Map<String, dynamic>?;
+    final contactEmail = shop?['contactEmail'] ?? '';
+    final contactPhone = shop?['contactPhone'] ?? '';
 
     // Parse category to check if dropship
     final isDropship = categoryFull.contains('+drop+');
@@ -1018,6 +1023,10 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
       final parts = categoryFull.split('+drop+');
       if (parts.length > 1) dropshipLink = parts[1];
     }
+
+    // Determine if this is in-app product without URL (show Contact)
+    final showContactButton =
+        !isDropship || (dropshipLink != null && !_isValidUrl(dropshipLink));
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -1036,51 +1045,65 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Total price display (only for simple products)
-            if (!isDropship && isAvailable) ...[
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    "Total:",
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.black54,
-                    ),
-                  ),
-                  Text(
-                    "\$${totalPrice.toStringAsFixed(2)}",
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.btnColor,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-            ],
+            // Total price display (only for dropship products with external URL)
+            // if (!isDropship && isAvailable) ...[
+            // if (false) ...[
+            //   Row(
+            //     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            //     children: [
+            //       const Text(
+            //         "Total:",
+            //         style: TextStyle(
+            //           fontSize: 16,
+            //           fontWeight: FontWeight.w500,
+            //           color: Colors.black54,
+            //         ),
+            //       ),
+            //       Text(
+            //         "\$${totalPrice.toStringAsFixed(2)}",
+            //         style: TextStyle(
+            //           fontSize: 24,
+            //           fontWeight: FontWeight.w700,
+            //           color: AppColors.btnColor,
+            //           letterSpacing: -0.5,
+            //         ),
+            //       ),
+            //     ],
+            //   ),
+            //   const SizedBox(height: 16),
+            // ],
 
-            // Buy button
+            // Buy/Contact button
             ElevatedButton(
               onPressed: isAvailable
                   ? () {
-                      if (isDropship &&
-                          dropshipLink != null &&
-                          dropshipLink.isNotEmpty) {
-                        // Check if it's a URL or seller contact details
-                        if (_isValidUrl(dropshipLink)) {
-                          // For dropship products with URL, open the external link
-                          _openDropshipLink(dropshipLink);
+                      if (showContactButton) {
+                        // For in-app products or dropship without URL, navigate to seller profile
+                        final shop =
+                            productData!['shopId'] as Map<String, dynamic>?;
+                        String? ownerId = shop?['ownerId'] as String?;
+                        String ownerName = shop?['name'] ?? 'Seller';
+
+                        if (ownerId != null && ownerId.isNotEmpty) {
+                          // Create a minimal ProfileDataModel with available shop data
+                          final profileData = ProfileDataModel(
+                            id: ownerId,
+                            name: ownerName,
+                            email: contactEmail.isNotEmpty
+                                ? contactEmail
+                                : null,
+                            phone: contactPhone.isNotEmpty
+                                ? contactPhone
+                                : null,
+                          );
+
+                          Get.to(() => FriendProfileScreen(data: profileData));
                         } else {
-                          // For dropship with seller details, show contact info dialog
-                          _showSellerContactDialog(dropshipLink);
+                          AppUtils.toastError('Seller profile not available');
                         }
                       } else {
-                        // For simple products, navigate to payment screen
-                        _navigateToPaymentScreen();
+                        // For dropship products with URL, open the external link
+                        _openDropshipLink(dropshipLink!);
                       }
                     }
                   : null,
@@ -1102,21 +1125,15 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
-                    isDropship
-                        ? (_isValidUrl(dropshipLink ?? '')
-                              ? Icons.open_in_new
-                              : Icons.contact_phone)
-                        : Icons.shopping_bag_outlined,
+                    showContactButton ? Icons.contact_phone : Icons.open_in_new,
                     size: 22,
                   ),
                   const SizedBox(width: 10),
                   Text(
                     isAvailable
-                        ? (isDropship
-                              ? (_isValidUrl(dropshipLink ?? '')
-                                    ? "View on Supplier Site"
-                                    : "Contact Seller")
-                              : "Buy Now")
+                        ? (showContactButton
+                              ? "Contact Seller"
+                              : "Visit Supplier Site")
                         : "Out of Stock",
                     style: const TextStyle(
                       fontSize: 17,
@@ -1133,18 +1150,18 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     );
   }
 
-  void _navigateToPaymentScreen() {
-    final price =
-        double.tryParse(productData!['price']?.toString() ?? '0') ?? 0.0;
-    final totalPrice = price * quantity;
+  // void _navigateToPaymentScreen() {
+  //   final price =
+  //       double.tryParse(productData!['price']?.toString() ?? '0') ?? 0.0;
+  //   final totalPrice = price * quantity;
 
-    // Navigate to checkout screen
-    Get.to(
-      () => CheckoutScreen(
-        productData: productData!,
-        quantity: quantity,
-        totalAmount: totalPrice,
-      ),
-    );
-  }
+  //   // Navigate to checkout screen
+  //   Get.to(
+  //     () => CheckoutScreen(
+  //       productData: productData!,
+  //       quantity: quantity,
+  //       totalAmount: totalPrice,
+  //     ),
+  //   );
+  // }
 }

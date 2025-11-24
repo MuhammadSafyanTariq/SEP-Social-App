@@ -29,11 +29,20 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
   VideoPlayerController? _controller;
   ChewieController? _chewieController;
   int _currentIndex = 0;
+  bool _showPlayPauseIcon = false;
+  bool _showBackwardIcon = false;
+  bool _showForwardIcon = false;
 
   final ProfileCtrl profileCtrl = Get.find<ProfileCtrl>();
   List<PostData> _posts = [];
   bool _isLoadingMore = false;
   int _currentPage = 1;
+
+  // Track which videos have had their view count incremented
+  final Set<String> _viewCountedPosts = {};
+
+  // Track video progress for view counting
+  bool _hasReachedHalfway = false;
 
   @override
   void initState() {
@@ -110,11 +119,80 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
                   allowPlaybackSpeedChanging: false,
                 );
               });
+
+              // Reset halfway flag for new video
+              _hasReachedHalfway = false;
+
+              // Add listener to track video progress
+              _controller!.addListener(_checkVideoProgress);
             }
           })
           .catchError((error) {
             debugPrint("Video Initialization Error: $error");
           });
+  }
+
+  void _checkVideoProgress() {
+    if (_controller == null || !_controller!.value.isInitialized) return;
+
+    final position = _controller!.value.position;
+    final duration = _controller!.value.duration;
+
+    if (duration.inMilliseconds > 0) {
+      final progress = position.inMilliseconds / duration.inMilliseconds;
+
+      // Check if video has been played more than 50%
+      if (progress >= 0.5 && !_hasReachedHalfway) {
+        _hasReachedHalfway = true;
+        _incrementVideoCount(_currentIndex);
+      }
+    }
+  }
+
+  void _incrementVideoCount(int index) {
+    if (index >= _posts.length) return;
+
+    final post = _posts[index];
+    final postId = post.id;
+
+    // Only increment if we haven't counted this video yet
+    if (postId != null &&
+        postId.isNotEmpty &&
+        !_viewCountedPosts.contains(postId)) {
+      _viewCountedPosts.add(postId);
+
+      // Update video count on server
+      profileCtrl
+          .videoCount(postId)
+          .then((_) {
+            // Update local posts list
+            final updatedPost = post.copyWith(
+              videoCount: (post.videoCount ?? 0) + 1,
+            );
+
+            if (mounted) {
+              setState(() {
+                _posts[index] = updatedPost;
+              });
+            }
+
+            // Update globalPostList to reflect changes when returning to home screen
+            final globalIndex = profileCtrl.globalPostList.indexWhere(
+              (p) => p.id == postId,
+            );
+            if (globalIndex != -1) {
+              profileCtrl.globalPostList[globalIndex] = updatedPost;
+              profileCtrl.globalPostList.refresh();
+            }
+
+            AppUtils.log('Video count incremented for post: $postId');
+          })
+          .catchError((error) {
+            AppUtils.log('Error updating video count: $error');
+            // Remove from set so it can be retried
+            _viewCountedPosts.remove(postId);
+          });
+    }
   }
 
   Future<void> _loadMorePosts() async {
@@ -158,6 +236,9 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
 
+    // Remove video progress listener
+    _controller?.removeListener(_checkVideoProgress);
+
     // Pause and dispose video controllers
     if (_controller != null && _controller!.value.isInitialized) {
       _controller!.pause();
@@ -187,17 +268,29 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
 
   void _toggleLike(PostData post) async {
     await profileCtrl.likePostWithData(post);
+
+    final updatedPost = post.copyWith(
+      isLikedByUser: !(post.isLikedByUser ?? false),
+      likeCount: (post.isLikedByUser ?? false)
+          ? (post.likeCount ?? 0) - 1
+          : (post.likeCount ?? 0) + 1,
+    );
+
     setState(() {
       final index = _posts.indexWhere((p) => p.id == post.id);
       if (index != -1) {
-        _posts[index] = post.copyWith(
-          isLikedByUser: !(post.isLikedByUser ?? false),
-          likeCount: (post.isLikedByUser ?? false)
-              ? (post.likeCount ?? 0) - 1
-              : (post.likeCount ?? 0) + 1,
-        );
+        _posts[index] = updatedPost;
       }
     });
+
+    // Update the globalPostList to reflect changes when returning to home screen
+    final globalIndex = profileCtrl.globalPostList.indexWhere(
+      (p) => p.id == post.id,
+    );
+    if (globalIndex != -1) {
+      profileCtrl.globalPostList[globalIndex] = updatedPost;
+      profileCtrl.globalPostList.refresh();
+    }
   }
 
   void _openComments(BuildContext context, PostData post) {
@@ -227,21 +320,43 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
         ),
         child: CommentScreen(
           onCommentAdded: (int newCount) {
+            final updatedPost = post.copyWith(commentCount: newCount);
+
             setState(() {
               final index = _posts.indexWhere((p) => p.id == post.id);
               if (index != -1) {
-                _posts[index] = post.copyWith(commentCount: newCount);
+                _posts[index] = updatedPost;
               }
             });
+
+            // Update the globalPostList to reflect changes when returning to home screen
+            final globalIndex = profileCtrl.globalPostList.indexWhere(
+              (p) => p.id == post.id,
+            );
+            if (globalIndex != -1) {
+              profileCtrl.globalPostList[globalIndex] = updatedPost;
+              profileCtrl.globalPostList.refresh();
+            }
           },
           postId: postId,
           updatePostOnAction: (commentCount) {
+            final updatedPost = post.copyWith(commentCount: commentCount);
+
             setState(() {
               final index = _posts.indexWhere((p) => p.id == post.id);
               if (index != -1) {
-                _posts[index] = post.copyWith(commentCount: commentCount);
+                _posts[index] = updatedPost;
               }
             });
+
+            // Update the globalPostList to reflect changes when returning to home screen
+            final globalIndex = profileCtrl.globalPostList.indexWhere(
+              (p) => p.id == post.id,
+            );
+            if (globalIndex != -1) {
+              profileCtrl.globalPostList[globalIndex] = updatedPost;
+              profileCtrl.globalPostList.refresh();
+            }
           },
         ),
       ),
@@ -281,19 +396,172 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
                         _controller != null &&
                         _controller!.value.isInitialized &&
                         _chewieController != null
-                    ? GestureDetector(
-                        onTap: () {
-                          if (_controller != null &&
-                              _controller!.value.isInitialized &&
-                              _chewieController != null) {
-                            if (_controller!.value.isPlaying) {
-                              _controller!.pause();
-                            } else {
-                              _controller!.play();
-                            }
-                          }
-                        },
-                        child: Chewie(controller: _chewieController!),
+                    ? Stack(
+                        children: [
+                          Chewie(controller: _chewieController!),
+
+                          // Three tap zones overlay
+                          Row(
+                            children: [
+                              // Left zone - Double tap to rewind 5 seconds
+                              Expanded(
+                                child: GestureDetector(
+                                  onDoubleTap: () {
+                                    final currentPosition =
+                                        _controller!.value.position;
+                                    final newPosition =
+                                        currentPosition - Duration(seconds: 5);
+                                    _controller!.seekTo(
+                                      newPosition < Duration.zero
+                                          ? Duration.zero
+                                          : newPosition,
+                                    );
+                                    setState(() {
+                                      _showBackwardIcon = true;
+                                    });
+                                    Future.delayed(
+                                      Duration(milliseconds: 500),
+                                      () {
+                                        if (mounted) {
+                                          setState(() {
+                                            _showBackwardIcon = false;
+                                          });
+                                        }
+                                      },
+                                    );
+                                  },
+                                  child: Container(color: Colors.transparent),
+                                ),
+                              ),
+
+                              // Center zone - Tap to play/pause
+                              Expanded(
+                                child: GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      if (_controller!.value.isPlaying) {
+                                        _controller!.pause();
+                                      } else {
+                                        _controller!.play();
+                                      }
+                                      _showPlayPauseIcon = true;
+                                    });
+                                    Future.delayed(
+                                      Duration(milliseconds: 500),
+                                      () {
+                                        if (mounted) {
+                                          setState(() {
+                                            _showPlayPauseIcon = false;
+                                          });
+                                        }
+                                      },
+                                    );
+                                  },
+                                  child: Container(color: Colors.transparent),
+                                ),
+                              ),
+
+                              // Right zone - Double tap to forward 5 seconds
+                              Expanded(
+                                child: GestureDetector(
+                                  onDoubleTap: () {
+                                    final currentPosition =
+                                        _controller!.value.position;
+                                    final duration =
+                                        _controller!.value.duration;
+                                    final newPosition =
+                                        currentPosition + Duration(seconds: 5);
+                                    _controller!.seekTo(
+                                      newPosition > duration
+                                          ? duration
+                                          : newPosition,
+                                    );
+                                    setState(() {
+                                      _showForwardIcon = true;
+                                    });
+                                    Future.delayed(
+                                      Duration(milliseconds: 500),
+                                      () {
+                                        if (mounted) {
+                                          setState(() {
+                                            _showForwardIcon = false;
+                                          });
+                                        }
+                                      },
+                                    );
+                                  },
+                                  child: Container(color: Colors.transparent),
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          // Visual feedback icons
+                          if (_showBackwardIcon)
+                            Center(
+                              child: Container(
+                                padding: EdgeInsets.all(20),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withOpacity(0.6),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.replay_5,
+                                  color: Colors.white,
+                                  size: 50,
+                                ),
+                              ),
+                            ),
+                          if (_showPlayPauseIcon)
+                            Center(
+                              child: Container(
+                                padding: EdgeInsets.all(20),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withOpacity(0.6),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  _controller!.value.isPlaying
+                                      ? Icons.play_arrow
+                                      : Icons.pause,
+                                  color: Colors.white,
+                                  size: 50,
+                                ),
+                              ),
+                            ),
+                          if (_showForwardIcon)
+                            Center(
+                              child: Container(
+                                padding: EdgeInsets.all(20),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withOpacity(0.6),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.forward_5,
+                                  color: Colors.white,
+                                  size: 50,
+                                ),
+                              ),
+                            ),
+
+                          // Progress bar at bottom
+                          Positioned(
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            child: VideoProgressIndicator(
+                              _controller!,
+                              allowScrubbing: true,
+                              colors: VideoProgressColors(
+                                playedColor: Colors.white,
+                                bufferedColor: Colors.white.withOpacity(0.3),
+                                backgroundColor: Colors.white.withOpacity(0.2),
+                              ),
+                              padding: EdgeInsets.zero,
+                            ),
+                          ),
+                        ],
                       )
                     : const CircularProgressIndicator(color: Colors.white),
               ),

@@ -157,6 +157,7 @@ dependencies:
   path: ^1.9.0
   flutter_dotenv: ^5.2.1
   saver_gallery: ^4.0.1
+  iconsax: ^0.0.8
 
 #  flutter_unity_widget: ^2022.2.1
 

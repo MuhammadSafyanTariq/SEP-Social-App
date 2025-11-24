@@ -18,7 +18,8 @@ class _UploadProductScreenState extends State<UploadProductScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    // _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 1, vsync: this);
   }
 
   @override
@@ -49,43 +50,43 @@ class _UploadProductScreenState extends State<UploadProductScreen>
             ),
 
             // Tab Bar
-            Container(
-              margin: 16.allSide,
-              decoration: BoxDecoration(
-                color: AppColors.grey.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(25.sdp),
-              ),
-              child: TabBar(
-                controller: _tabController,
-                indicator: BoxDecoration(
-                  borderRadius: BorderRadius.circular(25.sdp),
-                  color: AppColors.btnColor,
-                ),
-                labelColor: Colors.white,
-                unselectedLabelColor: AppColors.grey,
-                labelStyle: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-                unselectedLabelStyle: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-                indicatorSize: TabBarIndicatorSize.tab,
-                dividerColor: Colors.transparent,
-                tabs: const [
-                  Tab(text: "In-App Sales"),
-                  Tab(text: "Dropship Products"),
-                ],
-              ),
-            ),
+            // Container(
+            //   margin: 16.allSide,
+            //   decoration: BoxDecoration(
+            //     color: AppColors.grey.withOpacity(0.1),
+            //     borderRadius: BorderRadius.circular(25.sdp),
+            //   ),
+            //   child: TabBar(
+            //     controller: _tabController,
+            //     indicator: BoxDecoration(
+            //       borderRadius: BorderRadius.circular(25.sdp),
+            //       color: AppColors.btnColor,
+            //     ),
+            //     labelColor: Colors.white,
+            //     unselectedLabelColor: AppColors.grey,
+            //     labelStyle: TextStyle(
+            //       fontSize: 14,
+            //       fontWeight: FontWeight.w600,
+            //     ),
+            //     unselectedLabelStyle: TextStyle(
+            //       fontSize: 14,
+            //       fontWeight: FontWeight.w500,
+            //     ),
+            //     indicatorSize: TabBarIndicatorSize.tab,
+            //     dividerColor: Colors.transparent,
+            //     tabs: const [
+            //       Tab(text: "In-App Sales"),
+            //       Tab(text: "Dropship Products"),
+            //     ],
+            //   ),
+            // ),
 
             // Tab Content
             Expanded(
               child: TabBarView(
                 controller: _tabController,
                 children: [
-                  ProductUploadForm(isDropship: false),
+                  // ProductUploadForm(isDropship: false),
                   ProductUploadForm(isDropship: true),
                 ],
               ),

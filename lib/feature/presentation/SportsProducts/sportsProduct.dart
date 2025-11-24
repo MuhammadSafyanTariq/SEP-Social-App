@@ -352,41 +352,41 @@ class _SportsProductState extends State<SportsProduct>
       padding: 12.all,
       child: Column(
         children: [
-          // Banner Ad (conditionally shown)
-          if (_showAd) ...[
-            Row(
-              children: [
-                Expanded(
-                  child: CommonBannerAdWidget(
-                    adUnitId: Platform.isAndroid
-                        ? 'ca-app-pub-3940256099942544/6300978111'
-                        : 'ca-app-pub-3940256099942544/2934735716',
-                  ),
-                ),
-                SizedBox(width: 8),
-                GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _showAd = false;
-                    });
-                  },
-                  child: Container(
-                    padding: EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade200,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.close,
-                      size: 16,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            8.height,
-          ],
+          // // Banner Ad (conditionally shown)
+          // // if (_showAd) ...[
+          //   Row(
+          //     children: [
+          //       Expanded(
+          //         child: CommonBannerAdWidget(
+          //           adUnitId: Platform.isAndroid
+          //               ? 'ca-app-pub-3940256099942544/6300978111'
+          //               : 'ca-app-pub-3940256099942544/2934735716',
+          //         ),
+          //       ),
+          //       SizedBox(width: 8),
+          //       GestureDetector(
+          //         onTap: () {
+          //           setState(() {
+          //             _showAd = false;
+          //           });
+          //         },
+          //         child: Container(
+          //           padding: EdgeInsets.all(4),
+          //           decoration: BoxDecoration(
+          //             color: Colors.grey.shade200,
+          //             shape: BoxShape.circle,
+          //           ),
+          //           child: Icon(
+          //             Icons.close,
+          //             size: 16,
+          //             color: Colors.grey.shade600,
+          //           ),
+          //         ),
+          //       ),
+          //     ],
+          //   ),
+          //   8.height,
+          // ],
           EditText(
             controller: _search,
             hint: AppStrings.search.tr,
@@ -499,40 +499,40 @@ class _SportsProductState extends State<SportsProduct>
       child: Column(
         children: [
           // Banner Ad (conditionally shown)
-          if (_showAd) ...[
-            Row(
-              children: [
-                Expanded(
-                  child: CommonBannerAdWidget(
-                    adUnitId: Platform.isAndroid
-                        ? 'ca-app-pub-3940256099942544/6300978111'
-                        : 'ca-app-pub-3940256099942544/2934735716',
-                  ),
-                ),
-                SizedBox(width: 8),
-                GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _showAd = false;
-                    });
-                  },
-                  child: Container(
-                    padding: EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade200,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.close,
-                      size: 16,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            16.height,
-          ],
+          // if (_showAd) ...[
+          //   Row(
+          //     children: [
+          //       Expanded(
+          //         child: CommonBannerAdWidget(
+          //           adUnitId: Platform.isAndroid
+          //               ? 'ca-app-pub-3940256099942544/6300978111'
+          //               : 'ca-app-pub-3940256099942544/2934735716',
+          //         ),
+          //       ),
+          //       SizedBox(width: 8),
+          //       GestureDetector(
+          //         onTap: () {
+          //           setState(() {
+          //             _showAd = false;
+          //           });
+          //         },
+          //         child: Container(
+          //           padding: EdgeInsets.all(4),
+          //           decoration: BoxDecoration(
+          //             color: Colors.grey.shade200,
+          //             shape: BoxShape.circle,
+          //           ),
+          //           child: Icon(
+          //             Icons.close,
+          //             size: 16,
+          //             color: Colors.grey.shade600,
+          //           ),
+          //         ),
+          //       ),
+          //     ],
+          //   ),
+          //   16.height,
+          // ],
           // My Store and Order History Buttons in Row
           Row(
             children: [
@@ -569,38 +569,38 @@ class _SportsProductState extends State<SportsProduct>
                   ),
                 ),
               ),
-              12.width,
+              //12.width,
 
               // Order History Icon Button
-              SizedBox(
-                height: 50.sdp,
-                width: 50.sdp,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const OrderHistoryScreen(),
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: AppColors.btnColor,
-                    elevation: 2,
-                    padding: EdgeInsets.zero,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12.sdp),
-                      side: BorderSide(color: AppColors.btnColor, width: 1.5),
-                    ),
-                  ),
-                  child: Icon(
-                    Icons.history,
-                    size: 24.sdp,
-                    color: AppColors.btnColor,
-                  ),
-                ),
-              ),
+              // SizedBox(
+              //   height: 50.sdp,
+              //   width: 50.sdp,
+              //   child: ElevatedButton(
+              //     onPressed: () {
+              //       Navigator.push(
+              //         context,
+              //         MaterialPageRoute(
+              //           builder: (context) => const OrderHistoryScreen(),
+              //         ),
+              //       );
+              //     },
+              //     style: ElevatedButton.styleFrom(
+              //       backgroundColor: Colors.white,
+              //       foregroundColor: AppColors.btnColor,
+              //       elevation: 2,
+              //       padding: EdgeInsets.zero,
+              //       shape: RoundedRectangleBorder(
+              //         borderRadius: BorderRadius.circular(12.sdp),
+              //         side: BorderSide(color: AppColors.btnColor, width: 1.5),
+              //       ),
+              //     ),
+              //     child: Icon(
+              //       Icons.history,
+              //       size: 24.sdp,
+              //       color: AppColors.btnColor,
+              //     ),
+              //   ),
+              // ),
             ],
           ),
           16.height,
@@ -959,12 +959,12 @@ class ProductCard extends StatelessWidget {
                     padding: EdgeInsets.symmetric(horizontal: 16.sdp),
                   ),
                   icon: Icon(
-                    Icons.shopping_bag_outlined,
+                    Icons.contact_phone,
                     size: 18.sdp,
                     color: Colors.white,
                   ),
                   label: TextView(
-                    text: "Buy Now",
+                    text: "Contact",
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,

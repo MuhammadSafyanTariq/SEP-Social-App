@@ -87,12 +87,37 @@ Be friendly, helpful, and provide clear step-by-step guidance when needed.
       AppUtils.log('Sending message to OpenAI: $userMessage');
       AppUtils.log('API Key (first 10 chars): ${_apiKey.substring(0, 10)}...');
 
+      // Filter out duplicate consecutive messages and limit history
+      final filteredHistory = <Map<String, String>>[];
+      String? lastRole;
+      String? lastContent;
+
+      for (final msg in conversationHistory) {
+        final role = msg['role'];
+        final content = msg['content'];
+
+        // Skip if it's the same as the last message
+        if (role == lastRole && content == lastContent) {
+          continue;
+        }
+
+        lastRole = role;
+        lastContent = content;
+        filteredHistory.add(msg);
+      }
+
+      // Keep only the last 10 messages for context (5 exchanges)
+      final recentHistory = filteredHistory.length > 10
+          ? filteredHistory.sublist(filteredHistory.length - 10)
+          : filteredHistory;
+
       // Build messages list with system prompt and conversation history
       final List<Map<String, String>> messages = [
         {'role': 'system', 'content': _systemPrompt},
-        ...conversationHistory,
-        {'role': 'user', 'content': userMessage},
+        ...recentHistory,
       ];
+
+      AppUtils.log('Conversation history: ${messages.length} messages');
 
       // Use GPT-3.5-turbo model (current supported version)
       final request = ChatCompleteText(
@@ -106,25 +131,32 @@ Be friendly, helpful, and provide clear step-by-step guidance when needed.
       final response = await _openAI.onChatCompletion(request: request);
 
       if (response != null && response.choices.isNotEmpty) {
-        final content =
-            response.choices.first.message?.content ??
-            'Sorry, I could not generate a response.';
-        AppUtils.log('AI Response received: $content');
-        return content;
+        final message = response.choices.first.message;
+        final content = message?.content;
+
+        if (content != null && content.trim().isNotEmpty) {
+          AppUtils.log('AI Response received: ${content.trim()}');
+          return content.trim();
+        } else {
+          AppUtils.log('OpenAI response content was empty');
+          return 'Sorry, I could not generate a response. Please try again.';
+        }
       } else {
         AppUtils.log('OpenAI response was null or empty');
         return 'Sorry, I could not generate a response. Please try again.';
       }
     } catch (e) {
       AppUtils.log('Error sending message to OpenAI: $e');
+      AppUtils.log('Error type: ${e.runtimeType}');
 
       // Return simple user-friendly messages instead of detailed error logs
-      if (e.toString().contains('401')) {
-        return 'Sorry, I\'m having trouble connecting right now. Please try again later.';
+      if (e.toString().contains('401') ||
+          e.toString().contains('invalid_api_key')) {
+        return '⚠️ API Key Error: Please check your OpenAI API key in the .env file and make sure it\'s valid.';
       } else if (e.toString().contains('429')) {
         return 'Sorry, I\'m a bit busy right now. Please wait a moment and try again.';
-      } else if (e.toString().contains('insufficient')) {
-        return 'Sorry, I\'m temporarily unavailable. Please try again later.';
+      } else if (e.toString().contains('insufficient_quota')) {
+        return 'Sorry, the API quota has been exceeded. Please check your OpenAI account.';
       } else if (e.toString().contains('404') ||
           e.toString().contains('model_not_found') ||
           e.toString().contains('deprecated')) {

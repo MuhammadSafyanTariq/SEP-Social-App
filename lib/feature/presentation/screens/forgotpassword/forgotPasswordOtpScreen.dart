@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:pinput/pinput.dart';
@@ -162,16 +161,6 @@ class _ForgotpasswordotpscreenState extends State<Forgotpasswordotpscreen> {
               title: AppStrings.verificationCode.tr,
               titleAlign: TextAlign.center,
               titleStyle: 25.txtSBoldprimary,
-            ),
-            Visibility(
-              visible: kDebugMode,
-              child: Center(
-                child: TextView(
-                  text: "${AppStrings.testingOtp.tr} $currentOtp",
-                  style: 16.txtBoldBtncolor,
-                  margin: 10.all,
-                ),
-              ),
             ),
             Align(
               alignment: Alignment.topLeft,

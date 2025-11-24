@@ -81,7 +81,7 @@ class _ForgotpassState extends State<Forgotpass> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.black,
+      backgroundColor: AppColors.white,
       body: Padding(
         padding: 15.all,
         child: Form(

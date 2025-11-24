@@ -483,7 +483,8 @@ class _StoreViewScreenState extends State<StoreViewScreen> {
 
   Widget _buildStoreDetailsView() {
     return DefaultTabController(
-      length: isOwner ? 2 : 1,
+      // length: isOwner ? 2 : 1,
+      length: 1,
       child: Builder(
         builder: (context) {
           final TabController tabController = DefaultTabController.of(context);
@@ -548,11 +549,11 @@ class _StoreViewScreenState extends State<StoreViewScreen> {
                         height: 44,
                         child: Center(child: Text("Products")),
                       ),
-                      if (isOwner)
-                        const Tab(
-                          height: 44,
-                          child: Center(child: Text("Orders")),
-                        ),
+                      // if (isOwner)
+                      //   const Tab(
+                      //     height: 44,
+                      //     child: Center(child: Text("Orders")),
+                      //   ),
                     ],
                   ),
                 ),
@@ -561,42 +562,42 @@ class _StoreViewScreenState extends State<StoreViewScreen> {
                 AnimatedBuilder(
                   animation: tabController,
                   builder: (context, child) {
-                    if (tabController.index == 0) {
-                      // Products Tab
-                      if (products.isEmpty && !isLoadingProducts) {
-                        return _buildEmptyProductsState();
-                      } else {
-                        return Column(
-                          children: [
-                            _buildProductsGrid(),
-                            if (isLoadingProducts)
-                              const Padding(
-                                padding: EdgeInsets.all(16.0),
-                                child: CircularProgressIndicator(),
-                              ),
-                          ],
-                        );
-                      }
+                    // if (tabController.index == 0) {
+                    // Products Tab
+                    if (products.isEmpty && !isLoadingProducts) {
+                      return _buildEmptyProductsState();
                     } else {
-                      // Orders Tab
-                      if (orders.isEmpty && !isLoadingOrders) {
-                        return _buildEmptyOrdersState();
-                      } else {
-                        return Column(
-                          children: [
-                            const SizedBox(height: 8),
-                            _buildOrderFilterChips(),
-                            const SizedBox(height: 8),
-                            _buildOrdersList(),
-                            if (isLoadingOrders)
-                              const Padding(
-                                padding: EdgeInsets.all(16.0),
-                                child: CircularProgressIndicator(),
-                              ),
-                          ],
-                        );
-                      }
+                      return Column(
+                        children: [
+                          _buildProductsGrid(),
+                          if (isLoadingProducts)
+                            const Padding(
+                              padding: EdgeInsets.all(16.0),
+                              child: CircularProgressIndicator(),
+                            ),
+                        ],
+                      );
                     }
+                    // } else {
+                    //   // Orders Tab
+                    //   if (orders.isEmpty && !isLoadingOrders) {
+                    //     return _buildEmptyOrdersState();
+                    //   } else {
+                    //     return Column(
+                    //       children: [
+                    //         const SizedBox(height: 8),
+                    //         _buildOrderFilterChips(),
+                    //         const SizedBox(height: 8),
+                    //         _buildOrdersList(),
+                    //         if (isLoadingOrders)
+                    //           const Padding(
+                    //             padding: EdgeInsets.all(16.0),
+                    //             child: CircularProgressIndicator(),
+                    //           ),
+                    //       ],
+                    //     );
+                    //   }
+                    // }
                   },
                 ),
               ],

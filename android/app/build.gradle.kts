@@ -1,5 +1,5 @@
-//import java.util.Properties
-//import java.io.FileInputStream
+import java.util.Properties
+import java.io.FileInputStream
 plugins {
 
 
@@ -10,25 +10,18 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-
-//def keystoreProperties = new Properties()
-//def keystorePropertiesFile = rootProject.file("key.properties")
-//if (keystorePropertiesFile.exists()) {
-//    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
-//}
-
-//val keystoreProperties = Properties()
-//val keystorePropertiesFile = rootProject.file("key.properties")
-//if (keystorePropertiesFile.exists()) {
-//    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
-//}
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+}
 
 android {
     namespace = "com.app.sep"
 //    compileSdk = flutter.compileSdkVersion
     compileSdk = 36
 //    ndkVersion = flutter.ndkVersion
-    ndkVersion = "26.1.10909125"
+    ndkVersion = "27.0.12077973"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -36,23 +29,14 @@ android {
         isCoreLibraryDesugaringEnabled = true
     }
 
-//    signingConfigs {
-//        release {
-//            keyAlias keystoreProperties['keyAlias']
-//            keyPassword keystoreProperties['keyPassword']
-//            storeFile keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null
-//            storePassword keystoreProperties['storePassword']
-//        }
-//    }
-
-//    signingConfigs {
-//        create("release") {
-//            keyAlias = keystoreProperties["keyAlias"] as String
-//            keyPassword = keystoreProperties["keyPassword"] as String
-//            storeFile = keystoreProperties["storeFile"]?.let { file(it as String) }
-//            storePassword = keystoreProperties["storePassword"] as String
-//        }
-//    }
+    signingConfigs {
+        create("release") {
+            keyAlias = keystoreProperties["keyAlias"] as String
+            keyPassword = keystoreProperties["keyPassword"] as String
+            storeFile = keystoreProperties["storeFile"]?.let { file(it as String) }
+            storePassword = keystoreProperties["storePassword"] as String
+        }
+    }
 
     kotlinOptions {
         jvmTarget = JavaVersion.VERSION_17.toString()
@@ -75,11 +59,7 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-//            signingConfig = signingConfigs.getByName("release")
-
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = false
             isShrinkResources = false
 

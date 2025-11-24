@@ -139,7 +139,7 @@ class _TypeSelectionScreenState extends State<TypeSelectionScreen> {
                           Expanded(
                             child: _buildOptionItem(
                               title: "Media",
-                              icon: Icons.image,
+                              iconPath: 'assets/icons/photo.png',
                               onTap: () {
                                 Navigator.pop(context);
                                 context.pushNavigator(
@@ -152,7 +152,7 @@ class _TypeSelectionScreenState extends State<TypeSelectionScreen> {
                           Expanded(
                             child: _buildOptionItem(
                               title: "Poll",
-                              icon: Icons.poll_outlined,
+                              iconPath: 'assets/icons/poll.png',
                               onTap: () {
                                 Navigator.pop(context);
                                 context.pushNavigator(AddPoll());
@@ -167,7 +167,7 @@ class _TypeSelectionScreenState extends State<TypeSelectionScreen> {
                           Expanded(
                             child: _buildOptionItem(
                               title: "Celebrate",
-                              icon: Icons.celebration,
+                              iconPath: 'assets/icons/celebrate.png',
                               onTap: () {
                                 Navigator.pop(context);
                                 context.pushNavigator(CelebrationScreen());
@@ -177,8 +177,8 @@ class _TypeSelectionScreenState extends State<TypeSelectionScreen> {
                           SizedBox(width: 12),
                           Expanded(
                             child: _buildOptionItem(
-                              title: "Add Job",
-                              icon: Icons.work_outline,
+                              title: "Job",
+                              iconPath: 'assets/icons/bag.png',
                               onTap: () {
                                 Navigator.pop(context);
                                 context.pushNavigator(const PostJobScreen());
@@ -192,16 +192,16 @@ class _TypeSelectionScreenState extends State<TypeSelectionScreen> {
                         children: [
                           Expanded(
                             child: _buildOptionItem(
-                              title: "Add Product",
-                              icon: Icons.shopping_bag_outlined,
+                              title: "Product",
+                              iconPath: 'assets/icons/carnival.png',
                               onTap: () => _checkStoreAndNavigate(context),
                             ),
                           ),
                           SizedBox(width: 12),
                           Expanded(
                             child: _buildOptionItem(
-                              title: "Invite Friend",
-                              icon: Icons.person_add_outlined,
+                              title: "Refer",
+                              iconPath: 'assets/icons/gift.png',
                               onTap: () {
                                 Navigator.pop(context);
                                 // Navigate to GameScreen's Refer a Friend tab (index 1)
@@ -226,23 +226,14 @@ class _TypeSelectionScreenState extends State<TypeSelectionScreen> {
 
   Widget _buildOptionItem({
     required String title,
-    required IconData icon,
+    required String iconPath,
     required VoidCallback onTap,
   }) {
     return GestureDetector(
       onTap: onTap,
       child: Row(
         children: [
-          Container(
-            width: 50,
-            height: 50,
-            decoration: BoxDecoration(
-              color: Colors.grey[200],
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.grey.withOpacity(0.3)),
-            ),
-            child: Icon(icon, size: 24, color: Colors.grey[600]),
-          ),
+          Image.asset(iconPath, width: 36, height: 36, fit: BoxFit.contain),
           SizedBox(width: 12),
           Expanded(
             child: TextView(
