@@ -710,14 +710,14 @@ class _CreatePostState extends State<CreatePost> {
           ),
           child: TextField(
             controller: _postController,
-            maxLength: 300,
+            maxLength: 600,
             maxLines: 4,
             decoration: InputDecoration(
               hintText: "Write a caption...",
               hintStyle: TextStyle(color: Colors.grey[500]),
               border: InputBorder.none,
               contentPadding: EdgeInsets.all(12),
-              counterText: "${_postController.text.length}/300",
+              counterText: "${_postController.text.length}/600",
               counterStyle: TextStyle(color: Colors.grey[500], fontSize: 12),
             ),
             onChanged: (text) {
