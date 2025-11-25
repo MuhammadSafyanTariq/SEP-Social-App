@@ -263,15 +263,12 @@ class VideoDownloadUtils {
             AppUtils.log('✅ Media permissions granted');
           }
         } else if (androidInfo >= 30) {
-          // Android 11-12 (API 30-32)
+          // Android 11-12 (API 30-32) - Use storage permission only
           AppUtils.log('🔄 Requesting Android 11-12 storage permissions...');
 
           final storageStatus = await Permission.storage.request();
-          final manageStorageStatus = await Permission.manageExternalStorage
-              .request();
 
           AppUtils.log('📁 Storage permission: $storageStatus');
-          AppUtils.log('🗂️ Manage storage permission: $manageStorageStatus');
 
           if (storageStatus.isDenied) {
             AppUtils.logEr('❌ Storage permission denied');
