@@ -924,7 +924,7 @@ class ProductCard extends StatelessWidget {
                 ],
               )
             else
-              // Buy Now Button - More Rounded
+              // Buy Now / Contact Button - More Rounded
               SizedBox(
                 width: double.infinity,
                 height: 40.sdp,
@@ -932,19 +932,21 @@ class ProductCard extends StatelessWidget {
                   onPressed:
                       onBuyNow ??
                       () async {
-                        if (link.isEmpty || !link.startsWith('http')) {
-                          debugPrint('Invalid URL: $link');
-                          return;
-                        }
-
-                        final url = Uri.parse(link);
-                        if (await canLaunchUrl(url)) {
-                          await launchUrl(url, mode: LaunchMode.inAppWebView);
+                        if (link.isNotEmpty && link.startsWith('http')) {
+                          // Valid URL - launch it
+                          final url = Uri.parse(link);
+                          if (await canLaunchUrl(url)) {
+                            await launchUrl(url, mode: LaunchMode.inAppWebView);
+                          } else {
+                            await launchUrl(
+                              url,
+                              mode: LaunchMode.externalApplication,
+                            );
+                          }
                         } else {
-                          await launchUrl(
-                            url,
-                            mode: LaunchMode.externalApplication,
-                          );
+                          // No URL - show contact message
+                          debugPrint('No URL available - Contact seller');
+                          // You can add contact functionality here
                         }
                       },
                   style: ElevatedButton.styleFrom(
@@ -959,12 +961,16 @@ class ProductCard extends StatelessWidget {
                     padding: EdgeInsets.symmetric(horizontal: 16.sdp),
                   ),
                   icon: Icon(
-                    Icons.contact_phone,
+                    (link.isNotEmpty && link.startsWith('http'))
+                        ? Icons.shopping_cart
+                        : Icons.contact_phone,
                     size: 18.sdp,
                     color: Colors.white,
                   ),
                   label: TextView(
-                    text: "Contact",
+                    text: (link.isNotEmpty && link.startsWith('http'))
+                        ? "Buy Now"
+                        : "Contact",
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,

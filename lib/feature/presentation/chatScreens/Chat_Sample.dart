@@ -807,7 +807,19 @@ class ChatSampleState extends State<ChatSample> {
                                               content,
                                               isSentByUser,
                                             ),
-                                            style: 14.txtRegularBlack,
+                                            style: isSentByUser
+                                                ? TextStyle(
+                                                    fontSize: 14,
+                                                    color: Colors.white,
+                                                    fontWeight:
+                                                        FontWeight.normal,
+                                                  )
+                                                : TextStyle(
+                                                    fontSize: 14,
+                                                    color: Colors.white,
+                                                    fontWeight:
+                                                        FontWeight.normal,
+                                                  ),
                                           ),
                                         ),
                                       ),

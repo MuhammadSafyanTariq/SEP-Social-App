@@ -53,8 +53,8 @@ android {
         targetSdk = 36
 //        versionCode = flutter.versionCode
 //        versionName = flutter.versionName
-        versionCode = 17
-        versionName = "1.1.3"
+        versionCode = 18
+        versionName = "1.1.4"
     }
 
     buildTypes {

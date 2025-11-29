@@ -329,13 +329,18 @@ Buy now: $productUrl
                         ),
 
                         SizedBox(height: 32.sdp),
-                        // Buy Now Button
+                        // Buy Now / Contact Button
                         Container(
                           width: double.infinity,
                           padding: EdgeInsets.symmetric(horizontal: 4.sdp),
                           child: AppButton(
                             radius: 20.sdp,
-                            label: "Buy Now",
+                            label:
+                                (data.checkouturl != null &&
+                                    data.checkouturl!.isNotEmpty &&
+                                    data.checkouturl!.startsWith('http'))
+                                ? "Buy Now"
+                                : "Contact",
                             buttonColor: AppColors.greenlight,
                             labelStyle: TextStyle(
                               fontSize: 18,
@@ -344,30 +349,37 @@ Buy now: $productUrl
                             ),
                             isFilledButton: true,
                             onTap: () async {
-                              if (data.checkouturl == null ||
-                                  data.checkouturl!.isEmpty ||
-                                  !data.checkouturl!.startsWith('http')) {
-                                AppUtils.toast('Product link not available');
-                                return;
-                              }
+                              // Check if product has valid URL
+                              if (data.checkouturl != null &&
+                                  data.checkouturl!.isNotEmpty &&
+                                  data.checkouturl!.startsWith('http')) {
+                                // Product has URL - proceed with Buy Now
 
-                              final url = Uri.parse(data.checkouturl ?? "");
+                                final url = Uri.parse(data.checkouturl ?? "");
 
-                              try {
-                                if (await canLaunchUrl(url)) {
-                                  await launchUrl(
-                                    url,
-                                    mode: LaunchMode.inAppWebView,
-                                  );
-                                } else {
-                                  await launchUrl(
-                                    url,
-                                    mode: LaunchMode.externalApplication,
-                                  );
+                                try {
+                                  if (await canLaunchUrl(url)) {
+                                    await launchUrl(
+                                      url,
+                                      mode: LaunchMode.inAppWebView,
+                                    );
+                                  } else {
+                                    await launchUrl(
+                                      url,
+                                      mode: LaunchMode.externalApplication,
+                                    );
+                                  }
+                                } catch (e) {
+                                  AppUtils.toast('Failed to open product link');
+                                  debugPrint('Error launching URL: $e');
                                 }
-                              } catch (e) {
-                                AppUtils.toast('Failed to open product link');
-                                debugPrint('Error launching URL: $e');
+                              } else {
+                                // No URL available - show contact information
+                                AppUtils.toast(
+                                  'Please contact seller for purchase details',
+                                );
+                                // You can add more contact functionality here like
+                                // showing a contact dialog or navigating to contact screen
                               }
                             },
                           ),

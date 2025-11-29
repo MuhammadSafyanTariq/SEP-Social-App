@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
@@ -64,6 +65,11 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
       if (_controller != null && _controller!.value.isInitialized) {
         _controller!.pause();
       }
+      // Restore system UI overlays when app goes to background
+      SystemChrome.setEnabledSystemUIMode(
+        SystemUiMode.manual,
+        overlays: SystemUiOverlay.values,
+      );
     } else if (state == AppLifecycleState.resumed) {
       // Resume video when app comes back to foreground
       if (_controller != null && _controller!.value.isInitialized) {
@@ -239,6 +245,12 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
     // Remove video progress listener
     _controller?.removeListener(_checkVideoProgress);
 
+    // Restore system UI overlays before disposing
+    SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.manual,
+      overlays: SystemUiOverlay.values,
+    );
+
     // Pause and dispose video controllers
     if (_controller != null && _controller!.value.isInitialized) {
       _controller!.pause();
@@ -305,62 +317,80 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
       _controller!.pause();
     }
 
+    // Hide bottom navigation bar
+    SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.manual,
+      overlays: [SystemUiOverlay.top],
+    );
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.75,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
-          ),
+      useSafeArea: true,
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
         ),
-        child: CommentScreen(
-          onCommentAdded: (int newCount) {
-            final updatedPost = post.copyWith(commentCount: newCount);
+        child: Container(
+          height: MediaQuery.of(context).size.height * 0.75,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+            ),
+          ),
+          child: CommentScreen(
+            onCommentAdded: (int newCount) {
+              final updatedPost = post.copyWith(commentCount: newCount);
 
-            setState(() {
-              final index = _posts.indexWhere((p) => p.id == post.id);
-              if (index != -1) {
-                _posts[index] = updatedPost;
+              setState(() {
+                final index = _posts.indexWhere((p) => p.id == post.id);
+                if (index != -1) {
+                  _posts[index] = updatedPost;
+                }
+              });
+
+              // Update the globalPostList to reflect changes when returning to home screen
+              final globalIndex = profileCtrl.globalPostList.indexWhere(
+                (p) => p.id == post.id,
+              );
+              if (globalIndex != -1) {
+                profileCtrl.globalPostList[globalIndex] = updatedPost;
+                profileCtrl.globalPostList.refresh();
               }
-            });
+            },
+            postId: postId,
+            updatePostOnAction: (commentCount) {
+              final updatedPost = post.copyWith(commentCount: commentCount);
 
-            // Update the globalPostList to reflect changes when returning to home screen
-            final globalIndex = profileCtrl.globalPostList.indexWhere(
-              (p) => p.id == post.id,
-            );
-            if (globalIndex != -1) {
-              profileCtrl.globalPostList[globalIndex] = updatedPost;
-              profileCtrl.globalPostList.refresh();
-            }
-          },
-          postId: postId,
-          updatePostOnAction: (commentCount) {
-            final updatedPost = post.copyWith(commentCount: commentCount);
+              setState(() {
+                final index = _posts.indexWhere((p) => p.id == post.id);
+                if (index != -1) {
+                  _posts[index] = updatedPost;
+                }
+              });
 
-            setState(() {
-              final index = _posts.indexWhere((p) => p.id == post.id);
-              if (index != -1) {
-                _posts[index] = updatedPost;
+              // Update the globalPostList to reflect changes when returning to home screen
+              final globalIndex = profileCtrl.globalPostList.indexWhere(
+                (p) => p.id == post.id,
+              );
+              if (globalIndex != -1) {
+                profileCtrl.globalPostList[globalIndex] = updatedPost;
+                profileCtrl.globalPostList.refresh();
               }
-            });
-
-            // Update the globalPostList to reflect changes when returning to home screen
-            final globalIndex = profileCtrl.globalPostList.indexWhere(
-              (p) => p.id == post.id,
-            );
-            if (globalIndex != -1) {
-              profileCtrl.globalPostList[globalIndex] = updatedPost;
-              profileCtrl.globalPostList.refresh();
-            }
-          },
+            },
+          ),
         ),
       ),
     ).then((_) {
+      // Restore bottom navigation bar
+      SystemChrome.setEnabledSystemUIMode(
+        SystemUiMode.manual,
+        overlays: SystemUiOverlay.values,
+      );
+
       // Resume video when comments are closed
       if (mounted && _controller != null && _controller!.value.isInitialized) {
         _controller!.play();
