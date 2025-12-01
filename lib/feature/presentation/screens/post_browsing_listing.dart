@@ -58,7 +58,7 @@ class _PostImageBrowsingListingState extends State<PostImageBrowsingListing> {
         leading: IconButton(
           icon: Icon(
             Icons.keyboard_arrow_left_rounded,
-            color: Colors.black,
+            color: Colors.white,
             size: 30,
           ),
           onPressed: () {
