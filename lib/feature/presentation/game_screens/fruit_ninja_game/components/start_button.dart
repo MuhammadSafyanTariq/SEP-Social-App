@@ -35,10 +35,7 @@ class StartButton {
   }
 
   void onTapDown() {
-    game.score = 0;
-    game.lives = 3;
-    game.activeView = View.playing;
-    game.spawner.start();
-    BGM.play(BGMType.playing);
+    // Call the game's onStartButtonPressed which will handle token logic
+    game.onStartButtonPressed();
   }
 }

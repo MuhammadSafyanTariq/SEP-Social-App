@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:sep/components/dialogs/game_start_dialog.dart';
+import 'package:sep/feature/presentation/wallet/packages_screen.dart';
+import 'package:sep/services/game/game_manager.dart';
+import 'package:sep/utils/appUtils.dart';
 import 'package:sep/utils/extensions/contextExtensions.dart';
 
 import '../game/assets.dart';
@@ -13,6 +17,47 @@ class MainMenuScreen extends StatelessWidget {
     required this.game,
   }) : super(key: key);
 
+  Future<void> _handleGameStart(BuildContext context) async {
+    // Check if user can start the game
+    final status = await GameManager.canStartGame(GameManager.FLAPPY_BIRD_GAME);
+
+    if (!status.canStart) {
+      // Show insufficient tokens dialog
+      InsufficientTokensDialog.show(
+        context: context,
+        tokensRequired: status.tokensRequired,
+        onBuyTokens: () {
+          context.pushNavigator(PackagesScreen());
+        },
+      );
+      return;
+    }
+
+    // Show confirmation dialog
+    final confirmed = await GameStartDialog.show(
+      context: context,
+      gameId: GameManager.FLAPPY_BIRD_GAME,
+      gameName: 'Flappy Bird',
+      isFree: status.isFree,
+      tokensRequired: status.tokensRequired,
+    );
+
+    if (confirmed == true) {
+      // Start the game and deduct tokens if needed
+      final success = await GameManager.startGame(
+        GameManager.FLAPPY_BIRD_GAME,
+        isFree: status.isFree,
+      );
+
+      if (success) {
+        game.overlays.remove(MainMenuScreen.id);
+        game.resumeEngine();
+      } else {
+        AppUtils.toastError('Failed to start game. Please try again.');
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     game.pauseEngine();
@@ -21,11 +66,7 @@ class MainMenuScreen extends StatelessWidget {
       body: Stack(
         children: [
           GestureDetector(
-            onTap: () {
-              game.overlays.remove(MainMenuScreen.id);
-              // game.overlays.add('BackButton');
-              game.resumeEngine();
-            },
+            onTap: () => _handleGameStart(context),
             child: Container(
               width: double.infinity,
               height: double.infinity,

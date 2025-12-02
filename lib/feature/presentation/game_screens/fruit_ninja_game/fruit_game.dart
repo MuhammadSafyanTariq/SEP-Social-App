@@ -47,7 +47,29 @@ class FruitGame extends Game {
   int lives = 3;
   bool _initialized = false;
 
+  // Callback for handling game start (with token logic)
+  Function(FruitGame)? onStartGameCallback;
+
   FruitGame(this.storage);
+
+  // Method called when start button is pressed
+  void onStartButtonPressed() {
+    if (onStartGameCallback != null) {
+      onStartGameCallback!(this);
+    } else {
+      // Fallback if no callback is set
+      startGamePlay();
+    }
+  }
+
+  // Actually start the gameplay
+  void startGamePlay() {
+    score = 0;
+    lives = 3;
+    activeView = View.playing;
+    spawner.start();
+    BGM.play(BGMType.playing);
+  }
 
   @override
   Future<void> onLoad() async {

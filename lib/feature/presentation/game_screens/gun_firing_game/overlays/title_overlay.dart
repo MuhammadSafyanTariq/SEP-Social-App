@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:sep/components/dialogs/game_start_dialog.dart';
+import 'package:sep/feature/presentation/wallet/packages_screen.dart';
+import 'package:sep/services/game/game_manager.dart';
+import 'package:sep/utils/appUtils.dart';
+import 'package:sep/utils/extensions/contextExtensions.dart';
 
 import '../my_game.dart';
 
@@ -26,6 +31,52 @@ class _TitleOverlayState extends State<TitleOverlay> {
         });
       },
     );
+  }
+
+  Future<void> _handleGameStart() async {
+    // Check if user can start the game
+    final status = await GameManager.canStartGame(GameManager.SHOOTING_GAME);
+
+    if (!status.canStart) {
+      // Show insufficient tokens dialog
+      if (!mounted) return;
+      InsufficientTokensDialog.show(
+        context: context,
+        tokensRequired: status.tokensRequired,
+        onBuyTokens: () {
+          context.pushNavigator(PackagesScreen());
+        },
+      );
+      return;
+    }
+
+    // Show confirmation dialog
+    if (!mounted) return;
+    final confirmed = await GameStartDialog.show(
+      context: context,
+      gameId: GameManager.SHOOTING_GAME,
+      gameName: 'Shooting Rush',
+      isFree: status.isFree,
+      tokensRequired: status.tokensRequired,
+    );
+
+    if (confirmed == true) {
+      // Start the game and deduct tokens if needed
+      final success = await GameManager.startGame(
+        GameManager.SHOOTING_GAME,
+        isFree: status.isFree,
+      );
+
+      if (success) {
+        widget.game.audioManager.playSound('start');
+        widget.game.startGame();
+        setState(() {
+          _opacity = 0.0;
+        });
+      } else {
+        AppUtils.toastError('Failed to start game. Please try again.');
+      }
+    }
   }
 
   @override
@@ -103,13 +154,7 @@ class _TitleOverlayState extends State<TitleOverlay> {
             ),
             const SizedBox(height: 10),
             GestureDetector(
-              onTap: () {
-                widget.game.audioManager.playSound('start');
-                widget.game.startGame();
-                setState(() {
-                  _opacity = 0.0;
-                });
-              },
+              onTap: _handleGameStart,
               child: SizedBox(
                 width: 200,
                 child: Image.asset('assets/images/start_button.png'),

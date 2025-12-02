@@ -11,6 +11,7 @@ import 'package:sep/components/styles/appImages.dart';
 import 'package:sep/components/styles/app_strings.dart';
 import 'package:sep/feature/presentation/game_screens/gun_firing_game/gun_firing_Screen.dart';
 import 'package:sep/feature/presentation/game_screens/fruit_ninja_game/fruit_ninja_screen.dart';
+import 'package:sep/services/game/game_manager.dart';
 import 'package:sep/utils/extensions/contextExtensions.dart';
 import 'package:sep/utils/extensions/size.dart';
 import 'package:sep/utils/extensions/widget.dart';
@@ -480,6 +481,7 @@ Sign up the app using refer code: $referralCode
             children: [
               _buildEnhancedGameCard(
                 context,
+                gameId: GameManager.FLAPPY_BIRD_GAME,
                 title: AppStrings.flappyBird.tr,
                 subtitle: '',
                 imagePath: AppImages.flappyBird,
@@ -490,6 +492,7 @@ Sign up the app using refer code: $referralCode
               ),
               _buildEnhancedGameCard(
                 context,
+                gameId: GameManager.SHOOTING_GAME,
                 title: AppStrings.shootingRush.tr,
                 subtitle: '',
                 imagePath: AppImages.shootinggameImag,
@@ -500,6 +503,7 @@ Sign up the app using refer code: $referralCode
               ),
               _buildEnhancedGameCard(
                 context,
+                gameId: GameManager.FRUIT_NINJA_GAME,
                 title: 'Fruit Ninja',
                 subtitle: '',
                 imagePath: AppImages.fruitNinja,
@@ -982,75 +986,129 @@ Sign up the app using refer code: $referralCode
 
   Widget _buildEnhancedGameCard(
     BuildContext context, {
+    required String gameId,
     required String title,
     required String subtitle,
     required String imagePath,
     required Color backgroundColor,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: backgroundColor,
-          borderRadius: BorderRadius.circular(16.sdp),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 8,
-              offset: Offset(0, 4),
+    return FutureBuilder<String>(
+      future: GameManager.getGameStatusText(gameId),
+      builder: (context, snapshot) {
+        final statusText = snapshot.data ?? 'Loading...';
+        final isFree = statusText.contains('FREE');
+        
+        return GestureDetector(
+          onTap: onTap,
+          child: Container(
+            decoration: BoxDecoration(
+              color: backgroundColor,
+              borderRadius: BorderRadius.circular(16.sdp),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 8,
+                  offset: Offset(0, 4),
+                ),
+              ],
             ),
-          ],
-        ),
-        child: Padding(
-          padding: EdgeInsets.all(16.sdp),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Square image with all corners rounded
-              AspectRatio(
-                aspectRatio: 1.0, // Makes it square
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12.sdp),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12.sdp),
-                    child: Image.asset(
-                      imagePath,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          color: backgroundColor.withOpacity(0.3),
-                          child: Icon(
-                            Icons.games,
-                            size: 40.sdp,
-                            color: Colors.white.withOpacity(0.7),
+            child: Stack(
+              children: [
+                Padding(
+                  padding: EdgeInsets.all(16.sdp),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Square image with all corners rounded
+                      AspectRatio(
+                        aspectRatio: 1.0, // Makes it square
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12.sdp),
                           ),
-                        );
-                      },
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12.sdp),
+                            child: Image.asset(
+                              imagePath,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  color: backgroundColor.withOpacity(0.3),
+                                  child: Icon(
+                                    Icons.games,
+                                    size: 40.sdp,
+                                    color: Colors.white.withOpacity(0.7),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                      12.height,
+                      // Only title, no subtitle
+                      TextView(
+                        text: title,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primaryColor,
+                        ),
+                        textAlign: TextAlign.center,
+                        maxlines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                // Badge showing free or token cost
+                Positioned(
+                  top: 8.sdp,
+                  right: 8.sdp,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 8.sdp,
+                      vertical: 4.sdp,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isFree ? Colors.green : AppColors.primaryColor,
+                      borderRadius: BorderRadius.circular(12.sdp),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 4,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          isFree ? Icons.celebration : Icons.monetization_on,
+                          size: 12.sdp,
+                          color: Colors.white,
+                        ),
+                        4.width,
+                        TextView(
+                          text: statusText,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-              ),
-              12.height,
-              // Only title, no subtitle
-              TextView(
-                text: title,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primaryColor,
-                ),
-                textAlign: TextAlign.center,
-                maxlines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

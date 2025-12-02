@@ -1484,4 +1484,20 @@ class IAuthRepository implements AuthRepository {
 
     return result;
   }
+
+  @override
+  Future<ResponseData<Map<String, dynamic>>> deductGameTokens({
+    required int amount,
+  }) async {
+    final result = await post(
+      url: Urls.deductGameTokens,
+      data: {
+        "userId": Preferences.uid,
+        "amount": amount,
+      },
+      enableAuthToken: true,
+    );
+
+    return result;
+  }
 }

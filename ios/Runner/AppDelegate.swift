@@ -11,7 +11,7 @@ import Stripe
   ) -> Bool {
 
 
-    StripeAPI.defaultPublishableKey = "pk_test_51Re7gJQHPe7BrzsMAlHyRB8OStcbZbHn3Nin4vPB4g98y2oTRrADCrblJwzAYshE2Px1rsxxdnaKh7Mc1HSRUeR600qHFLanGd"
+    StripeAPI.defaultPublishableKey = "pk_live_51RQkfPF7GWl0gz6oggK8qEi9q8HgBJeZzneF9utkZXsReup0jHbiN9QXF0XqRhYUOFMqoaF0WdA28Gsifyx9esKO00cznRBhbr"
     
 
     GeneratedPluginRegistrant.register(with: self)

@@ -50,7 +50,7 @@ void main() async {
   MobileAds.instance.initialize();
 
   Stripe.publishableKey =
-      "pk_test_51RQkfbFQCwX9bvY7xnWoyU41vL46BxIb1hvKfGf5480FLG0bqeMyIi7LCVsPpHNLZHYxAUAy9hKErwCUm1FaGZkr00xxacT1Bv";
+      "pk_live_51RQkfPF7GWl0gz6oggK8qEi9q8HgBJeZzneF9utkZXsReup0jHbiN9QXF0XqRhYUOFMqoaF0WdA28Gsifyx9esKO00cznRBhbr";
   // await Stripe.instance.applySettings();
   try {
     await Stripe.instance.applySettings();
