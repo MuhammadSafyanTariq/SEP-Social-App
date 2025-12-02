@@ -9,7 +9,7 @@ class GameManager {
   static const String _lastPlayDatePrefix = 'last_play_date_';
   static const String _hasPlayedTodayPrefix = 'has_played_today_';
   static const int TOKEN_COST_PER_RETRY = 2;
-  
+
   static const String FLAPPY_BIRD_GAME = 'flappy_bird';
   static const String SHOOTING_GAME = 'shooting_rush';
   static const String FRUIT_NINJA_GAME = 'fruit_ninja';
@@ -56,7 +56,7 @@ class GameManager {
   /// Check if user can start a game (either free or has tokens)
   static Future<GameStartStatus> canStartGame(String gameId) async {
     final isFree = await canPlayForFree(gameId);
-    
+
     if (isFree) {
       return GameStartStatus(
         canStart: true,
@@ -80,7 +80,8 @@ class GameManager {
       canStart: false,
       isFree: false,
       tokensRequired: TOKEN_COST_PER_RETRY,
-      message: 'Insufficient tokens. You need $TOKEN_COST_PER_RETRY tokens to play again.',
+      message:
+          'Insufficient tokens. You need $TOKEN_COST_PER_RETRY tokens to play again.',
     );
   }
 
@@ -120,14 +121,14 @@ class GameManager {
       // Call backend API to deduct tokens
       final repository = IAuthRepository();
       final response = await repository.deductGameTokens(amount: amount);
-      
+
       if (!response.isSuccess) {
         AppUtils.toastError('Failed to deduct tokens');
         return false;
       }
 
       AppUtils.log('Tokens deducted: $amount. Refreshing profile...');
-      
+
       // Refresh profile to get updated token balance
       await profileCtrl.getProfileDetails();
 

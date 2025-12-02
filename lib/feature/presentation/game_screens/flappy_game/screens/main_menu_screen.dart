@@ -12,10 +12,7 @@ class MainMenuScreen extends StatelessWidget {
   final FlappyBirdGame game;
   static const String id = 'mainMenu';
 
-  const MainMenuScreen({
-    Key? key,
-    required this.game,
-  }) : super(key: key);
+  const MainMenuScreen({Key? key, required this.game}) : super(key: key);
 
   Future<void> _handleGameStart(BuildContext context) async {
     // Check if user can start the game
@@ -83,7 +80,11 @@ class MainMenuScreen extends StatelessWidget {
             top: 40,
             left: 20,
             child: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.black, size: 25),
+              icon: const Icon(
+                Icons.arrow_back_ios_rounded,
+                color: Colors.black,
+                size: 25,
+              ),
               onPressed: () {
                 context.pop();
               },

@@ -998,7 +998,7 @@ Sign up the app using refer code: $referralCode
       builder: (context, snapshot) {
         final statusText = snapshot.data ?? 'Loading...';
         final isFree = statusText.contains('FREE');
-        
+
         return GestureDetector(
           onTap: onTap,
           child: Container(

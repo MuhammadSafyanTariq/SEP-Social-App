@@ -25,9 +25,7 @@ class GameStartDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: Row(
         children: [
           Icon(
@@ -132,11 +130,9 @@ class GameStartDialog extends StatelessWidget {
                   ),
                   SizedBox(height: 4),
                   TextView(
-                    text: 'Current Balance: ${GameManager.getCurrentTokenBalance()} tokens',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey.shade700,
-                    ),
+                    text:
+                        'Current Balance: ${GameManager.getCurrentTokenBalance()} tokens',
+                    style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
                   ),
                 ],
               ),
@@ -149,10 +145,7 @@ class GameStartDialog extends StatelessWidget {
           onPressed: onCancel,
           child: TextView(
             text: 'Cancel',
-            style: TextStyle(
-              color: Colors.grey.shade600,
-              fontSize: 16,
-            ),
+            style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
           ),
         ),
         ElevatedButton(
@@ -214,16 +207,10 @@ class InsufficientTokensDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: Row(
         children: [
-          Icon(
-            Icons.warning_amber_rounded,
-            color: Colors.red,
-            size: 30,
-          ),
+          Icon(Icons.warning_amber_rounded, color: Colors.red, size: 30),
           SizedBox(width: 10),
           Expanded(
             child: TextView(
@@ -243,10 +230,7 @@ class InsufficientTokensDialog extends StatelessWidget {
         children: [
           TextView(
             text: 'You need $tokensRequired tokens to play this game.',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.black87,
-            ),
+            style: TextStyle(fontSize: 16, color: Colors.black87),
           ),
           SizedBox(height: 12),
           Container(
@@ -262,7 +246,8 @@ class InsufficientTokensDialog extends StatelessWidget {
                 SizedBox(width: 10),
                 Expanded(
                   child: TextView(
-                    text: 'Current Balance: ${GameManager.getCurrentTokenBalance()} tokens',
+                    text:
+                        'Current Balance: ${GameManager.getCurrentTokenBalance()} tokens',
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.red.shade800,
@@ -276,10 +261,7 @@ class InsufficientTokensDialog extends StatelessWidget {
           SizedBox(height: 12),
           TextView(
             text: 'Purchase more tokens to continue playing!',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey.shade600,
-            ),
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
           ),
         ],
       ),
@@ -288,10 +270,7 @@ class InsufficientTokensDialog extends StatelessWidget {
           onPressed: () => Navigator.of(context).pop(),
           child: TextView(
             text: 'Later',
-            style: TextStyle(
-              color: Colors.grey.shade600,
-              fontSize: 16,
-            ),
+            style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
           ),
         ),
         ElevatedButton(

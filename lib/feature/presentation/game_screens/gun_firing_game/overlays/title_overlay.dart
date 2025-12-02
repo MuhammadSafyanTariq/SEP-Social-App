@@ -23,14 +23,11 @@ class _TitleOverlayState extends State<TitleOverlay> {
   void initState() {
     super.initState();
 
-    Future.delayed(
-      const Duration(milliseconds: 0),
-      () {
-        setState(() {
-          _opacity = 1.0;
-        });
-      },
-    );
+    Future.delayed(const Duration(milliseconds: 0), () {
+      setState(() {
+        _opacity = 1.0;
+      });
+    });
   }
 
   Future<void> _handleGameStart() async {
@@ -97,10 +94,7 @@ class _TitleOverlayState extends State<TitleOverlay> {
         child: Column(
           children: [
             const SizedBox(height: 60),
-            SizedBox(
-              width: 270,
-              child: Image.asset('assets/images/title.png'),
-            ),
+            SizedBox(width: 270, child: Image.asset('assets/images/title.png')),
             const SizedBox(height: 20),
             Row(
               mainAxisSize: MainAxisSize.min,
@@ -165,7 +159,8 @@ class _TitleOverlayState extends State<TitleOverlay> {
                 alignment: Alignment.bottomRight,
                 child: Padding(
                   padding: const EdgeInsets.all(10),
-                  child: Material(   // <-- Add this
+                  child: Material(
+                    // <-- Add this
                     color: Colors.transparent,
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -209,7 +204,6 @@ class _TitleOverlayState extends State<TitleOverlay> {
                 ),
               ),
             ),
-
           ],
         ),
       ),

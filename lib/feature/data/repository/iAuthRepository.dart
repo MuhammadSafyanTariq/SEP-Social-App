@@ -1491,10 +1491,7 @@ class IAuthRepository implements AuthRepository {
   }) async {
     final result = await post(
       url: Urls.deductGameTokens,
-      data: {
-        "userId": Preferences.uid,
-        "amount": amount,
-      },
+      data: {"userId": Preferences.uid, "amount": amount},
       enableAuthToken: true,
     );
 
