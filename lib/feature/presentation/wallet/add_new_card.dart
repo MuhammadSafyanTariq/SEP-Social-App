@@ -124,6 +124,27 @@ class _AddNewCardState extends State<AddNewCard> with TickerProviderStateMixin {
               // CardValidationState.Incomplete
               // CardValidationState.Valid
               _cardDetails = card;
+
+              // Detect card type from brand
+              if (card?.brand != null) {
+                switch (card!.brand) {
+                  case CardBrand.Visa:
+                    cardType = 'Visa';
+                    break;
+                  case CardBrand.Mastercard:
+                    cardType = 'Mastercard';
+                    break;
+                  case CardBrand.Amex:
+                    cardType = 'American Express';
+                    break;
+                  case CardBrand.Discover:
+                    cardType = 'Discover';
+                    break;
+                  default:
+                    cardType = card.brand.toString().split('.').last;
+                }
+              }
+
               isFormValid =
                   card?.complete == true &&
                   cardHolderNameController.text.trim().isNotEmpty;
@@ -156,11 +177,7 @@ class _AddNewCardState extends State<AddNewCard> with TickerProviderStateMixin {
         );
 
     _animationController.forward();
-    cardNumberController.addListener(_validateForm);
-    expiryDateController.addListener(_validateForm);
-    cvvController.addListener(_validateForm);
     cardHolderNameController.addListener(_validateForm);
-    cardNumberController.addListener(_detectCardType);
 
     cardHolderNameController.addListener(() {
       setState(() {
@@ -190,32 +207,11 @@ class _AddNewCardState extends State<AddNewCard> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  void _detectCardType() {
-    String number = cardNumberController.text.replaceAll(' ', '');
-    String newCardType = '';
-
-    if (number.startsWith('4')) {
-      newCardType = 'Visa';
-    } else if (number.startsWith('5') || number.startsWith('2')) {
-      newCardType = 'Mastercard';
-    } else if (number.startsWith('3')) {
-      newCardType = 'American Express';
-    } else if (number.startsWith('6')) {
-      newCardType = 'Discover';
-    }
-
-    if (newCardType != cardType) {
-      setState(() {
-        cardType = newCardType;
-      });
-    }
-  }
-
   void _validateForm() {
+    // Validation is handled by CardField's onCardChanged callback
+    // This method is kept for the cardHolderNameController listener
     bool valid =
-        cardNumberController.text.replaceAll(' ', '').length >= 13 &&
-        expiryDateController.text.length == 5 &&
-        cvvController.text.length >= 3 &&
+        (_cardDetails?.complete == true) &&
         cardHolderNameController.text.trim().isNotEmpty;
 
     if (valid != isFormValid) {
@@ -283,13 +279,50 @@ class _AddNewCardState extends State<AddNewCard> with TickerProviderStateMixin {
 
       AppUtils.log('Stripe PaymentMethod created: ${paymentMethod.id}');
 
-      final responseData = await PaymentRepo.token(
+      var customerId = profileCtrl.profileData.value.stripeCustomerId ?? "";
+
+      var responseData = await PaymentRepo.token(
         paymentMethodId: paymentMethod.id,
-        customerId: profileCtrl.profileData.value.stripeCustomerId ?? "",
+        customerId: customerId,
       );
 
       AppUtils.log("Token API raw response: $responseData");
       AppUtils.log("Token API isSuccess: ${responseData.isSuccess}");
+
+      // If customer doesn't exist, recreate it
+      if (responseData.isSuccess == false &&
+          responseData.error.toString().contains("No such customer")) {
+        AppUtils.log("Customer doesn't exist, recreating...");
+
+        final email = profileCtrl.profileData.value.email ?? "";
+        if (email.isEmpty) {
+          AppUtils.toast("Unable to recreate customer: Email not found");
+          return;
+        }
+
+        final createCustomerResponse = await PaymentRepo.createAccountStripe(
+          email: email,
+        );
+
+        if (createCustomerResponse.isSuccess &&
+            createCustomerResponse.data != null) {
+          customerId = createCustomerResponse.data!.stripeCustomerId ?? "";
+          AppUtils.log("New customer created: $customerId");
+
+          // Update profile with new customer ID
+          await profileCtrl.getProfileDetails();
+
+          // Retry attaching payment method with new customer ID
+          responseData = await PaymentRepo.token(
+            paymentMethodId: paymentMethod.id,
+            customerId: customerId,
+          );
+          AppUtils.log("Retry token API response: $responseData");
+        } else {
+          AppUtils.toast("Failed to recreate customer. Please try again.");
+          return;
+        }
+      }
 
       if (responseData.isSuccess == true) {
         AppUtils.toast("Card Added Successfully");
@@ -305,6 +338,7 @@ class _AddNewCardState extends State<AddNewCard> with TickerProviderStateMixin {
       }
     } catch (e, stacktrace) {
       AppUtils.log('Stripe error: $e\n$stacktrace');
+      AppUtils.toast("An error occurred. Please try again.");
     } finally {
       setState(() {
         isCreatingToken = false;

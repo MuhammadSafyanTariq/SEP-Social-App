@@ -181,24 +181,21 @@ class PaymentRepo {
   }) async {
     try {
       AppUtils.log(
-        "Deducting wallet balance - UserId: $userId, Amount: $amount, Purpose: $purpose",
+        "Deducting wallet balance - UserId: $userId, Amount: \$${amount}, Purpose: $purpose",
       );
 
+      // Use the new simplified deduct balance endpoint
       final response = await _apiMethod.post(
-        url: Urls.moneyWalletTransaction, // Use proper transaction endpoint
-        body: {
-          "userId": userId,
-          "amount": amount.toStringAsFixed(2),
-          "type": "debit", // debit for deduction
-          "description": purpose,
-          "category": "advertisement_boost",
-        },
+        url: Urls.deductBalance,
+        authToken: Preferences.authToken,
+        body: {"userId": userId, "amount": amount},
         headers: {'Content-Type': 'application/json'},
       );
 
       AppUtils.log("Wallet deduction API response: ${response.toJson()}");
 
       if (response.isSuccess) {
+        AppUtils.log("Wallet balance deducted successfully");
         return ResponseData(isSuccess: true, data: response.data ?? {});
       } else {
         AppUtils.log("Wallet deduction failed: ${response.error}");

@@ -118,12 +118,13 @@ class GameManager {
         return false;
       }
 
-      // Call backend API to deduct tokens
+      // Use the new simplified deduct tokens endpoint
       final repository = IAuthRepository();
       final response = await repository.deductGameTokens(amount: amount);
 
       if (!response.isSuccess) {
         AppUtils.toastError('Failed to deduct tokens');
+        AppUtils.log('Token deduction failed: ${response.getError}');
         return false;
       }
 
@@ -134,7 +135,7 @@ class GameManager {
 
       final newBalance = profileCtrl.profileData.value.actualTokenBalance;
       AppUtils.log('Token balance updated: $currentBalance -> $newBalance');
-      AppUtils.toast('$amount tokens deducted');
+      AppUtils.toast('$amount tokens deducted for game');
 
       return true;
     } catch (e) {

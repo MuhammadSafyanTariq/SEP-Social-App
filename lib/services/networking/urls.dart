@@ -154,8 +154,10 @@ class Urls {
 
   // Token Purchase
   static const String tokenPurchase = '/api/tokenPurchase/purchase';
+  static const String deductBalance = '/api/tokenPurchase/deduct-balance';
+  static const String deductTokens = '/api/tokenPurchase/deduct-tokens';
 
-  // Game Tokens
+  // Game Tokens (deprecated - use deductTokens instead)
   static const String deductGameTokens = '/api/game/deduct-tokens';
 
   // User Product

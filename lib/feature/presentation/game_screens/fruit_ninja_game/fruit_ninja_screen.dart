@@ -33,7 +33,15 @@ class _FruitNinjaScreenState extends State<FruitNinjaScreen> {
     final game = FruitGame(storage);
     // Set the start game callback
     game.onStartGameCallback = _handleGameStart;
+    // Set the quit game callback
+    game.onQuit = _handleQuit;
     return game;
+  }
+
+  void _handleQuit() {
+    if (mounted) {
+      Navigator.of(context).pop();
+    }
   }
 
   Future<void> _handleGameStart(FruitGame game) async {

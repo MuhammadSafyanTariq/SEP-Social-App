@@ -302,10 +302,27 @@ class _AddProfileState extends State<AddProfile> {
         AppUtils.log("🔄 Loading state reset to false");
       }
 
-      // If the error is not empty, show it to the user
-      if (e.toString().isNotEmpty) {
-        showErrorDialog("Registration failed: ${e.toString()}");
+      // Provide user-friendly error messages
+      String errorMessage = "Registration failed. Please try again.";
+
+      if (e.toString().contains("500") ||
+          e.toString().toLowerCase().contains("server error")) {
+        errorMessage =
+            "Server error occurred. Our team is working on it. Please try again later or contact support.";
+      } else if (e.toString().toLowerCase().contains("network") ||
+          e.toString().toLowerCase().contains("connection")) {
+        errorMessage =
+            "Network error. Please check your internet connection and try again.";
+      } else if (e.toString().toLowerCase().contains("email") &&
+          e.toString().toLowerCase().contains("exists")) {
+        errorMessage =
+            "This email is already registered. Please use a different email or try logging in.";
+      } else if (e.toString().isNotEmpty &&
+          !e.toString().toLowerCase().contains("exception")) {
+        errorMessage = "Registration failed: ${e.toString()}";
       }
+
+      showErrorDialog(errorMessage);
     }
   }
 

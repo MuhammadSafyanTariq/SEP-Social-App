@@ -14,6 +14,7 @@ import 'package:sep/feature/presentation/game_screens/fruit_ninja_game/component
 import 'package:sep/feature/presentation/game_screens/fruit_ninja_game/components/music_button.dart';
 import 'package:sep/feature/presentation/game_screens/fruit_ninja_game/components/score_display.dart';
 import 'package:sep/feature/presentation/game_screens/fruit_ninja_game/components/sound_button.dart';
+import 'package:sep/feature/presentation/game_screens/fruit_ninja_game/components/close_button.dart';
 import 'package:sep/feature/presentation/game_screens/fruit_ninja_game/components/start_button.dart';
 import 'package:sep/feature/presentation/game_screens/fruit_ninja_game/components/lives_display.dart';
 import 'package:sep/feature/presentation/game_screens/fruit_ninja_game/controllers/spawner.dart';
@@ -33,6 +34,7 @@ class FruitGame extends Game {
   late StartButton startButton;
   late MusicButton musicButton;
   late SoundButton soundButton;
+  late CloseButton closeButton;
   late ScoreDisplay scoreDisplay;
   late HighscoreDisplay highscoreDisplay;
   late LivesDisplay livesDisplay;
@@ -49,6 +51,9 @@ class FruitGame extends Game {
 
   // Callback for handling game start (with token logic)
   Function(FruitGame)? onStartGameCallback;
+
+  // Callback for quitting the game
+  VoidCallback? onQuit;
 
   FruitGame(this.storage);
 
@@ -112,6 +117,7 @@ class FruitGame extends Game {
     startButton = StartButton(this);
     musicButton = MusicButton(this);
     soundButton = SoundButton(this);
+    closeButton = CloseButton(this);
     scoreDisplay = ScoreDisplay(this);
     highscoreDisplay = HighscoreDisplay(this);
     livesDisplay = LivesDisplay(this);
@@ -187,6 +193,7 @@ class FruitGame extends Game {
     }
     musicButton.render(canvas);
     soundButton.render(canvas);
+    closeButton.render(canvas);
   }
 
   @override
@@ -223,6 +230,7 @@ class FruitGame extends Game {
     startButton.resize();
     musicButton.resize();
     soundButton.resize();
+    closeButton.resize();
   }
 
   void onTapDown(TapDownDetails d) {
@@ -245,6 +253,12 @@ class FruitGame extends Game {
     // sound button
     if (!isHandled && soundButton.rect.contains(d.globalPosition)) {
       soundButton.onTapDown();
+      isHandled = true;
+    }
+
+    // close button
+    if (!isHandled && closeButton.rect.contains(d.globalPosition)) {
+      closeButton.onTapDown();
       isHandled = true;
     }
 

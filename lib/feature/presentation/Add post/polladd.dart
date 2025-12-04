@@ -19,6 +19,9 @@ import '../../../components/styles/app_strings.dart';
 import '../../../services/storage/preferences.dart';
 import '../../data/models/dataModels/Createpost/getcategory_model.dart';
 import '../controller/createpost/createpost_ctrl.dart';
+import '../controller/auth_Controller/profileCtrl.dart';
+import '../../data/repository/payment_repo.dart';
+import '../wallet/wallet_screen.dart';
 
 class AddPoll extends StatefulWidget {
   const AddPoll({super.key});
@@ -39,6 +42,8 @@ class _AddPollState extends State<AddPoll> {
 
   // Advertisement category tracking
   bool showAdvertisementWarning = false;
+  int advertisementDurationDays = 1; // Default 1 day
+  double advertisementPrice = 5.0; // $5 per day
 
   @override
   void initState() {
@@ -185,10 +190,14 @@ class _AddPollState extends State<AddPoll> {
 
   Categories? localSelectedCategory;
 
-  // Check if category is advertisement related
-  // Payment logic removed - advertisements are now free
-  bool _isAdvertisementCategory(String? categoryName) {
-    return false; // Always return false to bypass payment logic
+  // Check if category is advertisement
+  bool _isAdvertisementCategory(String? categoryId) {
+    return categoryId == '68eb8453d5e284efb554b401';
+  }
+
+  // Calculate advertisement price based on duration
+  double _calculateAdvertisementPrice() {
+    return advertisementDurationDays * 5.0; // $5 per day
   }
 
   String _getCategoryDisplayName(String? categoryName) {
@@ -216,14 +225,14 @@ class _AddPollState extends State<AddPoll> {
               ),
               title: Row(
                 children: [
-                  Icon(Icons.campaign, color: Colors.orange),
+                  Icon(Icons.campaign, color: AppColors.btnColor),
                   SizedBox(width: 8),
                   TextView(
-                    text: "Advertisement Boost",
+                    text: "Advertisement Payment",
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: Colors.orange.shade800,
+                      color: AppColors.btnColor,
                     ),
                   ),
                 ],
@@ -241,15 +250,18 @@ class _AddPollState extends State<AddPoll> {
                   Container(
                     padding: EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.orange.shade50,
+                      color: AppColors.btnColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.orange.shade200),
+                      border: Border.all(
+                        color: AppColors.btnColor.withOpacity(0.3),
+                      ),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         TextView(
-                          text: "• Cost: \$5.00 USD",
+                          text:
+                              "• Cost: \$${advertisementPrice.toStringAsFixed(2)} USD",
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
@@ -257,7 +269,8 @@ class _AddPollState extends State<AddPoll> {
                         ),
                         SizedBox(height: 4),
                         TextView(
-                          text: "• Duration: 24 hours boost",
+                          text:
+                              "• Duration: $advertisementDurationDays ${advertisementDurationDays == 1 ? 'day' : 'days'}",
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
@@ -265,7 +278,7 @@ class _AddPollState extends State<AddPoll> {
                         ),
                         SizedBox(height: 4),
                         TextView(
-                          text: "• Benefits: Higher visibility and reach",
+                          text: "• Auto-deletion after expiry",
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
@@ -274,6 +287,11 @@ class _AddPollState extends State<AddPoll> {
                       ],
                     ),
                   ),
+                  SizedBox(height: 16),
+                  TextView(
+                    text: "Amount will be deducted from your wallet balance.",
+                    style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                  ),
                 ],
               ),
               actions: [
@@ -281,22 +299,127 @@ class _AddPollState extends State<AddPoll> {
                   onPressed: () => Navigator.of(context).pop(false),
                   child: TextView(
                     text: "Cancel",
-                    style: TextStyle(color: Colors.grey.shade600),
+                    style: TextStyle(color: Colors.grey[600], fontSize: 16),
                   ),
                 ),
                 ElevatedButton(
-                  onPressed: () => Navigator.of(context).pop(true),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange,
+                    backgroundColor: AppColors.btnColor,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(10),
                     ),
+                    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                   ),
+                  onPressed: () => Navigator.of(context).pop(true),
                   child: TextView(
-                    text: "Pay \$5 & Boost",
+                    text: "Pay \$${advertisementPrice.toStringAsFixed(2)}",
                     style: TextStyle(
                       color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+  }
+
+  Future<bool> _showInsufficientBalanceDialog(BuildContext context) async {
+    return await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: Row(
+                children: [
+                  Icon(Icons.account_balance_wallet, color: Colors.red),
+                  SizedBox(width: 8),
+                  TextView(
+                    text: "Insufficient Balance",
+                    style: TextStyle(
+                      fontSize: 20,
                       fontWeight: FontWeight.bold,
+                      color: Colors.red,
+                    ),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextView(
+                    text:
+                        "You don't have enough balance to post this advertisement.",
+                    style: TextStyle(fontSize: 16),
+                  ),
+                  SizedBox(height: 16),
+                  Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.red.withOpacity(0.3)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        TextView(
+                          text:
+                              "Required: \$${advertisementPrice.toStringAsFixed(2)}",
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        TextView(
+                          text:
+                              "Your Balance: \$${(Get.find<ProfileCtrl>().profileData.value.walletBalance ?? 0).toStringAsFixed(2)}",
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  TextView(
+                    text: "Please add credit to your wallet to continue.",
+                    style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: TextView(
+                    text: "Cancel",
+                    style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                  ),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.btnColor,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  ),
+                  onPressed: () => Navigator.of(context).pop(true),
+                  child: TextView(
+                    text: "Add Credit",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
@@ -312,34 +435,120 @@ class _AddPollState extends State<AddPoll> {
       width: double.infinity,
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.orange.shade50,
+        color: AppColors.btnColor.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.orange.shade200),
+        border: Border.all(color: AppColors.btnColor.withOpacity(0.3)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.campaign, color: Colors.orange.shade600, size: 24),
-          SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                TextView(
+          Row(
+            children: [
+              Icon(Icons.campaign, color: AppColors.btnColor, size: 24),
+              SizedBox(width: 12),
+              Expanded(
+                child: TextView(
                   text: "Advertisement Category",
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: Colors.orange.shade800,
+                    color: AppColors.btnColor,
                   ),
                 ),
-                SizedBox(height: 4),
+              ),
+            ],
+          ),
+          SizedBox(height: 12),
+          TextView(
+            text: "Select advertisement duration:",
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.black87,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          SizedBox(height: 12),
+          DropdownButtonFormField<int>(
+            value: advertisementDurationDays,
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(
+                  color: AppColors.btnColor.withOpacity(0.3),
+                ),
+              ),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 12,
+              ),
+            ),
+            items: List.generate(10, (index) => index + 1)
+                .map(
+                  (days) => DropdownMenuItem(
+                    value: days,
+                    child: Text(
+                      '$days ${days == 1 ? 'day' : 'days'} - \$${(days * 5).toStringAsFixed(2)}',
+                      style: TextStyle(fontSize: 14),
+                    ),
+                  ),
+                )
+                .toList(),
+            onChanged: (value) {
+              setState(() {
+                advertisementDurationDays = value!;
+                advertisementPrice = _calculateAdvertisementPrice();
+              });
+            },
+          ),
+          SizedBox(height: 12),
+          Container(
+            padding: EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColors.btnColor.withOpacity(0.3)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
                 TextView(
-                  text:
-                      "Selecting advertisement as category will charge you \$5 and your poll will be boosted for 24 hours",
-                  style: TextStyle(fontSize: 14, color: Colors.orange.shade700),
+                  text: "Total Cost:",
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.btnColor,
+                  ),
+                ),
+                TextView(
+                  text: "\$${advertisementPrice.toStringAsFixed(2)} USD",
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.btnColor,
+                  ),
                 ),
               ],
             ),
+          ),
+          SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(Icons.info_outline, size: 16, color: AppColors.btnColor),
+              SizedBox(width: 6),
+              Expanded(
+                child: TextView(
+                  text:
+                      "Poll will be automatically deleted after $advertisementDurationDays ${advertisementDurationDays == 1 ? 'day' : 'days'}",
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.black87,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -393,19 +602,108 @@ class _AddPollState extends State<AddPoll> {
                         }
 
                         final categoryId = selectedCategory?.id ?? '';
+
+                        // Check if advertisement category and handle payment
+                        if (_isAdvertisementCategory(categoryId)) {
+                          AppUtils.log(
+                            "Advertisement category selected, checking balance...",
+                          );
+
+                          // Check wallet balance first
+                          final profileCtrl = Get.find<ProfileCtrl>();
+                          final currentBalance =
+                              (profileCtrl.profileData.value.walletBalance ?? 0)
+                                  .toDouble();
+                          final requiredAmount = advertisementPrice;
+
+                          AppUtils.log(
+                            "Current balance: \$$currentBalance, Required: \$$requiredAmount",
+                          );
+
+                          if (currentBalance < requiredAmount) {
+                            // Show insufficient balance dialog
+                            final shouldAddCredit =
+                                await _showInsufficientBalanceDialog(context);
+                            if (shouldAddCredit) {
+                              // Navigate to wallet screen
+                              context.pushNavigator(WalletScreen());
+                            }
+                            return;
+                          }
+
+                          // Show confirmation dialog
+                          final shouldProceed =
+                              await _showAdvertisementPaymentDialog(context);
+                          if (!shouldProceed) {
+                            AppUtils.log("User canceled advertisement payment");
+                            return;
+                          }
+
+                          // Deduct from wallet
+                          try {
+                            final userId = Preferences.uid;
+                            if (userId == null) {
+                              AppUtils.toastError("User information not found");
+                              return;
+                            }
+
+                            final response = await PaymentRepo.deductWalletBalance(
+                              userId: userId,
+                              amount: requiredAmount,
+                              purpose:
+                                  "Advertisement poll - $advertisementDurationDays ${advertisementDurationDays == 1 ? 'day' : 'days'}",
+                            );
+
+                            if (!response.isSuccess) {
+                              AppUtils.toastError(
+                                "Wallet deduction failed. Please try again.",
+                              );
+                              return;
+                            }
+
+                            // Refresh profile to update balance
+                            await profileCtrl.getProfileDetails();
+
+                            AppUtils.log(
+                              "Advertisement payment completed successfully",
+                            );
+                          } catch (e) {
+                            AppUtils.log("Advertisement payment failed: $e");
+                            AppUtils.toastError(
+                              "Payment failed. Please try again.",
+                            );
+                            return;
+                          }
+                        }
+
                         final start = '';
                         final end = '';
-                        final durationInHours =
-                            int.tryParse(
-                              localSelectedCategory?.name?.replaceAll(
-                                    RegExp(r'[^0-9]'),
-                                    '',
-                                  ) ??
-                                  '24',
-                            ) ??
-                            24; // Default to 24 hours if parsing fails
-                        final durationInMinutes = (durationInHours * 60)
-                            .toString();
+
+                        // Calculate duration based on category type
+                        String durationInMinutes;
+                        if (_isAdvertisementCategory(categoryId)) {
+                          // For advertisements: convert days to minutes
+                          durationInMinutes =
+                              (advertisementDurationDays * 24 * 60).toString();
+                          AppUtils.log(
+                            "Advertisement poll - Duration: $advertisementDurationDays days ($durationInMinutes minutes)",
+                          );
+                        } else {
+                          // For regular polls: use selected poll duration
+                          final durationInHours =
+                              int.tryParse(
+                                localSelectedCategory?.name?.replaceAll(
+                                      RegExp(r'[^0-9]'),
+                                      '',
+                                    ) ??
+                                    '24',
+                              ) ??
+                              24;
+                          durationInMinutes = (durationInHours * 60).toString();
+                          AppUtils.log(
+                            "Regular poll - Duration: $durationInHours hours ($durationInMinutes minutes)",
+                          );
+                        }
 
                         try {
                           await CreatePostCtrl.find
@@ -599,9 +897,7 @@ class _AddPollState extends State<AddPoll> {
                                     setState(() {
                                       selectedCategory = category;
                                       showAdvertisementWarning =
-                                          _isAdvertisementCategory(
-                                            category.name,
-                                          );
+                                          _isAdvertisementCategory(category.id);
                                     });
                                     Navigator.pop(context);
                                   },

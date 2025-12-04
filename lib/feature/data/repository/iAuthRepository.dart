@@ -601,8 +601,24 @@ class IAuthRepository implements AuthRepository {
 
       // Add price field for advertisement category (ID: 68eb8453d5e284efb554b401)
       if (categoryId == '68eb8453d5e284efb554b401') {
-        requestBody['price'] = 5; // $5 for advertisement posts
-        AppUtils.log("Advertisement category detected, adding \$5 price");
+        // Calculate price based on duration (duration is in days for posts, minutes for polls)
+        int durationDays;
+        if (fileType == 'poll') {
+          // For polls, duration is in minutes, convert to days
+          final durationMinutes =
+              int.tryParse(duration ?? '1440') ?? 1440; // Default 1 day
+          durationDays = (durationMinutes / (24 * 60)).ceil();
+        } else {
+          // For posts, duration is already in days
+          durationDays = int.tryParse(duration ?? '1') ?? 1;
+        }
+
+        final price = durationDays * 5; // $5 per day
+        requestBody['price'] = price;
+        requestBody['advertisementDurationDays'] = durationDays;
+        AppUtils.log(
+          "Advertisement category detected - Duration: $durationDays days, Price: \$$price",
+        );
       }
 
       AppUtils.log("Create Post Request: $requestBody");
@@ -1490,8 +1506,8 @@ class IAuthRepository implements AuthRepository {
     required int amount,
   }) async {
     final result = await post(
-      url: Urls.deductGameTokens,
-      data: {"userId": Preferences.uid, "amount": amount},
+      url: Urls.deductTokens,
+      data: {"userId": Preferences.uid, "tokens": amount},
       enableAuthToken: true,
     );
 

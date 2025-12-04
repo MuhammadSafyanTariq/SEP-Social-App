@@ -22,21 +22,55 @@ class GetStripeCtrl extends GetxController {
   Future<void> fetchCards() async {
     isLoading.value = true;
 
-    // try {
-    AppUtils.log(
-      "Fetching cards for user: ${profileCtrl.profileData.value.email ?? ""}",
-    );
+    try {
+      AppUtils.log(
+        "Fetching cards for user: ${profileCtrl.profileData.value.email ?? ""}",
+      );
 
-    final response = await PaymentRepo.getCardList();
+      var response = await PaymentRepo.getCardList();
 
-    if (response.isSuccess) {
-      cardList.value = response.data ?? [];
-      selectedCardId.value = response.data?.firstOrNull?.id ?? '';
-    } else {
-      AppUtils.log("Exception while fetching cards: ${response.getError}");
+      // If customer doesn't exist, recreate it
+      if (!response.isSuccess &&
+          (response.error?.toString().contains("No such customer") ?? false)) {
+        AppUtils.log("Customer doesn't exist during card fetch, recreating...");
+
+        final email = profileCtrl.profileData.value.email ?? "";
+        if (email.isNotEmpty) {
+          final createCustomerResponse = await PaymentRepo.createAccountStripe(
+            email: email,
+          );
+
+          if (createCustomerResponse.isSuccess &&
+              createCustomerResponse.data != null) {
+            final newCustomerId =
+                createCustomerResponse.data!.stripeCustomerId ?? "";
+            AppUtils.log(
+              "New customer created during card fetch: $newCustomerId",
+            );
+
+            // Update profile with new customer ID
+            await profileCtrl.getProfileDetails();
+
+            // Retry fetching cards with new customer ID
+            response = await PaymentRepo.getCardList();
+            AppUtils.log("Retry card fetch response: $response");
+          }
+        }
+      }
+
+      if (response.isSuccess) {
+        cardList.value = response.data ?? [];
+        selectedCardId.value = response.data?.firstOrNull?.id ?? '';
+      } else {
+        // Silently handle error - cards are optional for wallet-based payments
+        AppUtils.log("Could not fetch cards: ${response.getError}");
+      }
+    } catch (e) {
+      // Silently handle exception - cards are optional for wallet-based payments
+      AppUtils.log("Exception while fetching cards: $e");
+    } finally {
+      isLoading.value = false;
     }
-
-    isLoading.value = false;
 
     //   if (response.isSuccess && response.data != null && response.data!.isNotEmpty) {
     //     cardList.value = response.data!;
@@ -143,8 +177,7 @@ class GetStripeCtrl extends GetxController {
     required String currency,
   }) async {
     final cardId = selectedCardId.value;
-    final stripeCustomerId =
-        profileCtrl.profileData.value.stripeCustomerId ?? "";
+    var stripeCustomerId = profileCtrl.profileData.value.stripeCustomerId ?? "";
 
     if (cardId.isEmpty || stripeCustomerId.isEmpty) {
       final errorMsg = "Missing card or customer information";
@@ -157,11 +190,49 @@ class GetStripeCtrl extends GetxController {
     );
 
     try {
-      final response = await PaymentRepo.payment(
+      var response = await PaymentRepo.payment(
         paymentMethodId: cardId,
         amount: amount,
         currency: currency,
       );
+
+      // If customer doesn't exist, recreate it and retry
+      if (!response.isSuccess &&
+          (response.exception?.toString().contains("No such customer") ??
+              false)) {
+        AppUtils.log("Customer doesn't exist during payment, recreating...");
+
+        final email = profileCtrl.profileData.value.email ?? "";
+        if (email.isEmpty) {
+          throw Exception("Unable to recreate customer: Email not found");
+        }
+
+        final createCustomerResponse = await PaymentRepo.createAccountStripe(
+          email: email,
+        );
+
+        if (createCustomerResponse.isSuccess &&
+            createCustomerResponse.data != null) {
+          stripeCustomerId =
+              createCustomerResponse.data!.stripeCustomerId ?? "";
+          AppUtils.log(
+            "New customer created during payment: $stripeCustomerId",
+          );
+
+          // Update profile with new customer ID
+          await profileCtrl.getProfileDetails();
+
+          // Retry payment with new customer ID
+          response = await PaymentRepo.payment(
+            paymentMethodId: cardId,
+            amount: amount,
+            currency: currency,
+          );
+          AppUtils.log("Retry payment API response: $response");
+        } else {
+          throw Exception("Failed to recreate customer for payment");
+        }
+      }
 
       AppUtils.log(
         "Payment API Response: isSuccess=${response.isSuccess}, data=${response.data}, exception=${response.exception}",
