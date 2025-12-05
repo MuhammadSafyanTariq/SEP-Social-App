@@ -24,7 +24,9 @@ class _CommonBannerAdWidgetState extends State<CommonBannerAdWidget> {
     AppUtils.log('🎯 ========== AD WIDGET INIT ==========');
     AppUtils.log('🎯 Ad Unit ID: ${widget.adUnitId}');
     AppUtils.log('🎯 Ad Unit ID Length: ${widget.adUnitId.length}');
-    AppUtils.log('🎯 Ad Unit ID contains newline: ${widget.adUnitId.contains('\n')}');
+    AppUtils.log(
+      '🎯 Ad Unit ID contains newline: ${widget.adUnitId.contains('\n')}',
+    );
     AppUtils.log('🎯 Ad Unit ID trimmed: ${widget.adUnitId.trim()}');
     AppUtils.log('🎯 Package Name: com.app.sep');
     AppUtils.log('🎯 Creating BannerAd...');
@@ -57,7 +59,7 @@ class _CommonBannerAdWidgetState extends State<CommonBannerAdWidget> {
           AppUtils.log('   4. Ad unit not linked to this app in AdMob');
           AppUtils.log('   5. AdMob account payment setup incomplete');
           AppUtils.log('');
-          
+
           setState(() {
             _loadFailed = true;
             _errorMessage = 'Error ${error.code}: ${error.message}';
@@ -70,7 +72,7 @@ class _CommonBannerAdWidgetState extends State<CommonBannerAdWidget> {
         onAdClicked: (ad) => AppUtils.log('👆 Ad clicked'),
       ),
     )..load();
-    
+
     AppUtils.log('🎯 BannerAd.load() called');
   }
 
@@ -121,7 +123,7 @@ class _CommonBannerAdWidgetState extends State<CommonBannerAdWidget> {
         ),
       );
     }
-    
+
     if (!_isAdLoaded) {
       // Show loading placeholder while ad is loading
       return Container(
@@ -141,7 +143,9 @@ class _CommonBannerAdWidgetState extends State<CommonBannerAdWidget> {
                 height: 16,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.grey.shade500),
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    Colors.grey.shade500,
+                  ),
                 ),
               ),
               SizedBox(width: 8),
