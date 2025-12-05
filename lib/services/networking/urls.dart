@@ -14,8 +14,11 @@ const String agoraAppId = "1d34f3c04fe748049d660e3b23206f7a";
 const String agoraToken = "af707d9cf2ee4819b544571d71a3db93";
 // const String agoraToken = "ca274cfde6564e7ba8a88aae08025a06";
 
-const String AdroidAds = "ca-app-pub-3940256099942544/6300978111";
-const String IosAds = "ca-app-pub-3940256099942544/2934735716";
+// Google Test Ad IDs - Replace with your production IDs when AdMob is properly configured
+// Production ID (403 error - package mismatch): ca-app-pub-7164424730429677/2234858629
+// That ID is for package: Com.sep.media, but this app uses: com.app.sep
+const String AdroidAds = "ca-app-pub-3940256099942544/6300978111"; // Google Test Ad
+const String IosAds = "ca-app-pub-3940256099942544/2934735716"; // Google Test Ad
 
 // http://85.31.234.205:4004/data/user/0/com.app.sep/cache/65b325a8-8233-4fbc-99c6-81b5fe8bfd22/IMG_1609079159072.jpg
 class _Collection {
