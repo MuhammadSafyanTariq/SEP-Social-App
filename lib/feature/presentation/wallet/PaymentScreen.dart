@@ -72,6 +72,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[50],
+      resizeToAvoidBottomInset: true,
       body: Column(
         children: [
           // Custom AppBar2
@@ -88,12 +89,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
           ),
           // Main content
           Expanded(
-            child: Padding(
-              padding: EdgeInsets.all(20.sdp),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(height: 20.sdp),
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: EdgeInsets.all(20.sdp),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(height: 20.sdp),
                   TextView(
                     text: "Amount",
                     style: TextStyle(
@@ -261,7 +263,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     }).toList(),
                   ),
 
-                  Spacer(),
+                  SizedBox(height: 40.sdp),
                   AppButton(
                     radius: 20.sdp,
                     buttonColor: AppColors.greenlight,
@@ -274,8 +276,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     isFilledButton: true,
                     onTap: _onPay,
                   ),
+                  SizedBox(height: 20.sdp),
                 ],
               ),
+            ),
             ),
           ),
         ],
