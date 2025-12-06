@@ -96,190 +96,195 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     SizedBox(height: 20.sdp),
-                  TextView(
-                    text: "Amount",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black87,
+                    TextView(
+                      text: "Amount",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
                     ),
-                  ),
-                  SizedBox(height: 12.sdp),
-                  Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 20.sdp,
-                      vertical: 4.sdp,
-                    ),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: AppColors.greenlight, width: 2),
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20.sdp),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 8,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        TextView(
-                          text: selectedSymbol,
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.greenlight,
-                          ),
-                        ),
-                        SizedBox(width: 12.sdp),
-                        Expanded(
-                          child: TextField(
-                            maxLength: 5,
-                            controller: customAmountController,
-                            keyboardType: TextInputType.number,
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.black87,
-                            ),
-                            decoration: InputDecoration(
-                              hintText: "Enter amount",
-                              hintStyle: TextStyle(
-                                color: Colors.grey[400],
-                                fontSize: 16,
-                              ),
-                              border: InputBorder.none,
-                              counterText: "",
-                            ),
-                            onChanged: (_) {
-                              setState(() {
-                                selectedPackage = null;
-                              });
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(height: 20.sdp),
-
-                  Center(
-                    child: Container(
-                      padding: EdgeInsets.all(24.sdp),
+                    SizedBox(height: 12.sdp),
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 20.sdp,
+                        vertical: 4.sdp,
+                      ),
                       decoration: BoxDecoration(
+                        border: Border.all(
+                          color: AppColors.greenlight,
+                          width: 2,
+                        ),
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(20.sdp),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withOpacity(0.05),
-                            blurRadius: 10,
-                            offset: Offset(0, 4),
+                            blurRadius: 8,
+                            offset: Offset(0, 2),
                           ),
                         ],
                       ),
-                      child: Column(
+                      child: Row(
                         children: [
                           TextView(
-                            text:
-                                "$selectedSymbol${transactionAmount.toStringAsFixed(2)}",
+                            text: selectedSymbol,
                             style: TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w600,
                               color: AppColors.greenlight,
                             ),
                           ),
-                          SizedBox(height: 8.sdp),
-                          TextView(
-                            text: "Transaction Amount",
-                            style: TextStyle(
-                              color: Colors.grey[600],
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
+                          SizedBox(width: 12.sdp),
+                          Expanded(
+                            child: TextField(
+                              maxLength: 5,
+                              controller: customAmountController,
+                              keyboardType: TextInputType.number,
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.black87,
+                              ),
+                              decoration: InputDecoration(
+                                hintText: "Enter amount",
+                                hintStyle: TextStyle(
+                                  color: Colors.grey[400],
+                                  fontSize: 16,
+                                ),
+                                border: InputBorder.none,
+                                counterText: "",
+                              ),
+                              onChanged: (_) {
+                                setState(() {
+                                  selectedPackage = null;
+                                });
+                              },
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ),
-                  SizedBox(height: 24.sdp),
+                    SizedBox(height: 20.sdp),
 
-                  TextView(
-                    text: "Quick Amounts",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+                    Center(
+                      child: Container(
+                        padding: EdgeInsets.all(24.sdp),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20.sdp),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 10,
+                              offset: Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            TextView(
+                              text:
+                                  "$selectedSymbol${transactionAmount.toStringAsFixed(2)}",
+                              style: TextStyle(
+                                fontSize: 28,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.greenlight,
+                              ),
+                            ),
+                            SizedBox(height: 8.sdp),
+                            TextView(
+                              text: "Transaction Amount",
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
-                  SizedBox(height: 16.sdp),
+                    SizedBox(height: 24.sdp),
 
-                  Wrap(
-                    spacing: 12.sdp,
-                    runSpacing: 12.sdp,
-                    children: packages.map((amount) {
-                      final isSelected = selectedPackage == amount;
-                      return GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            selectedPackage = amount;
-                            customAmountController.text = amount.toString();
-                          });
-                        },
-                        child: Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 16.sdp,
-                            vertical: 16.sdp,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? AppColors.greenlight
-                                : Colors.white,
-                            borderRadius: BorderRadius.circular(20.sdp),
-                            border: Border.all(
+                    TextView(
+                      text: "Quick Amounts",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    SizedBox(height: 16.sdp),
+
+                    Wrap(
+                      spacing: 12.sdp,
+                      runSpacing: 12.sdp,
+                      children: packages.map((amount) {
+                        final isSelected = selectedPackage == amount;
+                        return GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              selectedPackage = amount;
+                              customAmountController.text = amount.toString();
+                            });
+                          },
+                          child: Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 16.sdp,
+                              vertical: 16.sdp,
+                            ),
+                            decoration: BoxDecoration(
                               color: isSelected
                                   ? AppColors.greenlight
-                                  : Colors.grey[300]!,
-                              width: 2,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
-                                blurRadius: 8,
-                                offset: Offset(0, 2),
+                                  : Colors.white,
+                              borderRadius: BorderRadius.circular(20.sdp),
+                              border: Border.all(
+                                color: isSelected
+                                    ? AppColors.greenlight
+                                    : Colors.grey[300]!,
+                                width: 2,
                               ),
-                            ],
-                          ),
-                          child: TextView(
-                            text: "$selectedSymbol$amount",
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: isSelected ? Colors.white : Colors.black87,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.05),
+                                  blurRadius: 8,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: TextView(
+                              text: "$selectedSymbol$amount",
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: isSelected
+                                    ? Colors.white
+                                    : Colors.black87,
+                              ),
                             ),
                           ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-
-                  SizedBox(height: 40.sdp),
-                  AppButton(
-                    radius: 20.sdp,
-                    buttonColor: AppColors.greenlight,
-                    label: "Continue",
-                    labelStyle: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
+                        );
+                      }).toList(),
                     ),
-                    isFilledButton: true,
-                    onTap: _onPay,
-                  ),
-                  SizedBox(height: 20.sdp),
-                ],
+
+                    SizedBox(height: 40.sdp),
+                    AppButton(
+                      radius: 20.sdp,
+                      buttonColor: AppColors.greenlight,
+                      label: "Continue",
+                      labelStyle: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                      isFilledButton: true,
+                      onTap: _onPay,
+                    ),
+                    SizedBox(height: 20.sdp),
+                  ],
+                ),
               ),
-            ),
             ),
           ),
         ],
