@@ -19,7 +19,7 @@ class PaymentScreen extends StatefulWidget {
 
 class _PaymentScreenState extends State<PaymentScreen> {
   String selectedCurrency = 'EUR';
-  String selectedSymbol = '\$';
+  String selectedSymbol = '€';
   int? selectedPackage;
   TextEditingController customAmountController = TextEditingController();
 
@@ -49,7 +49,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
       "Paying ${transactionAmount.toStringAsFixed(2)} $selectedCurrency",
     );
 
-    final amountInCents = (transactionAmount).toInt().toString();
+    // Convert amount to cents (Stripe requires smallest currency unit)
+    final amountInCents = (transactionAmount * 100).toInt().toString();
 
     await stripeCtrl
         .makePayment(amount: amountInCents, currency: selectedCurrency)

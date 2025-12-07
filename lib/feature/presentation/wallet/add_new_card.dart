@@ -289,44 +289,8 @@ class _AddNewCardState extends State<AddNewCard> with TickerProviderStateMixin {
       AppUtils.log("Token API raw response: $responseData");
       AppUtils.log("Token API isSuccess: ${responseData.isSuccess}");
 
-      // If customer doesn't exist, recreate it
-      if (responseData.isSuccess == false &&
-          responseData.error.toString().contains("No such customer")) {
-        AppUtils.log("Customer doesn't exist, recreating...");
-
-        final email = profileCtrl.profileData.value.email ?? "";
-        if (email.isEmpty) {
-          AppUtils.toast("Unable to recreate customer: Email not found");
-          return;
-        }
-
-        final createCustomerResponse = await PaymentRepo.createAccountStripe(
-          email: email,
-        );
-
-        if (createCustomerResponse.isSuccess &&
-            createCustomerResponse.data != null) {
-          customerId = createCustomerResponse.data!.stripeCustomerId ?? "";
-          AppUtils.log("New customer created: $customerId");
-
-          // Update profile with new customer ID
-          await profileCtrl.getProfileDetails();
-
-          // Retry attaching payment method with new customer ID
-          responseData = await PaymentRepo.token(
-            paymentMethodId: paymentMethod.id,
-            customerId: customerId,
-          );
-          AppUtils.log("Retry token API response: $responseData");
-        } else {
-          AppUtils.toast("Failed to recreate customer. Please try again.");
-          return;
-        }
-      }
-
       if (responseData.isSuccess == true) {
         AppUtils.toast("Card Added Successfully");
-        _addCard();
         context.pop();
         Future.delayed(Duration(milliseconds: 300), () {
           final stripeCtrl = Get.find<GetStripeCtrl>();
@@ -344,95 +308,6 @@ class _AddNewCardState extends State<AddNewCard> with TickerProviderStateMixin {
         isCreatingToken = false;
       });
     }
-  }
-
-  void _addCard() {
-    final cardNumber = cardNumberController.text;
-    final expiryDate = expiryDateController.text;
-    final cvv = cvvController.text;
-    final holderName = cardHolderNameController.text;
-
-    if (!_validateCardNumber(cardNumber)) {
-      AppUtils.toast("Please enter a valid card number");
-      return;
-    }
-    if (!_validateExpiryDate(expiryDate)) {
-      AppUtils.toast("Please enter a valid expiry date");
-      return;
-    }
-    if (!_validateCVV(cvv)) {
-      AppUtils.toast("Please enter a valid CVV");
-      return;
-    }
-    if (holderName.trim().isEmpty) {
-      AppUtils.toast("Please enter cardholder name");
-      return;
-    }
-
-    CreditCard newCard = CreditCard(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      cardNumber: cardNumber,
-      expiryDate: expiryDate,
-      cardHolderName: holderName,
-      cardType: cardType,
-      dateAdded: DateTime.now(),
-    );
-
-    widget.onCardAdded(newCard);
-    _showSuccessDialog();
-  }
-
-  void _showSuccessDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20.sdp),
-        ),
-        content: Padding(
-          padding: EdgeInsets.all(16.sdp),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.check_circle, color: AppColors.greenlight, size: 80),
-              SizedBox(height: 20.sdp),
-              TextView(
-                text: 'Card Added Successfully!',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              SizedBox(height: 12.sdp),
-              TextView(
-                text: 'Your payment method has been saved securely.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey[600], fontSize: 16),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          AppButton(
-            radius: 20.sdp,
-            buttonColor: AppColors.greenlight,
-            label: "Done",
-            labelStyle: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Colors.white,
-            ),
-            isFilledButton: true,
-            onTap: () {
-              Navigator.of(context).pop();
-              Navigator.of(context).pop();
-            },
-          ),
-        ],
-      ),
-    );
   }
 
   Widget _buildCardPreview() {

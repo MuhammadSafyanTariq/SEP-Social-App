@@ -29,35 +29,6 @@ class GetStripeCtrl extends GetxController {
 
       var response = await PaymentRepo.getCardList();
 
-      // If customer doesn't exist, recreate it
-      if (!response.isSuccess &&
-          (response.error?.toString().contains("No such customer") ?? false)) {
-        AppUtils.log("Customer doesn't exist during card fetch, recreating...");
-
-        final email = profileCtrl.profileData.value.email ?? "";
-        if (email.isNotEmpty) {
-          final createCustomerResponse = await PaymentRepo.createAccountStripe(
-            email: email,
-          );
-
-          if (createCustomerResponse.isSuccess &&
-              createCustomerResponse.data != null) {
-            final newCustomerId =
-                createCustomerResponse.data!.stripeCustomerId ?? "";
-            AppUtils.log(
-              "New customer created during card fetch: $newCustomerId",
-            );
-
-            // Update profile with new customer ID
-            await profileCtrl.getProfileDetails();
-
-            // Retry fetching cards with new customer ID
-            response = await PaymentRepo.getCardList();
-            AppUtils.log("Retry card fetch response: $response");
-          }
-        }
-      }
-
       if (response.isSuccess) {
         cardList.value = response.data ?? [];
         selectedCardId.value = response.data?.firstOrNull?.id ?? '';
@@ -194,45 +165,8 @@ class GetStripeCtrl extends GetxController {
         paymentMethodId: cardId,
         amount: amount,
         currency: currency,
+        customerId: stripeCustomerId,
       );
-
-      // If customer doesn't exist, recreate it and retry
-      if (!response.isSuccess &&
-          (response.exception?.toString().contains("No such customer") ??
-              false)) {
-        AppUtils.log("Customer doesn't exist during payment, recreating...");
-
-        final email = profileCtrl.profileData.value.email ?? "";
-        if (email.isEmpty) {
-          throw Exception("Unable to recreate customer: Email not found");
-        }
-
-        final createCustomerResponse = await PaymentRepo.createAccountStripe(
-          email: email,
-        );
-
-        if (createCustomerResponse.isSuccess &&
-            createCustomerResponse.data != null) {
-          stripeCustomerId =
-              createCustomerResponse.data!.stripeCustomerId ?? "";
-          AppUtils.log(
-            "New customer created during payment: $stripeCustomerId",
-          );
-
-          // Update profile with new customer ID
-          await profileCtrl.getProfileDetails();
-
-          // Retry payment with new customer ID
-          response = await PaymentRepo.payment(
-            paymentMethodId: cardId,
-            amount: amount,
-            currency: currency,
-          );
-          AppUtils.log("Retry payment API response: $response");
-        } else {
-          throw Exception("Failed to recreate customer for payment");
-        }
-      }
 
       AppUtils.log(
         "Payment API Response: isSuccess=${response.isSuccess}, data=${response.data}, exception=${response.exception}",
@@ -277,7 +211,10 @@ class GetStripeCtrl extends GetxController {
       // If we reach here, payment genuinely failed
       final errorMsg = response.exception?.toString() ?? "Payment failed";
       AppUtils.log("Payment API error: $errorMsg");
-      AppUtils.toastError("Payment failed");
+
+      // Show user-friendly error message based on error type
+      String userMessage = _getPaymentErrorMessage(errorMsg);
+      AppUtils.toastError(userMessage);
       throw Exception(errorMsg);
     } catch (e, stacktrace) {
       AppUtils.log("Exception during payment: $e");
@@ -304,7 +241,8 @@ class GetStripeCtrl extends GetxController {
       }
 
       // Genuine error
-      AppUtils.toastError("Payment failed");
+      String userMessage = _getPaymentErrorMessage(e.toString());
+      AppUtils.toastError(userMessage);
       if (e is! Exception) {
         throw Exception("Payment processing error: $e");
       }
@@ -464,5 +402,61 @@ class GetStripeCtrl extends GetxController {
 
       rethrow; // Re-throw to let caller handle the error
     }
+  }
+
+  /// Helper method to convert payment error messages into user-friendly text
+  String _getPaymentErrorMessage(String errorMsg) {
+    final errorLower = errorMsg.toLowerCase();
+
+    // Minimum amount errors
+    if (errorLower.contains('minimum charge amount') ||
+        errorLower.contains('amount must be greater')) {
+      return "Amount too small. Minimum charge is €0.50 for EUR.";
+    }
+
+    // Card declined errors
+    if (errorLower.contains('card was declined') ||
+        errorLower.contains('card declined')) {
+      if (errorLower.contains('insufficient') || errorLower.contains('funds')) {
+        return "Insufficient funds. Please use a different card or add funds.";
+      }
+      if (errorLower.contains('expired')) {
+        return "Your card has expired. Please use a different card.";
+      }
+      if (errorLower.contains('lost') || errorLower.contains('stolen')) {
+        return "This card cannot be used. Please use a different card.";
+      }
+      return "Your card was declined. Please try a different card.";
+    }
+
+    // Authentication/verification errors
+    if (errorLower.contains('authentication') ||
+        errorLower.contains('verify') ||
+        errorLower.contains('3d secure')) {
+      return "Card verification failed. Please try again or use a different card.";
+    }
+
+    // Processing errors
+    if (errorLower.contains('processing error') ||
+        errorLower.contains('unable to process')) {
+      return "Unable to process payment. Please try again.";
+    }
+
+    // Network/timeout errors
+    if (errorLower.contains('timeout') ||
+        errorLower.contains('network') ||
+        errorLower.contains('connection')) {
+      return "Connection error. Please check your internet and try again.";
+    }
+
+    // Invalid card errors
+    if (errorLower.contains('invalid card') ||
+        errorLower.contains('incorrect number') ||
+        errorLower.contains('incorrect cvc')) {
+      return "Invalid card details. Please check and try again.";
+    }
+
+    // Generic payment failed
+    return "Payment failed. Please try again or use a different card.";
   }
 }

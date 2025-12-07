@@ -77,11 +77,12 @@ class PaymentRepo {
     required String paymentMethodId,
     required String amount,
     required String currency,
+    required String customerId,
   }) async {
     final result = await _apiMethod.post(
       url: Urls.payment,
       body: {
-        'customerId': Preferences.profile?.stripeCustomerId ?? "",
+        'customerId': customerId,
         "paymentMethodId": paymentMethodId,
         "amount": amount,
         "currency": currency,
