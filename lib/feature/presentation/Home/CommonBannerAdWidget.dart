@@ -52,17 +52,21 @@ class _CommonBannerAdWidgetState extends State<CommonBannerAdWidget> {
           AppUtils.log('❌ Response Info: ${error.responseInfo}');
           AppUtils.log('❌ Ad Unit ID used: ${widget.adUnitId}');
           AppUtils.log('');
-          AppUtils.log('📋 Common Error Code 3 (HTTP 403) Causes:');
-          AppUtils.log('   1. Ad unit created less than 24 hours ago - WAIT');
-          AppUtils.log('   2. App not registered in AdMob dashboard');
-          AppUtils.log('   3. Package name mismatch (should be: com.app.sep)');
-          AppUtils.log('   4. Ad unit not linked to this app in AdMob');
-          AppUtils.log('   5. AdMob account payment setup incomplete');
+          AppUtils.log('📋 Common Error Code 3 (No Fill) - No ads available');
+          AppUtils.log('   This is normal and means AdMob has no ads to show');
+          AppUtils.log(
+            '   Error Code 403 would indicate a configuration issue',
+          );
           AppUtils.log('');
 
           setState(() {
             _loadFailed = true;
-            _errorMessage = 'Error ${error.code}: ${error.message}';
+            // Error code 3 = No fill (no ads available) - show friendly message
+            if (error.code == 3) {
+              _errorMessage = 'No Ads Available at the moment';
+            } else {
+              _errorMessage = 'Error ${error.code}: ${error.message}';
+            }
           });
           ad.dispose();
         },

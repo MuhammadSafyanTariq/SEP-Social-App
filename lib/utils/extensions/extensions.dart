@@ -23,21 +23,16 @@ extension TextEditControllerExtn on TextEditingController {
   String get getText => text.trim();
 }
 
-
-
-
 extension BannerAdExtension on Platform {
   static String get bannerAdUnitId {
     if (Platform.isAndroid) {
-      return AdroidAds;
+      return Urls.AdroidAds;
     } else if (Platform.isIOS) {
-      return IosAds;
+      return Urls.IosAds;
     }
     return '';
   }
 }
-
-
 
 extension SentDateTimeFormatter on String {
   String formatSentDateTime() {
@@ -87,8 +82,8 @@ extension NumExtn on num {
 }
 
 extension StringExtn on String {
-// password condition check....
-//   bool get isPassword => length > 6 && length < 25;
+  // password condition check....
+  //   bool get isPassword => length > 6 && length < 25;
   bool isEquals(String value) => compareTo(value) == 0;
 
   bool get isPinCode {
@@ -122,17 +117,17 @@ extension StringExtn on String {
     return num.tryParse(this) is num;
   }
 
-  int get getInt{
+  int get getInt {
     if (trim().isEmpty) return 0;
-    return int.tryParse(this)  ?? 0;
+    return int.tryParse(this) ?? 0;
   }
 
   num get getNum => num.parse(this);
 
   double? get getDouble => isNotNullEmpty
       ? isDouble
-          ? double.parse(this)
-          : null
+            ? double.parse(this)
+            : null
       : null;
 
   String get phoneNohide => replaceRange(5, length - 2, '*' * (length - 7));
@@ -181,7 +176,7 @@ extension stringNull on String? {
     if (nodeUrl.startsWith('/public')) {
       return '$mainUrl$nodeUrl';
     }
-    if(nodeUrl.startsWith('/')){
+    if (nodeUrl.startsWith('/')) {
       return '$mainUrl/public$nodeUrl';
     }
     return '$mainUrl/public/$nodeUrl';
@@ -203,8 +198,9 @@ extension stringNull on String? {
 
     // if (this!.length <12 || this!.length > 16) return false;
     if (this!.length < 7
-        // || this!.length > 16
-        ) return false;
+    // || this!.length > 16
+    )
+      return false;
     // if (this!.length != 13) return false;
     return _hasMatch(this, r'^[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\s\./0-9]*$');
   }

@@ -17,6 +17,7 @@ import 'package:sep/services/networking/apiMethods.dart';
 import 'package:sep/services/storage/preferences.dart';
 import 'package:sep/utils/appUtils.dart';
 import 'package:sep/utils/extensions/contextExtensions.dart';
+import 'package:sep/services/networking/urls.dart';
 import 'package:sep/feature/presentation/Home/CommonBannerAdWidget.dart';
 
 class JobsScreen extends StatefulWidget {
@@ -331,8 +332,8 @@ class _JobsScreenState extends State<JobsScreen> {
                             Expanded(
                               child: CommonBannerAdWidget(
                                 adUnitId: Platform.isAndroid
-                                    ? 'ca-app-pub-7164424730429677/2234858629'
-                                    : 'ca-app-pub-7164424730429677/2234858629',
+                                    ? Urls.AdroidAds
+                                    : Urls.IosAds,
                               ),
                             ),
                             SizedBox(width: 8),

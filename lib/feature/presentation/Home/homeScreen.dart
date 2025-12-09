@@ -6,6 +6,7 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:sep/feature/presentation/Home/reels_screen.dart';
 import 'package:sep/feature/presentation/chatScreens/chatScreen.dart';
+import 'package:sep/services/networking/urls.dart';
 import 'package:sep/feature/presentation/Home/homeScreenComponents/auto_play_video_player.dart';
 
 import 'package:sep/feature/presentation/controller/auth_Controller/profileCtrl.dart';
@@ -452,8 +453,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     Expanded(
                       child: CommonBannerAdWidget(
                         adUnitId: Platform.isAndroid
-                            ? 'ca-app-pub-7164424730429677/2234858629'
-                            : 'ca-app-pub-7164424730429677/2234858629',
+                            ? Urls.AdroidAds
+                            : Urls.IosAds,
                       ),
                     ),
                     SizedBox(width: 8),
