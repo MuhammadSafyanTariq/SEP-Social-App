@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:sep/utils/game_messages.dart';
 
 import '../my_game.dart';
 
@@ -18,14 +19,11 @@ class _GameOverOverlayState extends State<GameOverOverlay> {
   void initState() {
     super.initState();
 
-    Future.delayed(
-      const Duration(milliseconds: 0),
-      () {
-        setState(() {
-          _opacity = 1.0;
-        });
-      },
-    );
+    Future.delayed(const Duration(milliseconds: 0), () {
+      setState(() {
+        _opacity = 1.0;
+      });
+    });
   }
 
   @override
@@ -52,6 +50,19 @@ class _GameOverOverlayState extends State<GameOverOverlay> {
                 fontWeight: FontWeight.bold,
               ),
             ),
+            const SizedBox(height: 20),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40),
+              child: Text(
+                GameMessages.getShootingGameMessage(),
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 18,
+                  color: Colors.yellowAccent,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
             const SizedBox(height: 30),
             TextButton(
               onPressed: () {
@@ -62,8 +73,10 @@ class _GameOverOverlayState extends State<GameOverOverlay> {
                 });
               },
               style: TextButton.styleFrom(
-                padding:
-                    const EdgeInsets.symmetric(vertical: 10, horizontal: 25),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 10,
+                  horizontal: 25,
+                ),
                 backgroundColor: Colors.blue,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(50),
@@ -71,10 +84,7 @@ class _GameOverOverlayState extends State<GameOverOverlay> {
               ),
               child: Text(
                 'PLAY AGAIN',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 28,
-                ),
+                style: TextStyle(color: Colors.white, fontSize: 28),
               ),
             ),
             const SizedBox(height: 15),
@@ -87,8 +97,10 @@ class _GameOverOverlayState extends State<GameOverOverlay> {
                 });
               },
               style: TextButton.styleFrom(
-                padding:
-                    const EdgeInsets.symmetric(vertical: 10, horizontal: 25),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 10,
+                  horizontal: 25,
+                ),
                 backgroundColor: Colors.blue,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(50),
@@ -96,10 +108,7 @@ class _GameOverOverlayState extends State<GameOverOverlay> {
               ),
               child: Text(
                 'QUIT GAME',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 28,
-                ),
+                style: TextStyle(color: Colors.white, fontSize: 28),
               ),
             ),
           ],

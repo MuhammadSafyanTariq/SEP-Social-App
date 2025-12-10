@@ -142,6 +142,7 @@ class AppImages {
   static const String flappyBird = '${_path}flappyBird.png';
   static const String shootinggameImag = '${_path}shootinggameImag.webp';
   static const String fruitNinja = '${_path}fruitNinja.png';
+  static const String game2048 = '${_path}2048.png';
   static const String snakeImg = '${_path}snakeImg.jpeg';
   static const String sportImg = '${_path}sportImg.webp';
   static const String walletImg = '${_path}walletImg.png';

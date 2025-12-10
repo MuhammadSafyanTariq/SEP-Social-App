@@ -11,6 +11,7 @@ import 'package:sep/components/styles/appImages.dart';
 import 'package:sep/components/styles/app_strings.dart';
 import 'package:sep/feature/presentation/game_screens/gun_firing_game/gun_firing_Screen.dart';
 import 'package:sep/feature/presentation/game_screens/fruit_ninja_game/fruit_ninja_screen.dart';
+import 'package:sep/feature/presentation/game_screens/game_2048/game_2048_screen.dart';
 import 'package:sep/services/game/game_manager.dart';
 import 'package:sep/utils/extensions/contextExtensions.dart';
 import 'package:sep/utils/extensions/size.dart';
@@ -510,6 +511,17 @@ Sign up the app using refer code: $referralCode
                 backgroundColor: AppColors.white,
                 onTap: () {
                   context.pushNavigator(FruitNinjaScreen());
+                },
+              ),
+              _buildEnhancedGameCard(
+                context,
+                gameId: GameManager.GAME_2048,
+                title: '2048',
+                subtitle: '',
+                imagePath: AppImages.game2048,
+                backgroundColor: AppColors.white,
+                onTap: () {
+                  context.pushNavigator(Game2048Screen());
                 },
               ),
             ],

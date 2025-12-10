@@ -13,6 +13,7 @@ class GameManager {
   static const String FLAPPY_BIRD_GAME = 'flappy_bird';
   static const String SHOOTING_GAME = 'shooting_rush';
   static const String FRUIT_NINJA_GAME = 'fruit_ninja';
+  static const String GAME_2048 = 'game_2048';
 
   static SharedPreferences? _prefs;
 
@@ -151,9 +152,11 @@ class GameManager {
     await _prefs?.remove('$_lastPlayDatePrefix$FLAPPY_BIRD_GAME');
     await _prefs?.remove('$_lastPlayDatePrefix$SHOOTING_GAME');
     await _prefs?.remove('$_lastPlayDatePrefix$FRUIT_NINJA_GAME');
+    await _prefs?.remove('$_lastPlayDatePrefix$GAME_2048');
     await _prefs?.remove('$_hasPlayedTodayPrefix$FLAPPY_BIRD_GAME');
     await _prefs?.remove('$_hasPlayedTodayPrefix$SHOOTING_GAME');
     await _prefs?.remove('$_hasPlayedTodayPrefix$FRUIT_NINJA_GAME');
+    await _prefs?.remove('$_hasPlayedTodayPrefix$GAME_2048');
     AppUtils.log('All game data reset');
   }
 
