@@ -411,7 +411,7 @@ class GetStripeCtrl extends GetxController {
     // Minimum amount errors
     if (errorLower.contains('minimum charge amount') ||
         errorLower.contains('amount must be greater')) {
-      return "Amount too small. Minimum charge is €0.50 for EUR.";
+      return "Amount too small. Minimum charge is \$0.50 for USD.";
     }
 
     // Card declined errors

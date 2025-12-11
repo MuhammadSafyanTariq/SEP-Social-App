@@ -18,8 +18,8 @@ class PaymentScreen extends StatefulWidget {
 }
 
 class _PaymentScreenState extends State<PaymentScreen> {
-  String selectedCurrency = 'EUR';
-  String selectedSymbol = '€';
+  String selectedCurrency = 'USD';
+  String selectedSymbol = '\$';
   int? selectedPackage;
   TextEditingController customAmountController = TextEditingController();
 
