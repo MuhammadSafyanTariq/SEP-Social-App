@@ -7,6 +7,8 @@ import 'package:sep/services/networking/urls.dart';
 import 'package:sep/feature/presentation/controller/auth_Controller/profileCtrl.dart';
 import 'package:sep/feature/presentation/controller/story/story_controller.dart';
 import 'package:sep/utils/appUtils.dart';
+import 'package:sep/services/storage/preferences.dart';
+import 'package:sep/utils/extensions/extensions.dart';
 import 'dart:async';
 
 class StoryViewScreen extends StatefulWidget {
@@ -162,6 +164,103 @@ class _StoryViewScreenState extends State<StoryViewScreen>
         likeCounts[postId] = previousLikeCount;
       });
       AppUtils.log('Error liking story: $e');
+    }
+  }
+
+  Future<void> _deleteStory() async {
+    final story = widget.stories[_currentIndex];
+    final postId = story.id;
+
+    if (postId == null || postId.isEmpty) {
+      AppUtils.log('Cannot delete story: Invalid post ID');
+      return;
+    }
+
+    // Show confirmation dialog
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+          title: Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Delete Story?',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          content: Text(
+            'Are you sure you want to delete this story? This action cannot be undone.',
+            style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop(false);
+              },
+              child: Text(
+                'Cancel',
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop(true);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              ),
+              child: Text(
+                'Delete',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldDelete == true) {
+      try {
+        await profileCtrl.removePost(postId).applyLoader;
+
+        // Update in StoryController if available
+        if (storyController != null) {
+          storyController!.stories.removeWhere((s) => s.id == postId);
+        }
+
+        // Update in ProfileCtrl global post list
+        profileCtrl.globalPostList.removeWhere((p) => p.id == postId);
+
+        // Close the story view screen
+        if (mounted) {
+          Navigator.pop(context);
+        }
+      } catch (e) {
+        AppUtils.log('Error deleting story: $e');
+        if (mounted) {
+          AppUtils.toastError('Failed to delete story');
+        }
+      }
     }
   }
 
@@ -351,6 +450,12 @@ class _StoryViewScreenState extends State<StoryViewScreen>
                         ],
                       ),
                     ),
+                    // Show delete button if story belongs to current user
+                    if (story.userId == Preferences.uid)
+                      IconButton(
+                        icon: Icon(Icons.delete_outline, color: Colors.white),
+                        onPressed: _deleteStory,
+                      ),
                     IconButton(
                       icon: Icon(Icons.close, color: Colors.white),
                       onPressed: () => Navigator.pop(context),

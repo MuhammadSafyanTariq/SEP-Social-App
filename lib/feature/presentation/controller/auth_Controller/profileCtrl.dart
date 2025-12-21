@@ -31,6 +31,13 @@ class ProfileCtrl extends GetxController {
 
   var profileData = ProfileDataModel().obs;
 
+  // Get actual count of displayed posts (excluding stories)
+  int get adjustedPostCount {
+    return profileImagePostList.length +
+        profileVideoPostList.length +
+        profilePollPostList.length;
+  }
+
   ImageDataModel get profileImageData {
     ImageDataModel data = ImageDataModel();
     if (profileData.value.image.isNotNullEmpty) {
@@ -511,7 +518,21 @@ class ProfileCtrl extends GetxController {
     if (result.isSuccess) {
       final list = result.data ?? [];
 
-      if (list.isNotEmpty) {
+      // Filter out stories (posts with #sepstory tag)
+      AppUtils.log('Profile posts before filtering: ${list.length}');
+      final filteredList = list.where((post) {
+        final content = post.content?.toLowerCase() ?? '';
+        final isStory = content.contains('#sepstory');
+        if (isStory) {
+          AppUtils.log(
+            'Filtering out story: ${post.id} - ${post.content?.substring(0, 50)}',
+          );
+        }
+        return !isStory;
+      }).toList();
+      AppUtils.log('Profile posts after filtering: ${filteredList.length}');
+
+      if (filteredList.isNotEmpty) {
         if (type == PostFileType.poll) {
           profilePollPageNo = pageNo;
         } else if (type == PostFileType.video) {
@@ -522,24 +543,24 @@ class ProfileCtrl extends GetxController {
 
         if (pageNo == 1) {
           if (type == PostFileType.poll) {
-            profilePollPostList.assignAll(list);
+            profilePollPostList.assignAll(filteredList);
             profilePollPostList.refresh();
           } else if (type == PostFileType.video) {
-            profileVideoPostList.assignAll(list);
+            profileVideoPostList.assignAll(filteredList);
             profileVideoPostList.refresh();
           } else {
-            profileImagePostList.assignAll(list);
+            profileImagePostList.assignAll(filteredList);
             profileImagePostList.refresh();
           }
         } else {
           if (type == PostFileType.poll) {
-            profilePollPostList.addAll(list);
+            profilePollPostList.addAll(filteredList);
             profilePollPostList.refresh();
           } else if (type == PostFileType.video) {
-            profileVideoPostList.addAll(list);
+            profileVideoPostList.addAll(filteredList);
             profileVideoPostList.refresh();
           } else {
-            profileImagePostList.addAll(list);
+            profileImagePostList.addAll(filteredList);
             profileImagePostList.refresh();
           }
         }
@@ -596,7 +617,24 @@ class ProfileCtrl extends GetxController {
 
     if (result.isSuccess) {
       final list = result.data ?? [];
-      return list;
+
+      // Filter out stories (posts with #sepstory tag)
+      AppUtils.log('Friend profile posts before filtering: ${list.length}');
+      final filteredList = list.where((post) {
+        final content = post.content?.toLowerCase() ?? '';
+        final isStory = content.contains('#sepstory');
+        if (isStory) {
+          AppUtils.log(
+            'Filtering out friend story: ${post.id} - ${post.content?.substring(0, 50)}',
+          );
+        }
+        return !isStory;
+      }).toList();
+      AppUtils.log(
+        'Friend profile posts after filtering: ${filteredList.length}',
+      );
+
+      return filteredList;
 
       // if (list.isNotEmpty) {
       //

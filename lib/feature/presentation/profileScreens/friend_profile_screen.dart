@@ -89,6 +89,13 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
   bool get isFriend =>
       (profileData.value.followers ?? []).contains(Preferences.uid);
 
+  // Get actual count of displayed posts (excluding stories)
+  int get adjustedFriendPostCount {
+    return profileImagePostListFriend.length +
+        profileVideoPostListFriend.length +
+        profilePollPostListFriend.length;
+  }
+
   // ProfileDataModel get profileDataValue => profileCtrl.
 
   @override
@@ -603,7 +610,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
                       Obx(
                         () => TextView(
                           // margin: 10.top,
-                          text: '${profileData.value.postCount ?? 0}',
+                          text: '$adjustedFriendPostCount',
                           style: 14.txtBoldWhite,
                         ),
                       ),
@@ -1053,12 +1060,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Obx(
-                () => _buildStatItem(
-                  '${profileData.value.postCount ?? 0}',
-                  'Posts',
-                ),
-              ),
+              Obx(() => _buildStatItem('$adjustedFriendPostCount', 'Posts')),
               Container(
                 height: 30,
                 width: 1,

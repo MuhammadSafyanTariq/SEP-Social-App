@@ -319,7 +319,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _buildStatItem('${profileData.postCount ?? 0}', 'Posts', null),
+              _buildStatItem('${profileCtrl.adjustedPostCount}', 'Posts', null),
               Container(
                 height: 30,
                 width: 1,
