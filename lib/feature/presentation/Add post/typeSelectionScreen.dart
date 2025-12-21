@@ -12,6 +12,8 @@ import 'celebrationScreen.dart';
 import '../jobs/post_job_screen.dart';
 import '../products/upload_product_screen.dart';
 import '../game_screens/game_screen.dart';
+import '../real_estate/upload_real_estate_screen.dart';
+import '../../../components/styles/appImages.dart';
 
 class TypeSelectionScreen extends StatefulWidget {
   const TypeSelectionScreen({super.key});
@@ -77,7 +79,7 @@ class _TypeSelectionScreenState extends State<TypeSelectionScreen> {
         return AlertDialog(
           title: const Text('Create a Shop First'),
           content: const Text(
-            'You need to create a shop before you can add products. Please create your shop from the SEP Shop section.',
+            'You need to create a shop before you can add products. Please create your shop from the Profile Settings.',
           ),
           actions: [
             TextButton(
@@ -88,6 +90,53 @@ class _TypeSelectionScreenState extends State<TypeSelectionScreen> {
         );
       },
     );
+  }
+
+  Future<void> _checkStoreAndNavigateToRealEstate(BuildContext context) async {
+    try {
+      final token = Preferences.authToken;
+
+      if (token == null) {
+        _showCreateStoreAlert(context);
+        return;
+      }
+
+      final response = await _apiMethod.get(
+        url: Urls.getMyShop,
+        authToken: token,
+        headers: {},
+      );
+
+      AppUtils.log("Check store response: ${response.data}");
+
+      // Check if user has a store - same logic as SportsProduct screen
+      if (response.isSuccess && response.data?['data'] != null) {
+        final shopData = response.data!['data'];
+        final shopId = shopData['_id'] as String?;
+
+        if (!mounted) return;
+
+        if (shopId != null && shopId.isNotEmpty) {
+          // User has a store, navigate to upload real estate
+          AppUtils.log("User has store with ID: $shopId");
+          Navigator.pop(context);
+          context.pushNavigator(const UploadRealEstateScreen());
+        } else {
+          // Shop data exists but no ID
+          _showCreateStoreAlert(context);
+        }
+      } else {
+        // User doesn't have a store
+        if (!mounted) return;
+        AppUtils.log("No shop found: ${response.getError}");
+        _showCreateStoreAlert(context);
+      }
+    } catch (e) {
+      // Error or no store found
+      AppUtils.log('Error checking store: $e');
+      if (!mounted) return;
+      _showCreateStoreAlert(context);
+    }
   }
 
   @override
@@ -211,6 +260,22 @@ class _TypeSelectionScreenState extends State<TypeSelectionScreen> {
                               },
                             ),
                           ),
+                        ],
+                      ),
+                      SizedBox(height: 32),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildOptionItem(
+                              title: "Real Estate",
+                              iconPath: AppImages.realEstate,
+                              onTap: () =>
+                                  _checkStoreAndNavigateToRealEstate(context),
+                            ),
+                          ),
+                          SizedBox(width: 12),
+                          // Empty space for grid alignment
+                          Expanded(child: SizedBox()),
                         ],
                       ),
                     ],

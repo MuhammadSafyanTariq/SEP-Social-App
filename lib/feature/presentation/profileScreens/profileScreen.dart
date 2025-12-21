@@ -28,6 +28,7 @@ import '../Home/homeScreenComponents/post_components.dart';
 import '../profileScreens/setting/fullScreenVideoPlayer.dart';
 import '../controller/auth_Controller/profileCtrl.dart';
 import '../screens/post_browsing_listing.dart';
+import '../store/store_view_screen.dart';
 import 'followers.dart';
 import 'setting/following.dart';
 import 'setting/editProfile.dart';

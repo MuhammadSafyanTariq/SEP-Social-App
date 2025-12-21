@@ -16,6 +16,7 @@ import 'package:sep/feature/presentation/products/product_details_screen.dart';
 import 'package:sep/feature/data/models/dataModels/user_product_model.dart';
 import 'package:sep/feature/presentation/store/store_view_screen.dart';
 import 'package:sep/feature/presentation/orders/order_history_screen.dart';
+import 'package:sep/feature/presentation/real_estate/real_estate_list_screen.dart';
 import 'package:sep/services/networking/apiMethods.dart';
 import 'package:sep/services/networking/urls.dart';
 import 'package:sep/services/storage/preferences.dart';
@@ -64,7 +65,7 @@ class _SportsProductState extends State<SportsProduct>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _tabController.addListener(() {
       if (_tabController.index == 1 && communityProducts.isEmpty) {
         loadCommunityProducts(isRefresh: true);
@@ -311,6 +312,8 @@ class _SportsProductState extends State<SportsProduct>
               ),
               child: TabBar(
                 controller: _tabController,
+                isScrollable: true,
+                tabAlignment: TabAlignment.center,
                 indicator: BoxDecoration(
                   borderRadius: BorderRadius.circular(25.sdp),
                   color: AppColors.btnColor,
@@ -322,14 +325,16 @@ class _SportsProductState extends State<SportsProduct>
                   fontWeight: FontWeight.w600,
                 ),
                 unselectedLabelStyle: TextStyle(
-                  fontSize: 14,
+                  fontSize: 11,
                   fontWeight: FontWeight.w500,
                 ),
                 indicatorSize: TabBarIndicatorSize.tab,
                 dividerColor: Colors.transparent,
+                labelPadding: EdgeInsets.symmetric(horizontal: 16.sdp),
                 tabs: const [
                   Tab(text: "SEP Shop"),
                   Tab(text: "Community Shops"),
+                  Tab(text: "Real Estate"),
                 ],
               ),
             ),
@@ -338,7 +343,11 @@ class _SportsProductState extends State<SportsProduct>
             Expanded(
               child: TabBarView(
                 controller: _tabController,
-                children: [_buildSEPShopTab(), _buildComingSoonTab()],
+                children: [
+                  _buildSEPShopTab(),
+                  _buildComingSoonTab(),
+                  _buildRealEstateTab(),
+                ],
               ),
             ),
           ],
@@ -533,78 +542,6 @@ class _SportsProductState extends State<SportsProduct>
           //   ),
           //   16.height,
           // ],
-          // My Store and Order History Buttons in Row
-          Row(
-            children: [
-              // My Store Button
-              Expanded(
-                child: SizedBox(
-                  height: 50.sdp,
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => StoreViewScreen(),
-                        ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.btnColor,
-                      foregroundColor: Colors.white,
-                      elevation: 2,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12.sdp),
-                      ),
-                    ),
-                    icon: Icon(Icons.store, size: 24.sdp),
-                    label: TextView(
-                      text: "My Store",
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              //12.width,
-
-              // Order History Icon Button
-              // SizedBox(
-              //   height: 50.sdp,
-              //   width: 50.sdp,
-              //   child: ElevatedButton(
-              //     onPressed: () {
-              //       Navigator.push(
-              //         context,
-              //         MaterialPageRoute(
-              //           builder: (context) => const OrderHistoryScreen(),
-              //         ),
-              //       );
-              //     },
-              //     style: ElevatedButton.styleFrom(
-              //       backgroundColor: Colors.white,
-              //       foregroundColor: AppColors.btnColor,
-              //       elevation: 2,
-              //       padding: EdgeInsets.zero,
-              //       shape: RoundedRectangleBorder(
-              //         borderRadius: BorderRadius.circular(12.sdp),
-              //         side: BorderSide(color: AppColors.btnColor, width: 1.5),
-              //       ),
-              //     ),
-              //     child: Icon(
-              //       Icons.history,
-              //       size: 24.sdp,
-              //       color: AppColors.btnColor,
-              //     ),
-              //   ),
-              // ),
-            ],
-          ),
-          16.height,
-
           // Search Bar
           EditText(
             controller: _communitySearch,
@@ -732,6 +669,10 @@ class _SportsProductState extends State<SportsProduct>
         ],
       ),
     );
+  }
+
+  Widget _buildRealEstateTab() {
+    return const RealEstateListScreen();
   }
 }
 

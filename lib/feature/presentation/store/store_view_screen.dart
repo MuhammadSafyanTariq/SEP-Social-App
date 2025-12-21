@@ -6,6 +6,9 @@ import 'package:sep/feature/presentation/store/create_store_screen.dart';
 import 'package:sep/feature/presentation/products/product_details_screen.dart';
 import 'package:sep/feature/presentation/products/upload_product_screen.dart';
 import 'package:sep/feature/presentation/products/edit_product_screen.dart';
+import 'package:sep/feature/presentation/real_estate/real_estate_detail_screen.dart';
+import 'package:sep/feature/presentation/real_estate/edit_real_estate_screen.dart';
+import 'package:sep/feature/presentation/real_estate/upload_real_estate_screen.dart';
 import 'package:sep/feature/presentation/SportsProducts/sportsProduct.dart';
 import 'package:sep/services/networking/apiMethods.dart';
 import 'package:sep/services/networking/urls.dart';
@@ -51,6 +54,7 @@ class _StoreViewScreenState extends State<StoreViewScreen> {
   Set<String> expandedOrderIds = {};
   String selectedOrderStatus =
       'all'; // Filter for orders: all, pending, processing, shipped, completed, cancelled
+  int currentTabIndex = 0; // Track current tab: 0 = Products, 1 = Real Estate
 
   // Product details cache for orders
   Map<String, Map<String, dynamic>> productCache = {};
@@ -341,6 +345,9 @@ class _StoreViewScreenState extends State<StoreViewScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+      floatingActionButton: isOwner && myStore != null
+          ? _buildFloatingActionButton()
+          : null,
       body: SafeArea(
         child: Column(
           children: [
@@ -483,15 +490,13 @@ class _StoreViewScreenState extends State<StoreViewScreen> {
 
   Widget _buildStoreDetailsView() {
     return DefaultTabController(
-      // length: isOwner ? 2 : 1,
-      length: 1,
+      length: 2, // Products and Real Estate tabs
       child: Builder(
         builder: (context) {
           final TabController tabController = DefaultTabController.of(context);
-          int currentTabIndex = 0;
 
           tabController.addListener(() {
-            if (tabController.indexIsChanging) {
+            if (!tabController.indexIsChanging) {
               setState(() {
                 currentTabIndex = tabController.index;
               });
@@ -549,11 +554,10 @@ class _StoreViewScreenState extends State<StoreViewScreen> {
                         height: 44,
                         child: Center(child: Text("Products")),
                       ),
-                      // if (isOwner)
-                      //   const Tab(
-                      //     height: 44,
-                      //     child: Center(child: Text("Orders")),
-                      //   ),
+                      const Tab(
+                        height: 44,
+                        child: Center(child: Text("Real Estate")),
+                      ),
                     ],
                   ),
                 ),
@@ -562,42 +566,51 @@ class _StoreViewScreenState extends State<StoreViewScreen> {
                 AnimatedBuilder(
                   animation: tabController,
                   builder: (context, child) {
-                    // if (tabController.index == 0) {
-                    // Products Tab
-                    if (products.isEmpty && !isLoadingProducts) {
-                      return _buildEmptyProductsState();
+                    if (tabController.index == 0) {
+                      // Products Tab
+                      final filteredProducts = products.where((product) {
+                        final category =
+                            product['category']?.toString().toLowerCase() ?? '';
+                        return !category.contains('realestate');
+                      }).toList();
+
+                      if (filteredProducts.isEmpty && !isLoadingProducts) {
+                        return _buildEmptyProductsState();
+                      } else {
+                        return Column(
+                          children: [
+                            _buildProductsGrid(filteredProducts),
+                            if (isLoadingProducts)
+                              const Padding(
+                                padding: EdgeInsets.all(16.0),
+                                child: CircularProgressIndicator(),
+                              ),
+                          ],
+                        );
+                      }
                     } else {
-                      return Column(
-                        children: [
-                          _buildProductsGrid(),
-                          if (isLoadingProducts)
-                            const Padding(
-                              padding: EdgeInsets.all(16.0),
-                              child: CircularProgressIndicator(),
-                            ),
-                        ],
-                      );
+                      // Real Estate Tab
+                      final realEstateListings = products.where((product) {
+                        final category =
+                            product['category']?.toString().toLowerCase() ?? '';
+                        return category.contains('realestate');
+                      }).toList();
+
+                      if (realEstateListings.isEmpty && !isLoadingProducts) {
+                        return _buildEmptyRealEstateState();
+                      } else {
+                        return Column(
+                          children: [
+                            _buildRealEstateGrid(realEstateListings),
+                            if (isLoadingProducts)
+                              const Padding(
+                                padding: EdgeInsets.all(16.0),
+                                child: CircularProgressIndicator(),
+                              ),
+                          ],
+                        );
+                      }
                     }
-                    // } else {
-                    //   // Orders Tab
-                    //   if (orders.isEmpty && !isLoadingOrders) {
-                    //     return _buildEmptyOrdersState();
-                    //   } else {
-                    //     return Column(
-                    //       children: [
-                    //         const SizedBox(height: 8),
-                    //         _buildOrderFilterChips(),
-                    //         const SizedBox(height: 8),
-                    //         _buildOrdersList(),
-                    //         if (isLoadingOrders)
-                    //           const Padding(
-                    //             padding: EdgeInsets.all(16.0),
-                    //             child: CircularProgressIndicator(),
-                    //           ),
-                    //       ],
-                    //     );
-                    //   }
-                    // }
                   },
                 ),
               ],
@@ -605,6 +618,29 @@ class _StoreViewScreenState extends State<StoreViewScreen> {
           );
         },
       ),
+    );
+  }
+
+  Widget _buildFloatingActionButton() {
+    // Show FAB only when there are items or on empty state with button
+    return FloatingActionButton(
+      onPressed: () async {
+        if (currentTabIndex == 0) {
+          // Products tab - navigate to upload product
+          final result = await Get.to(() => const UploadProductScreen());
+          if (result == true) {
+            await _loadStore();
+          }
+        } else {
+          // Real Estate tab - navigate to upload real estate
+          final result = await Get.to(() => const UploadRealEstateScreen());
+          if (result == true) {
+            await _loadStore();
+          }
+        }
+      },
+      backgroundColor: AppColors.btnColor,
+      child: const Icon(Icons.add, color: Colors.white),
     );
   }
 
@@ -921,9 +957,9 @@ class _StoreViewScreenState extends State<StoreViewScreen> {
     );
   }
 
-  Widget _buildProductsGrid() {
+  Widget _buildProductsGrid(List<Map<String, dynamic>> filteredProducts) {
     return Padding(
-      padding: EdgeInsets.all(16).copyWith(bottom: isOwner ? 80 : 16),
+      padding: const EdgeInsets.all(16),
       child: Column(
         children: [
           GridView.builder(
@@ -935,9 +971,9 @@ class _StoreViewScreenState extends State<StoreViewScreen> {
               crossAxisSpacing: 12,
               mainAxisSpacing: 12,
             ),
-            itemCount: products.length,
+            itemCount: filteredProducts.length,
             itemBuilder: (context, index) {
-              final product = products[index];
+              final product = filteredProducts[index];
               final productId = product['_id'] ?? '';
               final name = product['name'] ?? 'Product ${index + 1}';
               final description = product['description'] ?? '';
@@ -991,24 +1027,126 @@ class _StoreViewScreenState extends State<StoreViewScreen> {
               );
             },
           ),
+        ],
+      ),
+    );
+  }
 
-          // Floating Add Product Button for owners
-          if (isOwner && products.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 16),
-              child: FloatingActionButton(
+  Widget _buildEmptyRealEstateState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.home_work_outlined, size: 80, color: Colors.grey[300]),
+            const SizedBox(height: 16),
+            Text(
+              "No real estate listings yet",
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            if (isOwner) ...[
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
                 onPressed: () async {
                   final result = await Get.to(
-                    () => const UploadProductScreen(),
+                    () => const UploadRealEstateScreen(),
                   );
                   if (result == true) {
                     await _loadStore();
                   }
                 },
-                backgroundColor: AppColors.btnColor,
-                child: const Icon(Icons.add, color: Colors.white),
+                icon: const Icon(Icons.add, color: Colors.white),
+                label: const Text(
+                  "Add Real Estate",
+                  style: TextStyle(color: Colors.white),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.btnColor,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
               ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRealEstateGrid(List<Map<String, dynamic>> realEstateListings) {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              childAspectRatio: 0.52,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
             ),
+            itemCount: realEstateListings.length,
+            itemBuilder: (context, index) {
+              final realEstate = realEstateListings[index];
+              final productId = realEstate['_id'] as String? ?? '';
+              final category = realEstate['category'] as String? ?? '';
+
+              // Extract property type from category if exists
+              String propertyType = 'Real Estate';
+              if (category.contains('+')) {
+                final parts = category.split('+');
+                if (parts.isNotEmpty) {
+                  propertyType = parts[0];
+                }
+              }
+
+              // Handle image URL properly
+              final mediaUrls = realEstate['mediaUrls'] as List? ?? [];
+              String imageUrl = '';
+              if (mediaUrls.isNotEmpty) {
+                final url = mediaUrls[0] as String;
+                imageUrl = url.startsWith('http')
+                    ? url
+                    : '${Urls.appApiBaseUrl}$url';
+              }
+
+              return ProductCard(
+                key: ValueKey(productId),
+                title: realEstate['name'] as String? ?? 'Unnamed Property',
+                price: '${(realEstate['price'] as num?)?.toDouble() ?? 0.0}',
+                image: imageUrl,
+                imageType: ImageType.network,
+                type: propertyType,
+                desc: realEstate['description'] as String? ?? '',
+                link: '',
+                showOwnerActions: isOwner,
+                onEdit: () async {
+                  final result = await Get.to(
+                    () => EditRealEstateScreen(propertyId: productId),
+                  );
+                  if (result == true) {
+                    await _loadStore();
+                  }
+                },
+                onDelete: () => _showDeleteProductConfirmation(productId),
+                onTap: () {
+                  Get.to(() => RealEstateDetailScreen(propertyId: productId));
+                },
+              );
+            },
+          ),
         ],
       ),
     );

@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:sep/feature/data/models/dataModels/profile_data/profile_data_model.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:get/get.dart';
 import 'package:sep/components/coreComponents/appBar2.dart';
 import 'package:sep/components/coreComponents/TextView.dart';
+import 'package:sep/components/coreComponents/ImageView.dart';
 import 'package:sep/components/styles/appColors.dart';
+import 'package:sep/feature/presentation/profileScreens/friend_profile_screen.dart';
 import 'package:sep/services/networking/apiMethods.dart';
 import 'package:sep/services/networking/urls.dart';
 import 'package:sep/services/storage/preferences.dart';
@@ -104,6 +108,14 @@ class _RealEstateDetailScreenState extends State<RealEstateDetailScreen> {
     AppUtils.toast("$label copied to clipboard");
   }
 
+  String _getFullImageUrl(String url) {
+    if (url.isEmpty) return '';
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    return '${Urls.appApiBaseUrl}$url';
+  }
+
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
@@ -180,7 +192,7 @@ class _RealEstateDetailScreenState extends State<RealEstateDetailScreen> {
                               },
                               itemBuilder: (context, index) {
                                 return Image.network(
-                                  images[index] as String,
+                                  _getFullImageUrl(images[index] as String),
                                   width: double.infinity,
                                   fit: BoxFit.cover,
                                   errorBuilder: (context, error, stackTrace) =>
@@ -225,24 +237,24 @@ class _RealEstateDetailScreenState extends State<RealEstateDetailScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Price
-                          TextView(
-                            text: '\$$price',
-                            style: TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.btnColor,
-                            ),
-                          ),
-                          8.height,
-
                           // Property Name
                           TextView(
                             text: name,
                             style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w600,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
                               color: Colors.black,
+                            ),
+                          ),
+                          8.height,
+
+                          // Price
+                          TextView(
+                            text: '\$$price',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.btnColor,
                             ),
                           ),
                           12.height,
@@ -349,18 +361,41 @@ class _RealEstateDetailScreenState extends State<RealEstateDetailScreen> {
                                   Row(
                                     children: [
                                       Container(
-                                        padding: 12.all,
+                                        width: 48,
+                                        height: 48,
                                         decoration: BoxDecoration(
                                           color: Colors.green[100],
                                           borderRadius: BorderRadius.circular(
                                             8,
                                           ),
                                         ),
-                                        child: Icon(
-                                          Icons.person,
-                                          color: Colors.green[700],
-                                          size: 24,
-                                        ),
+                                        child: () {
+                                          final shop =
+                                              propertyData!['shopId']
+                                                  as Map<String, dynamic>?;
+                                          final logoUrl =
+                                              shop?['logoUrl']?.toString() ??
+                                              '';
+
+                                          if (logoUrl.isNotEmpty) {
+                                            return ClipRRect(
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              child: ImageView(
+                                                url: _getFullImageUrl(logoUrl),
+                                                imageType: ImageType.network,
+                                                fit: BoxFit.cover,
+                                                width: 48,
+                                                height: 48,
+                                              ),
+                                            );
+                                          }
+                                          return Icon(
+                                            Icons.store,
+                                            color: Colors.green[700],
+                                            size: 26,
+                                          );
+                                        }(),
                                       ),
                                       12.width,
                                       Expanded(
@@ -369,7 +404,13 @@ class _RealEstateDetailScreenState extends State<RealEstateDetailScreen> {
                                               CrossAxisAlignment.start,
                                           children: [
                                             TextView(
-                                              text: contact,
+                                              text:
+                                                  (propertyData!['shopId']
+                                                      as Map<
+                                                        String,
+                                                        dynamic
+                                                      >?)?['name'] ??
+                                                  'Owner',
                                               style: TextStyle(
                                                 fontSize: 16,
                                                 fontWeight: FontWeight.w600,
@@ -378,7 +419,9 @@ class _RealEstateDetailScreenState extends State<RealEstateDetailScreen> {
                                             ),
                                             4.height,
                                             TextView(
-                                              text: "Property Owner",
+                                              text: contact.isNotEmpty
+                                                  ? contact
+                                                  : "Property Owner",
                                               style: TextStyle(
                                                 fontSize: 13,
                                                 color: Colors.grey[600],
@@ -438,12 +481,46 @@ class _RealEstateDetailScreenState extends State<RealEstateDetailScreen> {
                                       Expanded(
                                         child: OutlinedButton.icon(
                                           onPressed: () {
-                                            AppUtils.toast(
-                                              "Message feature coming soon",
-                                            );
+                                            // Navigate to owner's profile
+                                            final shop =
+                                                propertyData!['shopId']
+                                                    as Map<String, dynamic>?;
+                                            String? ownerId =
+                                                shop?['ownerId'] as String?;
+                                            String ownerName =
+                                                shop?['name'] ?? 'Owner';
+
+                                            if (ownerId != null &&
+                                                ownerId.isNotEmpty) {
+                                              final profileData =
+                                                  ProfileDataModel(
+                                                    id: ownerId,
+                                                    name: ownerName,
+                                                    email: contact.contains('@')
+                                                        ? contact
+                                                        : null,
+                                                    phone:
+                                                        !contact.contains('@')
+                                                        ? contact
+                                                        : null,
+                                                  );
+
+                                              Get.to(
+                                                () => FriendProfileScreen(
+                                                  data: profileData,
+                                                ),
+                                              );
+                                            } else {
+                                              AppUtils.toastError(
+                                                "Owner information not available",
+                                              );
+                                            }
                                           },
-                                          icon: Icon(Icons.message, size: 18),
-                                          label: Text('Message'),
+                                          icon: Icon(
+                                            Icons.person_outline,
+                                            size: 18,
+                                          ),
+                                          label: Text('Owner'),
                                           style: OutlinedButton.styleFrom(
                                             foregroundColor: Colors.green[700],
                                             side: BorderSide(

@@ -113,6 +113,7 @@ class AppImages {
   static const String poll = '${_path}poll.png';
   static const String celebrate = '${_path}celebrate.png';
   static const String celebrateBack = '${_path}celebrateBack.png';
+  static const String realEstate = '${_path}realEstate.png';
 
   // Celebration Templates
   static const String celebrateTemplate1 = '${_path}Template 1.jpg';

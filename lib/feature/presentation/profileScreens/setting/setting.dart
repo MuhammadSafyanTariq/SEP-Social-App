@@ -22,6 +22,7 @@ import '../../../data/repository/iTempRepository.dart';
 import '../../../domain/respository/templateRepository.dart';
 import '../../controller/auth_Controller/profileCtrl.dart';
 import '../../screens/loginsignup/login.dart';
+import '../../store/store_view_screen.dart';
 import 'AppPrefrences/changeLanguages.dart';
 import 'AppPrefrences/faq.dart';
 import 'Conavel Screens/contactus.dart';
@@ -96,6 +97,18 @@ class _SettingState extends State<Setting> {
                       title: AppStrings.changePassword.tr,
                       icon: Icons.lock_outline,
                       onTap: _showChangePasswordBottomSheet,
+                      showToggle: false,
+                    ),
+                    Divider(height: 1, color: AppColors.grey.withOpacity(0.3)),
+                    _buildSettingsTile(
+                      title: 'My Store',
+                      icon: Icons.store_outlined,
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => StoreViewScreen(),
+                        ),
+                      ),
                       showToggle: false,
                     ),
                   ]),
