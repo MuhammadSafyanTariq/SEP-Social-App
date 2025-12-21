@@ -405,12 +405,12 @@ class _HomeScreenState extends State<Contentscreen> {
             ),
             Obx(
               () => SliverList(
-                delegate: profileCtrl.globalPostList.isNotEmpty
+                delegate: profileCtrl.postsWithoutStories.isNotEmpty
                     ? SliverChildBuilderDelegate((context, index) {
                         if (index < _getFilteredPosts().length) {
                           final post = _getFilteredPosts()[index];
                           // Find original index for state management
-                          final originalIndex = profileCtrl.globalPostList
+                          final originalIndex = profileCtrl.postsWithoutStories
                               .indexOf(post);
                           return _buildPostWidget(
                             post,
@@ -443,7 +443,7 @@ class _HomeScreenState extends State<Contentscreen> {
     const advertisementCategoryId = '68eb8453d5e284efb554b401';
     const minPostsBeforeAd = 5;
 
-    final allPosts = profileCtrl.globalPostList;
+    final allPosts = profileCtrl.postsWithoutStories;
 
     // Separate advertisement posts from regular posts
     final regularPosts = allPosts

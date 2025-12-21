@@ -46,6 +46,15 @@ class ProfileCtrl extends GetxController {
   var errorMessage = ''.obs;
   var postList = <PostData>[].obs;
   var globalPostList = <PostData>[].obs;
+
+  // Getter to filter out stories from the main feed
+  List<PostData> get postsWithoutStories {
+    return globalPostList.where((post) {
+      final content = post.content?.toLowerCase() ?? '';
+      return !content.contains('#sepstory');
+    }).toList();
+  }
+
   var commentList = <CommentsListModel>[].obs;
 
   var comentslistdata = <CommentsListModel>[].obs;
@@ -683,11 +692,8 @@ class ProfileCtrl extends GetxController {
         AppUtils.log('home page number is ::: 11111111');
         final newPosts = response.data ?? [];
 
-        // Filter out stories (posts with #SEPStory tag)
-        final filteredPosts = newPosts.where((post) {
-          final content = post.content?.toLowerCase() ?? '';
-          return !content.contains('#sepstory');
-        }).toList();
+        // Don't filter stories here - let StoryController handle them
+        final filteredPosts = newPosts;
 
         if (filteredPosts.isNotEmpty) {
           homeContentIndex = page;

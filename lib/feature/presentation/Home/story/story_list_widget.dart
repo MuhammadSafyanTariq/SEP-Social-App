@@ -29,17 +29,19 @@ class _StoryListWidgetState extends State<StoryListWidget> {
       if (Get.isRegistered<StoryController>()) {
         storyController = Get.find<StoryController>();
         AppUtils.log('Found existing StoryController');
+        // Refresh stories when widget is recreated
+        Future.delayed(Duration(milliseconds: 100), () {
+          if (mounted) {
+            AppUtils.log('⏰ Refreshing stories from existing controller...');
+            storyController.fetchStories();
+          }
+        });
       } else {
         AppUtils.log('Creating new StoryController...');
         storyController = Get.put(StoryController());
         AppUtils.log('StoryController created successfully');
+        // Controller's onInit will call fetchStories, no need to call again
       }
-
-      // Call fetchStories directly after a short delay to ensure ProfileCtrl is ready
-      Future.delayed(Duration(milliseconds: 500), () {
-        AppUtils.log('⏰ Calling fetchStories from StoryListWidget...');
-        storyController.fetchStories();
-      });
     } catch (e, stackTrace) {
       AppUtils.log('ERROR initializing StoryController: $e');
       AppUtils.log('Stack trace: $stackTrace');
@@ -91,20 +93,18 @@ class _StoryListWidgetState extends State<StoryListWidget> {
             // Story items
             final storyIndex = index - 1;
             final story = storyController.stories[storyIndex];
-            final user = story.user.isNotEmpty == true
-                ? story.user.first
-                : null;
-            final userId = user?.id;
+            final user = story.user.isNotEmpty ? story.user.first : null;
+            final userImageUrl = user?.image?.isNotEmpty == true
+                ? AppUtils.configImageUrl(user!.image!)
+                : AppImages.dummyProfile;
 
             return GestureDetector(
               onTap: () {
-                if (userId != null) {
-                  // Get all stories for this user
-                  final userStories = storyController.getStoriesForUser(userId);
-                  context.pushNavigator(
-                    StoryViewScreen(initialIndex: 0, stories: userStories),
-                  );
-                }
+                // Open this single story
+                AppUtils.log('Opening story: ${story.id}');
+                context.pushNavigator(
+                  StoryViewScreen(initialIndex: 0, stories: [story]),
+                );
               },
               child: Container(
                 width: 70,
@@ -132,15 +132,17 @@ class _StoryListWidgetState extends State<StoryListWidget> {
                           color: Colors.white,
                         ),
                         padding: EdgeInsets.all(2),
-                        child: ImageView(
-                          url: user?.image ?? AppImages.dummyProfile,
-                          size: 64,
-                          radius: 32,
-                          imageType: user?.image != null
-                              ? ImageType.network
-                              : null,
-                          defaultImage: AppImages.dummyProfile,
-                          fit: BoxFit.cover,
+                        child: ClipOval(
+                          child: ImageView(
+                            url: userImageUrl,
+                            size: 64,
+                            radius: 32,
+                            imageType: user?.image?.isNotEmpty == true
+                                ? ImageType.network
+                                : null,
+                            defaultImage: AppImages.dummyProfile,
+                            fit: BoxFit.cover,
+                          ),
                         ),
                       ),
                     ),
