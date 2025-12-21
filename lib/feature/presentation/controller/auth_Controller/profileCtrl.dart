@@ -698,7 +698,9 @@ class ProfileCtrl extends GetxController {
 
         if (page == 1) {
           // Sort posts: prioritize advertisements < 24 hours old
-          final sortedPosts = _sortPostsWithAdvertisementPriority(filteredPosts);
+          final sortedPosts = _sortPostsWithAdvertisementPriority(
+            filteredPosts,
+          );
           globalPostList.assignAll(
             sortedPosts,
           ); // Replace the list if it's the first page

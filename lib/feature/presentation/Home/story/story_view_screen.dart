@@ -117,11 +117,15 @@ class _StoryViewScreenState extends State<StoryViewScreen>
   Widget build(BuildContext context) {
     final story = widget.stories[_currentIndex];
     final user = story.user?.isNotEmpty == true ? story.user!.first : null;
-    final imageUrl = story.files?.isNotEmpty == true ? story.files!.first.file : null;
+    final imageUrl = story.files?.isNotEmpty == true
+        ? story.files!.first.file
+        : null;
 
     // Extract caption without #SEPStory tag
     String caption = story.content ?? '';
-    caption = caption.replaceAll(RegExp(r'#SEPStory', caseSensitive: false), '').trim();
+    caption = caption
+        .replaceAll(RegExp(r'#SEPStory', caseSensitive: false), '')
+        .trim();
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -164,11 +168,8 @@ class _StoryViewScreenState extends State<StoryViewScreen>
                               color: AppColors.primaryColor,
                             ),
                           ),
-                          errorWidget: (context, url, error) => Icon(
-                            Icons.error,
-                            color: Colors.white,
-                            size: 50,
-                          ),
+                          errorWidget: (context, url, error) =>
+                              Icon(Icons.error, color: Colors.white, size: 50),
                         )
                       : Icon(
                           Icons.image_not_supported,
@@ -187,43 +188,40 @@ class _StoryViewScreenState extends State<StoryViewScreen>
               child: Padding(
                 padding: EdgeInsets.symmetric(horizontal: 8),
                 child: Row(
-                  children: List.generate(
-                    widget.stories.length,
-                    (index) {
-                      return Expanded(
-                        child: Container(
-                          height: 3,
-                          margin: EdgeInsets.symmetric(horizontal: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.white30,
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                          child: AnimatedBuilder(
-                            animation: _progressController,
-                            builder: (context, child) {
-                              double progress = 0;
-                              if (index < _currentIndex) {
-                                progress = 1;
-                              } else if (index == _currentIndex) {
-                                progress = _progressController.value;
-                              }
-
-                              return FractionallySizedBox(
-                                alignment: Alignment.centerLeft,
-                                widthFactor: progress,
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(2),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
+                  children: List.generate(widget.stories.length, (index) {
+                    return Expanded(
+                      child: Container(
+                        height: 3,
+                        margin: EdgeInsets.symmetric(horizontal: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.white30,
+                          borderRadius: BorderRadius.circular(2),
                         ),
-                      );
-                    },
-                  ),
+                        child: AnimatedBuilder(
+                          animation: _progressController,
+                          builder: (context, child) {
+                            double progress = 0;
+                            if (index < _currentIndex) {
+                              progress = 1;
+                            } else if (index == _currentIndex) {
+                              progress = _progressController.value;
+                            }
+
+                            return FractionallySizedBox(
+                              alignment: Alignment.centerLeft,
+                              widthFactor: progress,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    );
+                  }),
                 ),
               ),
             ),
@@ -302,10 +300,7 @@ class _StoryViewScreenState extends State<StoryViewScreen>
                   ),
                   child: Text(
                     caption,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                    ),
+                    style: TextStyle(color: Colors.white, fontSize: 14),
                     textAlign: TextAlign.center,
                   ),
                 ),

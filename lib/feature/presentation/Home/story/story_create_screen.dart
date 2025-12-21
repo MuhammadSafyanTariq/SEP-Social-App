@@ -159,10 +159,7 @@ class _StoryCreateScreenState extends State<StoryCreateScreen> {
           icon: Icon(Icons.close, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(
-          'Create Story',
-          style: TextStyle(color: Colors.white),
-        ),
+        title: Text('Create Story', style: TextStyle(color: Colors.white)),
         actions: [
           if (_selectedImage != null)
             TextButton(
@@ -192,18 +189,11 @@ class _StoryCreateScreenState extends State<StoryCreateScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    Icons.photo_library,
-                    size: 80,
-                    color: Colors.white54,
-                  ),
+                  Icon(Icons.photo_library, size: 80, color: Colors.white54),
                   SizedBox(height: 20),
                   Text(
                     'Select an image to create story',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 16,
-                    ),
+                    style: TextStyle(color: Colors.white70, fontSize: 16),
                   ),
                   SizedBox(height: 30),
                   ElevatedButton.icon(
@@ -232,10 +222,7 @@ class _StoryCreateScreenState extends State<StoryCreateScreen> {
                     children: [
                       // Image preview
                       Center(
-                        child: Image.file(
-                          _selectedImage!,
-                          fit: BoxFit.contain,
-                        ),
+                        child: Image.file(_selectedImage!, fit: BoxFit.contain),
                       ),
                       // Change image button
                       Positioned(
@@ -260,39 +247,50 @@ class _StoryCreateScreenState extends State<StoryCreateScreen> {
                     children: [
                       // Category selector
                       Obx(() {
-                        final allCategories = Get.find<CreatePostCtrl>().getCategories;
-                        
+                        final allCategories =
+                            Get.find<CreatePostCtrl>().getCategories;
+
                         // Filter out Advertisement and order: Sports, Entertainment, Perception, Other
                         final filteredCategories = allCategories.where((cat) {
                           final name = cat.name?.toLowerCase() ?? '';
                           return name != 'advertisement';
                         }).toList();
-                        
+
                         // Sort in specific order
                         final orderedCategories = <Categories>[];
-                        final order = ['sports', 'entertainment', 'perception', 'other'];
-                        
+                        final order = [
+                          'sports',
+                          'entertainment',
+                          'perception',
+                          'other',
+                        ];
+
                         for (final orderName in order) {
                           final cat = filteredCategories.firstWhereOrNull(
-                            (c) => c.name?.toLowerCase() == orderName
+                            (c) => c.name?.toLowerCase() == orderName,
                           );
                           if (cat != null) orderedCategories.add(cat);
                         }
-                        
+
                         // Add any remaining categories not in the order list
                         for (final cat in filteredCategories) {
                           if (!orderedCategories.contains(cat)) {
                             orderedCategories.add(cat);
                           }
                         }
-                        
+
                         return Container(
-                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.grey[800],
                             borderRadius: BorderRadius.circular(25),
                             border: Border.all(
-                              color: _selectedCategory == null ? Colors.red.withOpacity(0.5) : Colors.white24
+                              color: _selectedCategory == null
+                                  ? Colors.red.withOpacity(0.5)
+                                  : Colors.white24,
                             ),
                           ),
                           child: DropdownButtonHideUnderline(
@@ -303,14 +301,19 @@ class _StoryCreateScreenState extends State<StoryCreateScreen> {
                                 style: TextStyle(color: Colors.white54),
                               ),
                               dropdownColor: Colors.grey[800],
-                              icon: Icon(Icons.arrow_drop_down, color: Colors.white),
+                              icon: Icon(
+                                Icons.arrow_drop_down,
+                                color: Colors.white,
+                              ),
                               isExpanded: true,
                               style: TextStyle(color: Colors.white),
                               items: orderedCategories.map((category) {
                                 // Capitalize first letter
                                 String displayName = category.name ?? '';
                                 if (displayName.isNotEmpty) {
-                                  displayName = displayName[0].toUpperCase() + displayName.substring(1).toLowerCase();
+                                  displayName =
+                                      displayName[0].toUpperCase() +
+                                      displayName.substring(1).toLowerCase();
                                 }
                                 return DropdownMenuItem<Categories>(
                                   value: category,
