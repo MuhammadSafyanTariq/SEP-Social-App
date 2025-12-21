@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:sep/components/styles/appColors.dart';
+import 'package:sep/feature/data/models/dataModels/post_data.dart';
 import 'package:sep/feature/presentation/controller/story/story_controller.dart';
 import 'package:sep/services/storage/preferences.dart';
 import 'package:sep/utils/appUtils.dart';
@@ -77,13 +78,33 @@ class _StoryListWidgetState extends State<StoryListWidget> {
         );
       }
 
+      // Group stories by user ID
+      final Map<String, List<PostData>> groupedStories = {};
+      for (var story in storyController.stories) {
+        final user = story.user.isNotEmpty ? story.user.first : null;
+        final userId = user?.id ?? 'unknown_${story.id ?? 'none'}';
+
+        AppUtils.log(
+          'Story ID: ${story.id}, User ID: $userId, User Name: ${user?.name}',
+        );
+
+        if (!groupedStories.containsKey(userId)) {
+          groupedStories[userId] = [];
+        }
+        groupedStories[userId]!.add(story);
+      }
+
+      AppUtils.log('Grouped stories into ${groupedStories.length} users');
+
+      final userStories = groupedStories.entries.toList();
+
       return Container(
         height: 110,
         margin: EdgeInsets.symmetric(vertical: 8),
         child: ListView.builder(
           scrollDirection: Axis.horizontal,
           padding: EdgeInsets.symmetric(horizontal: 12),
-          itemCount: storyController.stories.length + 1,
+          itemCount: userStories.length + 1,
           itemBuilder: (context, index) {
             // First item - Create Story
             if (index == 0) {
@@ -91,19 +112,25 @@ class _StoryListWidgetState extends State<StoryListWidget> {
             }
 
             // Story items
-            final storyIndex = index - 1;
-            final story = storyController.stories[storyIndex];
-            final user = story.user.isNotEmpty ? story.user.first : null;
+            final userStoryIndex = index - 1;
+            final userStoriesEntry = userStories[userStoryIndex];
+            final stories = userStoriesEntry.value;
+            final firstStory = stories.first;
+            final user = firstStory.user.isNotEmpty
+                ? firstStory.user.first
+                : null;
             final userImageUrl = user?.image?.isNotEmpty == true
                 ? AppUtils.configImageUrl(user!.image!)
                 : AppImages.dummyProfile;
 
             return GestureDetector(
               onTap: () {
-                // Open this single story
-                AppUtils.log('Opening story: ${story.id}');
+                // Open all stories for this user
+                AppUtils.log(
+                  'Opening ${stories.length} stories for user: ${user?.name}',
+                );
                 context.pushNavigator(
-                  StoryViewScreen(initialIndex: 0, stories: [story]),
+                  StoryViewScreen(initialIndex: 0, stories: stories),
                 );
               },
               child: Container(
@@ -111,40 +138,71 @@ class _StoryListWidgetState extends State<StoryListWidget> {
                 margin: EdgeInsets.only(right: 12),
                 child: Column(
                   children: [
-                    Container(
-                      width: 74,
-                      height: 74,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          colors: [
-                            AppColors.primaryColor,
-                            AppColors.primaryColor.withOpacity(0.5),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                      ),
-                      padding: EdgeInsets.all(3),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white,
-                        ),
-                        padding: EdgeInsets.all(2),
-                        child: ClipOval(
-                          child: ImageView(
-                            url: userImageUrl,
-                            size: 64,
-                            radius: 32,
-                            imageType: user?.image?.isNotEmpty == true
-                                ? ImageType.network
-                                : null,
-                            defaultImage: AppImages.dummyProfile,
-                            fit: BoxFit.cover,
+                    Stack(
+                      children: [
+                        Container(
+                          width: 74,
+                          height: 74,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(
+                              colors: [
+                                AppColors.primaryColor,
+                                AppColors.primaryColor.withOpacity(0.5),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                          ),
+                          padding: EdgeInsets.all(3),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.white,
+                            ),
+                            padding: EdgeInsets.all(2),
+                            child: ClipOval(
+                              child: ImageView(
+                                url: userImageUrl,
+                                size: 64,
+                                radius: 32,
+                                imageType: user?.image?.isNotEmpty == true
+                                    ? ImageType.network
+                                    : null,
+                                defaultImage: AppImages.dummyProfile,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
                           ),
                         ),
-                      ),
+                        if (stories.length > 1)
+                          Positioned(
+                            top: 0,
+                            right: 0,
+                            child: Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.primaryColor,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Text(
+                                '${stories.length}',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                     SizedBox(height: 4),
                     Text(
