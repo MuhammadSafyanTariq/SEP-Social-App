@@ -21,6 +21,7 @@ import 'homeScreenComponents/postVideo.dart';
 import 'homeScreenComponents/post_components.dart';
 import 'homeScreenComponents/celebrationCard.dart';
 import 'searchScreen.dart';
+import 'story/story_list_widget.dart';
 
 class Contentscreen extends StatefulWidget {
   final Function()? getLiveStreamList;
@@ -220,8 +221,8 @@ class _HomeScreenState extends State<Contentscreen> {
                 floating: true,
                 backgroundColor: Colors.white,
                 expandedHeight: AgoraChatCtrl.find.liveStreamChannels.isNotEmpty
-                    ? 220
-                    : 120,
+                    ? 340
+                    : 240,
                 flexibleSpace: SingleChildScrollView(
                   physics: NeverScrollableScrollPhysics(),
                   child: Padding(
@@ -278,6 +279,8 @@ class _HomeScreenState extends State<Contentscreen> {
                             ),
                           ),
                         ),
+                        // Story section
+                        StoryListWidget(),
                         Visibility(
                           visible:
                               AgoraChatCtrl.find.liveStreamChannels.isNotEmpty,

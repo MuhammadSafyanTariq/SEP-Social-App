@@ -683,27 +683,33 @@ class ProfileCtrl extends GetxController {
         AppUtils.log('home page number is ::: 11111111');
         final newPosts = response.data ?? [];
 
-        if (newPosts.isNotEmpty) {
+        // Filter out stories (posts with #SEPStory tag)
+        final filteredPosts = newPosts.where((post) {
+          final content = post.content?.toLowerCase() ?? '';
+          return !content.contains('#sepstory');
+        }).toList();
+
+        if (filteredPosts.isNotEmpty) {
           homeContentIndex = page;
 
           // Debug: Check for posts with missing IDs
-          _debugPostIds(newPosts);
+          _debugPostIds(filteredPosts);
         }
 
         if (page == 1) {
           // Sort posts: prioritize advertisements < 24 hours old
-          final sortedPosts = _sortPostsWithAdvertisementPriority(newPosts);
+          final sortedPosts = _sortPostsWithAdvertisementPriority(filteredPosts);
           globalPostList.assignAll(
             sortedPosts,
           ); // Replace the list if it's the first page
         } else {
           globalPostList.addAll(
-            newPosts,
+            filteredPosts,
           ); // Append new posts for subsequent pages
         }
 
         _hasMoreData.value =
-            newPosts.length == limit; // Check if more data is available
+            filteredPosts.length == limit; // Check if more data is available
       } else {
         AppUtils.log('home page number is ::: 2222222');
         errorMessage.value =
