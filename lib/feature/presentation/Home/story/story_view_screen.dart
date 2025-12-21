@@ -4,6 +4,9 @@ import 'package:sep/feature/data/models/dataModels/post_data.dart';
 import 'package:sep/components/styles/appColors.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:sep/services/networking/urls.dart';
+import 'package:sep/feature/presentation/controller/auth_Controller/profileCtrl.dart';
+import 'package:sep/feature/presentation/controller/story/story_controller.dart';
+import 'package:sep/utils/appUtils.dart';
 import 'dart:async';
 
 class StoryViewScreen extends StatefulWidget {
@@ -26,6 +29,12 @@ class _StoryViewScreenState extends State<StoryViewScreen>
   late int _currentIndex;
   late AnimationController _progressController;
   Timer? _timer;
+  late ProfileCtrl profileCtrl;
+  StoryController? storyController;
+
+  // Track like state for each story
+  Map<String, bool> likeStates = {};
+  Map<String, int> likeCounts = {};
 
   @override
   void initState() {
@@ -36,6 +45,20 @@ class _StoryViewScreenState extends State<StoryViewScreen>
       vsync: this,
       duration: Duration(seconds: 5),
     );
+
+    profileCtrl = Get.find<ProfileCtrl>();
+
+    // Try to get StoryController if it exists
+    if (Get.isRegistered<StoryController>()) {
+      storyController = Get.find<StoryController>();
+    }
+
+    // Initialize like states for all stories
+    for (var story in widget.stories) {
+      final postId = story.id ?? '';
+      likeStates[postId] = story.isLikedByUser ?? false;
+      likeCounts[postId] = story.likeCount ?? 0;
+    }
 
     _startProgress();
   }
@@ -82,6 +105,63 @@ class _StoryViewScreenState extends State<StoryViewScreen>
         curve: Curves.easeInOut,
       );
       _startProgress();
+    }
+  }
+
+  Future<void> _toggleLike() async {
+    final story = widget.stories[_currentIndex];
+    final postId = story.id ?? '';
+
+    if (postId.isEmpty) {
+      AppUtils.log('Cannot like story: Invalid post ID');
+      return;
+    }
+
+    // Store current state for revert
+    final previousLikeState = likeStates[postId] ?? false;
+    final previousLikeCount = likeCounts[postId] ?? 0;
+
+    // Optimistic update
+    setState(() {
+      likeStates[postId] = !previousLikeState;
+      likeCounts[postId] = previousLikeCount + (previousLikeState ? -1 : 1);
+    });
+
+    // Make API call
+    try {
+      await profileCtrl.likeposts(postId);
+      AppUtils.log('Story liked successfully: $postId');
+
+      // Update the story data in the stories list
+      widget.stories[_currentIndex] = story.copyWith(
+        isLikedByUser: !previousLikeState,
+        likeCount: previousLikeCount + (previousLikeState ? -1 : 1),
+      );
+
+      // Update in StoryController if available
+      if (storyController != null) {
+        final storyIndex = storyController!.stories.indexWhere(
+          (s) => s.id == postId,
+        );
+        if (storyIndex != -1) {
+          storyController!.stories[storyIndex] = widget.stories[_currentIndex];
+        }
+      }
+
+      // Update in ProfileCtrl global post list
+      final globalIndex = profileCtrl.globalPostList.indexWhere(
+        (p) => p.id == postId,
+      );
+      if (globalIndex != -1) {
+        profileCtrl.globalPostList[globalIndex] = widget.stories[_currentIndex];
+      }
+    } catch (e) {
+      // Revert on error
+      setState(() {
+        likeStates[postId] = previousLikeState;
+        likeCounts[postId] = previousLikeCount;
+      });
+      AppUtils.log('Error liking story: $e');
     }
   }
 
@@ -280,31 +360,75 @@ class _StoryViewScreenState extends State<StoryViewScreen>
               ),
             ),
 
-            // Caption at bottom
-            if (caption.isNotEmpty)
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: Container(
-                  padding: EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.bottomCenter,
-                      end: Alignment.topCenter,
-                      colors: [
-                        Colors.black.withOpacity(0.7),
-                        Colors.transparent,
-                      ],
-                    ),
-                  ),
-                  child: Text(
-                    caption,
-                    style: TextStyle(color: Colors.white, fontSize: 14),
-                    textAlign: TextAlign.center,
+            // Caption and Like button at bottom
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.topCenter,
+                    colors: [Colors.black.withOpacity(0.7), Colors.transparent],
                   ),
                 ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // Caption
+                    if (caption.isNotEmpty)
+                      Expanded(
+                        child: Text(
+                          caption,
+                          style: TextStyle(color: Colors.white, fontSize: 14),
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    if (caption.isEmpty) Spacer(),
+
+                    SizedBox(width: 12),
+
+                    // Like button
+                    GestureDetector(
+                      onTap: _toggleLike,
+                      child: Container(
+                        padding: EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.3),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              likeStates[story.id ?? ''] ?? false
+                                  ? Icons.favorite
+                                  : Icons.favorite_border,
+                              color: likeStates[story.id ?? ''] ?? false
+                                  ? Colors.red
+                                  : Colors.white,
+                              size: 24,
+                            ),
+                            SizedBox(width: 6),
+                            Text(
+                              '${likeCounts[story.id ?? ''] ?? 0}',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
+            ),
           ],
         ),
       ),
