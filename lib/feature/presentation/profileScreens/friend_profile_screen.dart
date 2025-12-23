@@ -30,10 +30,13 @@ import 'package:video_thumbnail/video_thumbnail.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../../utils/appUtils.dart';
 import '../Home/homeScreenComponents/pollCard.dart';
+import '../Home/homeScreenComponents/celebrationCard.dart';
 import '../Home/homeScreenComponents/post_components.dart';
 import '../Home/video.dart';
 import '../chatScreens/Messages_Screen.dart';
 import '../controller/auth_Controller/profileCtrl.dart';
+import '../controller/story/story_controller.dart';
+import '../Home/story/story_view_screen.dart';
 import '../screens/post_browsing_listing.dart';
 
 class FriendProfileScreen extends StatefulWidget {
@@ -55,32 +58,45 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
   RxDouble collapseHeight = RxDouble(120);
   String? name;
   String? namee;
+  StoryController? storyController;
+
+  bool get hasStories {
+    if (storyController == null) return false;
+    final userId = profileData.value.id;
+    return storyController!.getStoriesForUser(userId ?? '').isNotEmpty;
+  }
 
   // Cache for video thumbnails
   final Map<String, String?> _thumbnailCache = {};
 
-  List<String> get tabsss => ["IMAGES", "VIDEOS", "POLLS"];
+  List<String> get tabsss => ["IMAGES", "VIDEOS", "POLLS", "CELEBRATIONS"];
 
   RxList<PostData> profileImagePostListFriend = RxList();
   RxList<PostData> profileVideoPostListFriend = RxList();
   RxList<PostData> profilePollPostListFriend = RxList();
+  RxList<PostData> profileCelebrationPostListFriend = RxList();
 
   int profileImagePageNoFriend = 1;
   int profileVideoPageNoFriend = 1;
   int profilePollPageNoFriend = 1;
+  int profileCelebrationPageNoFriend = 1;
 
   // List<PostData> get list =>
   //     tabIndex.value == 2 ? profileCtrl.profilePollPostListFriend :
   //     tabIndex.value == 1 ?profileCtrl.profileVideoPostListFriend :
   //     profileCtrl.profileImagePostListFriend;
 
-  List<PostData> get list => tabIndex.value == 2
+  List<PostData> get list => tabIndex.value == 3
+      ? profileCelebrationPostListFriend
+      : tabIndex.value == 2
       ? profilePollPostListFriend
       : tabIndex.value == 1
       ? profileVideoPostListFriend
       : profileImagePostListFriend;
 
-  PostFileType get postType => tabIndex.value == 2
+  PostFileType get postType => tabIndex.value == 3
+      ? PostFileType.post
+      : tabIndex.value == 2
       ? PostFileType.poll
       : tabIndex.value == 1
       ? PostFileType.video
@@ -93,7 +109,8 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
   int get adjustedFriendPostCount {
     return profileImagePostListFriend.length +
         profileVideoPostListFriend.length +
-        profilePollPostListFriend.length;
+        profilePollPostListFriend.length +
+        profileCelebrationPostListFriend.length;
   }
 
   // ProfileDataModel get profileDataValue => profileCtrl.
@@ -105,6 +122,11 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
 
     AppUtils.log(profileData.value.toJson());
     _tabController = TabController(length: tabsss.length, vsync: this);
+
+    // Get story controller if available
+    if (Get.isRegistered<StoryController>()) {
+      storyController = Get.find<StoryController>();
+    }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initData();
@@ -140,6 +162,8 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
           ? profilePollPageNoFriend
           : postType == PostFileType.video
           ? profileVideoPageNoFriend
+          : postType == PostFileType.post
+          ? profileCelebrationPageNoFriend
           : profileImagePageNoFriend;
       return await profileCtrl
           .getMyProfilePostsFriend(
@@ -151,11 +175,20 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
           )
           .applyLoaderWithOption(!refresh && !loadMore)
           .then((list) {
+            // Filter celebrations for celebration tab
+            if (postType == PostFileType.post) {
+              list = list.where((post) => 
+                post.content != null && post.content!.startsWith('SEP#Celebrate')
+              ).toList();
+            }
+            
             if (list.isNotEmpty) {
               if (postType == PostFileType.poll) {
                 profilePollPageNoFriend = pageNo;
               } else if (postType == PostFileType.video) {
                 profileVideoPageNoFriend = pageNo;
+              } else if (postType == PostFileType.post) {
+                profileCelebrationPageNoFriend = pageNo;
               } else {
                 profileImagePageNoFriend = pageNo;
               }
@@ -167,6 +200,9 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
                 } else if (postType == PostFileType.video) {
                   profileVideoPostListFriend.assignAll(list);
                   profileVideoPostListFriend.refresh();
+                } else if (postType == PostFileType.post) {
+                  profileCelebrationPostListFriend.assignAll(list);
+                  profileCelebrationPostListFriend.refresh();
                 } else {
                   profileImagePostListFriend.assignAll(list);
                   profileImagePostListFriend.refresh();
@@ -178,6 +214,9 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
                 } else if (postType == PostFileType.video) {
                   profileVideoPostListFriend.addAll(list);
                   profileVideoPostListFriend.refresh();
+                } else if (postType == PostFileType.post) {
+                  profileCelebrationPostListFriend.addAll(list);
+                  profileCelebrationPostListFriend.refresh();
                 } else {
                   profileImagePostListFriend.addAll(list);
                   profileImagePostListFriend.refresh();
@@ -414,6 +453,61 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
   // Share profile functionality - Send profile card to friends in chat
   void _shareProfile() {
     _showFriendSelector();
+  }
+
+  void _showProfileImageOptions() {
+    final imageUrl = AppUtils.configImageUrl(profileData.value.image ?? '');
+    final hasProfileImage = imageUrl.isNotEmpty;
+    final userId = profileData.value.id ?? '';
+    final userStories = storyController?.getStoriesForUser(userId) ?? [];
+    final showStoryOption = userStories.isNotEmpty;
+
+    showModalBottomSheet(
+      context: context,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext context) {
+        return Container(
+          padding: EdgeInsets.symmetric(vertical: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (hasProfileImage)
+                ListTile(
+                  leading: Icon(Icons.person, color: AppColors.primaryColor),
+                  title: Text('View Profile Image'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    context.pushNavigator(
+                      ImagePreviewScreen(imageUrl: imageUrl),
+                    );
+                  },
+                ),
+              if (showStoryOption)
+                ListTile(
+                  leading: Icon(Icons.auto_stories, color: Colors.purple),
+                  title: Text('View Story'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    context.pushNavigator(
+                      StoryViewScreen(initialIndex: 0, stories: userStories),
+                    );
+                  },
+                ),
+              if (!hasProfileImage && !showStoryOption)
+                Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Text(
+                    'No profile image or story available',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   void _showFriendSelector() {
@@ -968,36 +1062,62 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
           Positioned(
             bottom: -50,
             left: MediaQuery.of(context).size.width / 2 - 60,
-            child: Container(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 4),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 10,
-                    offset: Offset(0, 2),
-                  ),
-                ],
-              ),
+            child: GestureDetector(
+              onTap: () {
+                _showProfileImageOptions();
+              },
               child: Obx(() {
                 final imageUrl = AppUtils.configImageUrl(
                   profileData.value.image ?? '',
                 );
-                return GestureDetector(
-                  onTap: () {
-                    if (imageUrl.isNotEmpty) {
-                      context.pushNavigator(
-                        ImagePreviewScreen(imageUrl: imageUrl),
-                      );
-                    }
-                  },
-                  child: CircleAvatar(
-                    radius: 56,
-                    backgroundColor: Colors.grey[300],
-                    backgroundImage: imageUrl.isNotEmpty
-                        ? NetworkImage(imageUrl)
-                        : AssetImage(AppImages.dummyProfile) as ImageProvider,
+                final showStoryRing = hasStories;
+                return Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: showStoryRing
+                        ? LinearGradient(
+                            colors: [
+                              Colors.green.shade400,
+                              Colors.green.shade600,
+                              Colors.green.shade800,
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          )
+                        : null,
+                    border: !showStoryRing
+                        ? Border.all(color: Colors.white, width: 4)
+                        : null,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 10,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  padding: showStoryRing ? EdgeInsets.all(3) : EdgeInsets.zero,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: showStoryRing
+                          ? Border.all(color: Colors.white, width: 4)
+                          : null,
+                    ),
+                    child: CircleAvatar(
+                      radius: 56,
+                      backgroundColor: Colors.grey[300],
+                      backgroundImage: imageUrl.isNotEmpty
+                          ? NetworkImage(imageUrl)
+                          : AssetImage(AppImages.dummyProfile) as ImageProvider,
+                      child: imageUrl.isEmpty
+                          ? Icon(
+                              Icons.person,
+                              size: 60,
+                              color: Colors.grey[600],
+                            )
+                          : null,
+                    ),
                   ),
                 );
               }),
@@ -1238,6 +1358,16 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
                 getPosts(onChangePage: true);
               },
             ),
+            _buildTab(
+              icon: Icons.celebration_outlined,
+              label: 'Celebrations',
+              isSelected: tabIndex.value == 3,
+              onTap: () {
+                tabIndex.value = 3;
+                _tabController.animateTo(3);
+                getPosts(onChangePage: true);
+              },
+            ),
           ],
         ),
       ),
@@ -1299,7 +1429,9 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
                   ? 'No images yet'
                   : tabIndex.value == 1
                   ? 'No videos yet'
-                  : 'No polls yet',
+                  : tabIndex.value == 2
+                  ? 'No polls yet'
+                  : 'No celebrations yet',
               style: TextStyle(fontSize: 16, color: Colors.grey[600]),
             ),
           ),
@@ -1312,7 +1444,9 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
             ? _buildImagesGrid(filteredPosts)
             : tabIndex.value == 1
             ? _buildVideosGrid(filteredPosts)
-            : _buildPollsList(filteredPosts),
+            : tabIndex.value == 2
+            ? _buildPollsList(filteredPosts)
+            : _buildCelebrationsList(filteredPosts),
       );
     });
   }
@@ -1359,6 +1493,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
       separatorBuilder: (context, index) => SizedBox(height: 10),
       itemBuilder: (context, index) {
         final post = posts[index];
+        
         return PollCard(
           data: post,
           header: postCardHeader(
@@ -1820,6 +1955,61 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
         },
       );
     });
+  }
+
+  Widget _buildCelebrationsList(List<PostData> posts) {
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: posts.length,
+      separatorBuilder: (context, index) => SizedBox(height: 10),
+      itemBuilder: (context, index) {
+        final post = posts[index];
+        
+        return CelebrationCard(
+          header: postCardHeader(
+            post,
+            onRemovePostAction: () {
+              profileCelebrationPostListFriend.removeAt(index);
+              profileCelebrationPostListFriend.refresh();
+            },
+          ),
+          caption: post.content ?? '',
+          footer: postFooter(
+            context: context,
+            item: post,
+            postLiker: (value) async {
+              await profileCtrl.likeposts(post.id ?? '');
+              final data = profileCelebrationPostListFriend[index];
+              final count = data.likeCount ?? 0;
+              final status = data.isLikedByUser ?? false;
+              profileCelebrationPostListFriend[index] = data.copyWith(
+                isLikedByUser: !status,
+                likeCount: status ? count - 1 : count + 1,
+              );
+              profileCelebrationPostListFriend.refresh();
+            },
+            updateCommentCount: (value) {},
+            updatePostOnAction: (commentCount) {
+              final postId = post.id!;
+              profileCtrl.getSinglePostData(postId).then((value) {
+                final idx = profileCelebrationPostListFriend.indexWhere(
+                  (element) => element.id == postId,
+                );
+                if (idx > -1) {
+                  profileCelebrationPostListFriend[idx] = value.copyWith(
+                    user: profileCelebrationPostListFriend[idx].user,
+                    commentCount: commentCount,
+                  );
+                  profileCelebrationPostListFriend.refresh();
+                }
+              });
+            },
+          ),
+          data: post,
+        );
+      },
+    );
   }
 
   Widget _buildOldPollListView(ProfileCtrl profileCtrl, List<PostData> list) {

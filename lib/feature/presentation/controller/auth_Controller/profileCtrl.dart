@@ -41,10 +41,11 @@ class ProfileCtrl extends GetxController {
     final imageCount = profileImagePostList.length;
     final videoCount = profileVideoPostList.length;
     final pollCount = profilePollPostList.length;
-    final total = imageCount + videoCount + pollCount;
+    final celebrationCount = profileCelebrationPostList.length;
+    final total = imageCount + videoCount + pollCount + celebrationCount;
 
     AppUtils.log(
-      'adjustedPostCount: Image=$imageCount, Video=$videoCount, Poll=$pollCount, Total=$total',
+      'adjustedPostCount: Image=$imageCount, Video=$videoCount, Poll=$pollCount, Celebration=$celebrationCount, Total=$total',
     );
 
     return total;
@@ -483,6 +484,7 @@ class ProfileCtrl extends GetxController {
   int profileImagePageNo = 1;
   int profileVideoPageNo = 1;
   int profilePollPageNo = 1;
+  int profileCelebrationPageNo = 1;
 
   // int profileImagePageNoFriend = 1;
   // int profileVideoPageNoFriend  = 1;
@@ -491,6 +493,7 @@ class ProfileCtrl extends GetxController {
   RxList<PostData> profileImagePostList = RxList();
   RxList<PostData> profileVideoPostList = RxList();
   RxList<PostData> profilePollPostList = RxList();
+  RxList<PostData> profileCelebrationPostList = RxList();
 
   // RxList<PostData> profileImagePostListFriend = RxList();
   // RxList<PostData> profileVideoPostListFriend = RxList();
@@ -505,6 +508,8 @@ class ProfileCtrl extends GetxController {
         ? profilePollPageNo
         : type == PostFileType.video
         ? profileVideoPageNo
+        : type == PostFileType.post
+        ? profileCelebrationPageNo
         : profileImagePageNo;
 
     if (refresh) {
@@ -543,16 +548,26 @@ class ProfileCtrl extends GetxController {
       }
 
       // Filter out stories (posts with #sepstory tag) - only show regular posts
+      // For celebrations tab, only show celebration posts
       final filteredList = list.where((post) {
         final content = post.content?.toLowerCase() ?? '';
         final isStory = content.contains('#sepstory');
+        final isCelebration =
+            post.content?.startsWith('SEP#Celebrate') ?? false;
+
         if (isStory) {
           AppUtils.log(
             '  ❌ Filtering out story: ${post.id} - content has #sepstory',
           );
         }
-        // Only show regular posts (not stories)
-        return !isStory;
+
+        // For celebration tab, only show celebrations
+        if (type == PostFileType.post) {
+          return isCelebration;
+        }
+
+        // For other tabs, show regular posts (not stories, not celebrations)
+        return !isStory && !isCelebration;
       }).toList();
 
       AppUtils.log(
@@ -565,6 +580,8 @@ class ProfileCtrl extends GetxController {
         profilePollPageNo = pageNo;
       } else if (type == PostFileType.video) {
         profileVideoPageNo = pageNo;
+      } else if (type == PostFileType.post) {
+        profileCelebrationPageNo = pageNo;
       } else {
         profileImagePageNo = pageNo;
       }
@@ -577,6 +594,9 @@ class ProfileCtrl extends GetxController {
         } else if (type == PostFileType.video) {
           profileVideoPostList.assignAll(filteredList);
           profileVideoPostList.refresh();
+        } else if (type == PostFileType.post) {
+          profileCelebrationPostList.assignAll(filteredList);
+          profileCelebrationPostList.refresh();
         } else {
           profileImagePostList.assignAll(filteredList);
           profileImagePostList.refresh();
@@ -589,6 +609,9 @@ class ProfileCtrl extends GetxController {
         } else if (type == PostFileType.video) {
           profileVideoPostList.addAll(filteredList);
           profileVideoPostList.refresh();
+        } else if (type == PostFileType.post) {
+          profileCelebrationPostList.addAll(filteredList);
+          profileCelebrationPostList.refresh();
         } else {
           profileImagePostList.addAll(filteredList);
           profileImagePostList.refresh();
@@ -638,10 +661,16 @@ class ProfileCtrl extends GetxController {
         final images = <PostData>[];
         final videos = <PostData>[];
         final polls = <PostData>[];
+        final celebrations = <PostData>[];
 
         for (var post in postsWithoutStories) {
+          // Check if it's a celebration
+          if (post.content != null &&
+              post.content!.startsWith('SEP#Celebrate')) {
+            celebrations.add(post);
+          }
           // Check if it's a poll
-          if (post.options.isNotEmpty || post.fileType == 'poll') {
+          else if (post.options.isNotEmpty || post.fileType == 'poll') {
             polls.add(post);
           }
           // Check if it has files
@@ -664,14 +693,16 @@ class ProfileCtrl extends GetxController {
         profileImagePostList.assignAll(images);
         profileVideoPostList.assignAll(videos);
         profilePollPostList.assignAll(polls);
+        profileCelebrationPostList.assignAll(celebrations);
 
         // Reset page numbers
         profileImagePageNo = 1;
         profileVideoPageNo = 1;
         profilePollPageNo = 1;
+        profileCelebrationPageNo = 1;
 
         AppUtils.log(
-          'Categorized - Images: ${images.length}, Videos: ${videos.length}, Polls: ${polls.length}',
+          'Categorized - Images: ${images.length}, Videos: ${videos.length}, Polls: ${polls.length}, Celebrations: ${celebrations.length}',
         );
         AppUtils.log('=== FETCH COMPLETE - Total: $adjustedPostCount ===');
       }
@@ -712,19 +743,27 @@ class ProfileCtrl extends GetxController {
       pageNo++;
     }
 
+    // Debug: Log API parameters
+    final fileTypeParam = type == PostFileType.poll
+        ? null
+        : type == PostFileType.video
+        ? PostFileType.video.name
+        : type == PostFileType.image
+        ? PostFileType.image.name
+        : null; // null for celebrations (PostFileType.post) to get all posts
+    final postTypeParam =
+        (type == PostFileType.poll ? PostFileType.poll : PostFileType.post)
+            .name;
+
+    AppUtils.log(
+      '🔍 API REQUEST - getProfileData: userId=$userId, fileType=$fileTypeParam, postType=$postTypeParam, page=$pageNo',
+    );
+
     final result = await _itemRepository.getMyProfilePosts(
       userId: userId,
       pageNo: pageNo,
-      fileType:
-          (type != PostFileType.poll
-                  ? (type == PostFileType.video
-                        ? PostFileType.video
-                        : PostFileType.image)
-                  : null)
-              ?.name,
-      postType:
-          (type == PostFileType.poll ? PostFileType.poll : PostFileType.post)
-              .name,
+      fileType: fileTypeParam,
+      postType: postTypeParam,
     );
 
     if (result.isSuccess) {

@@ -24,10 +24,13 @@ import '../../../services/storage/preferences.dart';
 import '../../../utils/appUtils.dart';
 import '../../data/models/dataModels/profile_data/profile_data_model.dart';
 import '../Home/homeScreenComponents/pollCard.dart';
+import '../Home/homeScreenComponents/celebrationCard.dart';
 import '../Home/homeScreenComponents/post_components.dart';
 import '../profileScreens/setting/fullScreenVideoPlayer.dart';
 import '../controller/auth_Controller/profileCtrl.dart';
+import '../controller/story/story_controller.dart';
 import '../screens/post_browsing_listing.dart';
+import '../Home/story/story_view_screen.dart';
 import 'followers.dart';
 import 'setting/following.dart';
 import 'setting/editProfile.dart';
@@ -48,23 +51,34 @@ class _ProfileScreenState extends State<ProfileScreen>
   RxInt tabIndex = RxInt(0);
   RxDouble collapseHeight = RxDouble(120);
   final ProfileCtrl profileCtrl = ProfileCtrl.find;
+  StoryController? storyController;
   late var profileimage = Preferences.profile;
   String? imageonly;
   String? name;
   String? namee;
 
+  bool get hasStories {
+    if (storyController == null) return false;
+    final userId = Preferences.uid;
+    return storyController!.getStoriesForUser(userId ?? '').isNotEmpty;
+  }
+
   // Cache for video thumbnails
   final Map<String, String?> _thumbnailCache = {};
 
-  List<String> get tabsss => ["IMAGES", "VIDEOS", "POLLS"];
+  List<String> get tabsss => ["IMAGES", "VIDEOS", "POLLS", "CELEBRATIONS"];
 
-  List<PostData> get list => tabIndex.value == 2
+  List<PostData> get list => tabIndex.value == 3
+      ? profileCtrl.profileCelebrationPostList
+      : tabIndex.value == 2
       ? profileCtrl.profilePollPostList
       : tabIndex.value == 1
       ? profileCtrl.profileVideoPostList
       : profileCtrl.profileImagePostList;
 
-  PostFileType get postType => tabIndex.value == 2
+  PostFileType get postType => tabIndex.value == 3
+      ? PostFileType.post
+      : tabIndex.value == 2
       ? PostFileType.poll
       : tabIndex.value == 1
       ? PostFileType.video
@@ -76,6 +90,11 @@ class _ProfileScreenState extends State<ProfileScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: tabsss.length, vsync: this);
+
+    // Get story controller if available
+    if (Get.isRegistered<StoryController>()) {
+      storyController = Get.find<StoryController>();
+    }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initData();
@@ -166,6 +185,63 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
   }
 
+  void _showProfileImageOptions() {
+    final hasProfileImage =
+        profileCtrl.profileImageData.network?.isNotEmpty == true;
+    final userId = Preferences.uid ?? '';
+    final userStories = storyController?.getStoriesForUser(userId) ?? [];
+    final showStoryOption = userStories.isNotEmpty;
+
+    showModalBottomSheet(
+      context: context,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext context) {
+        return Container(
+          padding: EdgeInsets.symmetric(vertical: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (hasProfileImage)
+                ListTile(
+                  leading: Icon(Icons.person, color: AppColors.primaryColor),
+                  title: Text('View Profile Image'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    context.pushNavigator(
+                      ImagePreviewScreen(
+                        imageUrl: profileCtrl.profileImageData.network!,
+                      ),
+                    );
+                  },
+                ),
+              if (showStoryOption)
+                ListTile(
+                  leading: Icon(Icons.auto_stories, color: Colors.purple),
+                  title: Text('View Story'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    context.pushNavigator(
+                      StoryViewScreen(initialIndex: 0, stories: userStories),
+                    );
+                  },
+                ),
+              if (!hasProfileImage && !showStoryOption)
+                Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Text(
+                    'No profile image or story available',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -244,31 +320,56 @@ class _ProfileScreenState extends State<ProfileScreen>
             left: MediaQuery.of(context).size.width / 2 - 60,
             child: GestureDetector(
               onTap: () {
-                if (profileCtrl.profileImageData.network?.isNotEmpty == true) {
-                  context.pushNavigator(
-                    ImagePreviewScreen(
-                      imageUrl: profileCtrl.profileImageData.network!,
-                    ),
-                  );
-                }
+                _showProfileImageOptions();
               },
-              child: Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 4),
-                ),
-                child: CircleAvatar(
-                  radius: 56,
-                  backgroundColor: Colors.grey[300],
-                  backgroundImage:
-                      profileCtrl.profileImageData.network?.isNotEmpty == true
-                      ? NetworkImage(profileCtrl.profileImageData.network!)
-                      : AssetImage(AppImages.dummyProfile) as ImageProvider,
-                  child: profileCtrl.profileImageData.network?.isEmpty ?? true
-                      ? Icon(Icons.person, size: 60, color: Colors.grey[600])
-                      : null,
-                ),
-              ),
+              child: Obx(() {
+                final showStoryRing = hasStories;
+                return Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: showStoryRing
+                        ? LinearGradient(
+                            colors: [
+                              Colors.green.shade400,
+                              Colors.green.shade600,
+                              Colors.green.shade800,
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          )
+                        : null,
+                    border: !showStoryRing
+                        ? Border.all(color: Colors.white, width: 4)
+                        : null,
+                  ),
+                  padding: showStoryRing ? EdgeInsets.all(3) : EdgeInsets.zero,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: showStoryRing
+                          ? Border.all(color: Colors.white, width: 4)
+                          : null,
+                    ),
+                    child: CircleAvatar(
+                      radius: 56,
+                      backgroundColor: Colors.grey[300],
+                      backgroundImage:
+                          profileCtrl.profileImageData.network?.isNotEmpty ==
+                              true
+                          ? NetworkImage(profileCtrl.profileImageData.network!)
+                          : AssetImage(AppImages.dummyProfile) as ImageProvider,
+                      child:
+                          profileCtrl.profileImageData.network?.isEmpty ?? true
+                          ? Icon(
+                              Icons.person,
+                              size: 60,
+                              color: Colors.grey[600],
+                            )
+                          : null,
+                    ),
+                  ),
+                );
+              }),
             ),
           ),
         ],
@@ -507,6 +608,16 @@ class _ProfileScreenState extends State<ProfileScreen>
                 getPosts(onChangePage: true);
               },
             ),
+            _buildTab(
+              icon: Icons.celebration_outlined,
+              label: 'Celebrations',
+              isSelected: tabIndex.value == 3,
+              onTap: () {
+                tabIndex.value = 3;
+                _tabController.animateTo(3);
+                getPosts(onChangePage: true);
+              },
+            ),
           ],
         ),
       ),
@@ -569,6 +680,9 @@ class _ProfileScreenState extends State<ProfileScreen>
         case 2:
           filteredPosts = profileCtrl.profilePollPostList;
           break;
+        case 3:
+          filteredPosts = profileCtrl.profileCelebrationPostList;
+          break;
         default:
           filteredPosts = profileCtrl.profileImagePostList;
       }
@@ -586,7 +700,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                   ? 'No images yet'
                   : tabIndex.value == 1
                   ? 'No videos yet'
-                  : 'No polls yet',
+                  : tabIndex.value == 2
+                  ? 'No polls yet'
+                  : 'No celebrations yet',
               style: TextStyle(fontSize: 16, color: Colors.grey[600]),
             ),
           ),
@@ -599,7 +715,9 @@ class _ProfileScreenState extends State<ProfileScreen>
             ? _buildStaggeredImagesGrid(filteredPosts)
             : tabIndex.value == 1
             ? _buildVideosGrid(filteredPosts)
-            : _buildPollsList(filteredPosts),
+            : tabIndex.value == 2
+            ? _buildPollsList(filteredPosts)
+            : _buildCelebrationsList(filteredPosts),
       );
     });
   }
@@ -674,6 +792,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       separatorBuilder: (context, index) => SizedBox(height: 10),
       itemBuilder: (context, index) {
         final post = posts[index];
+
         return PollCard(
           data: post,
           header: postCardHeader(
@@ -920,6 +1039,61 @@ class _ProfileScreenState extends State<ProfileScreen>
       _thumbnailCache[videoUrl] = thumbnailPath;
     }
     return thumbnailPath;
+  }
+
+  Widget _buildCelebrationsList(List<PostData> posts) {
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: posts.length,
+      separatorBuilder: (context, index) => SizedBox(height: 10),
+      itemBuilder: (context, index) {
+        final post = posts[index];
+
+        return CelebrationCard(
+          header: postCardHeader(
+            post,
+            onRemovePostAction: () {
+              profileCtrl.profileCelebrationPostList.removeAt(index);
+              profileCtrl.profileCelebrationPostList.refresh();
+            },
+          ),
+          caption: post.content ?? '',
+          footer: postFooter(
+            context: context,
+            item: post,
+            postLiker: (value) async {
+              await profileCtrl.likeposts(post.id ?? '');
+              final data = profileCtrl.profileCelebrationPostList[index];
+              final count = data.likeCount ?? 0;
+              final status = data.isLikedByUser ?? false;
+              profileCtrl.profileCelebrationPostList[index] = data.copyWith(
+                isLikedByUser: !status,
+                likeCount: status ? count - 1 : count + 1,
+              );
+              profileCtrl.profileCelebrationPostList.refresh();
+            },
+            updateCommentCount: (value) {},
+            updatePostOnAction: (commentCount) {
+              final postId = post.id!;
+              profileCtrl.getSinglePostData(postId).then((value) {
+                final idx = profileCtrl.profileCelebrationPostList.indexWhere(
+                  (element) => element.id == postId,
+                );
+                if (idx > -1) {
+                  profileCtrl.profileCelebrationPostList[idx] = value.copyWith(
+                    user: profileCtrl.profileCelebrationPostList[idx].user,
+                    commentCount: commentCount,
+                  );
+                  profileCtrl.profileCelebrationPostList.refresh();
+                }
+              });
+            },
+          ),
+          data: post,
+        );
+      },
+    );
   }
 
   Future<String?> _generateVideoThumbnail(String videoUrl) async {

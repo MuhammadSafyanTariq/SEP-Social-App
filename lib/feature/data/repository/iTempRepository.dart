@@ -788,31 +788,47 @@ class ITempRepository implements TempRepository {
     required int pageNo,
   }) async {
     // try{
+    final Map<String, String> queryParams = {
+      ...(userId.isNotNullEmpty ? {'userId': userId!} : {}),
+      'fileType': postType,
+      ...(fileType.isNotNullEmpty ? {'type': fileType!} : {}),
+      'limit': '100',
+      'page': '$pageNo',
+
+      // 'fileType':'poll'
+      // 'type':'image',
+      // 'limit':100,
+      // /api/post/getProfileData?type=image&limit=100&fileType=poll
+    };
+
+    AppUtils.log('📡 API Call - ${Urls.profileData}');
+    AppUtils.log('   Query Params: $queryParams');
+
     final response = await _apiMethod.get(
       url: Urls.profileData,
-      query: {
-        ...(userId.isNotNullEmpty ? {'userId': userId!} : {}),
-        'fileType': postType,
-        ...(fileType.isNotNullEmpty ? {'type': fileType!} : {}),
-        'limit': '100',
-        'page': '$pageNo',
-
-        // 'fileType':'poll'
-        // 'type':'image',
-        // 'limit':100,
-        // /api/post/getProfileData?type=image&limit=100&fileType=poll
-      },
+      query: queryParams,
       authToken: Preferences.authToken.bearer,
     );
 
     if (response.isSuccess) {
       final data = response.data?['data']?['posts'] ?? [];
+      AppUtils.log('   ✅ API Response Success: ${data.length} posts returned');
+
+      // Log first few posts details
+      for (var i = 0; i < (data.length > 3 ? 3 : data.length); i++) {
+        final post = data[i];
+        AppUtils.log(
+          '      Post #${i + 1}: id=${post['_id']}, fileType=${post['fileType']}, files=${post['files']?.length ?? 0}',
+        );
+      }
+
       return ResponseData<List<PostData>>(
         isSuccess: true,
         data: List<PostData>.from(data.map((json) => PostData.fromJson(json))),
         // PostData.fromJson(data)
       );
     } else {
+      AppUtils.log('   ❌ API Response Failed: ${response.getError}');
       return ResponseData<List<PostData>>(
         isSuccess: false,
         error: response.getError,
