@@ -53,7 +53,7 @@ android {
         targetSdk = 36
 //        versionCode = flutter.versionCode
 //        versionName = flutter.versionName
-        versionCode = 22
+        versionCode = 23
         versionName = "1.1.5"
     }
 
