@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:sep/feature/data/models/dataModels/post_data.dart';
 import 'package:sep/components/styles/appColors.dart';
+import 'package:sep/feature/presentation/Home/story/story_create_screen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:sep/services/networking/urls.dart';
 import 'package:sep/feature/presentation/controller/auth_Controller/profileCtrl.dart';
@@ -331,8 +332,8 @@ class _StoryViewScreenState extends State<StoryViewScreen>
               },
               itemBuilder: (context, index) {
                 final storyItem = widget.stories[index];
-                final storyImageUrl = storyItem.files?.isNotEmpty == true
-                    ? storyItem.files!.first.file
+                final storyImageUrl = storyItem.files.isNotEmpty == true
+                    ? storyItem.files.first.file
                     : null;
 
                 return Center(
@@ -450,12 +451,38 @@ class _StoryViewScreenState extends State<StoryViewScreen>
                         ],
                       ),
                     ),
-                    // Show delete button if story belongs to current user
-                    if (story.userId == Preferences.uid)
+                    // Show edit and delete buttons if story belongs to current user
+                    if (story.userId == Preferences.uid) ...[
+                      IconButton(
+                        icon: Icon(Icons.edit_outlined, color: Colors.white),
+                        onPressed: () async {
+                          _timer?.cancel();
+                          final result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => StoryCreateScreen(
+                                existingStory: story,
+                              ),
+                            ),
+                          );
+                          
+                          if (result == true && mounted) {
+                            // Story was updated, refresh and close
+                            if (storyController != null) {
+                              await storyController!.refreshStories();
+                            }
+                            Navigator.pop(context);
+                          } else if (mounted) {
+                            // Resume story if still on screen
+                            _startProgress();
+                          }
+                        },
+                      ),
                       IconButton(
                         icon: Icon(Icons.delete_outline, color: Colors.white),
                         onPressed: _deleteStory,
                       ),
+                    ],
                     IconButton(
                       icon: Icon(Icons.close, color: Colors.white),
                       onPressed: () => Navigator.pop(context),

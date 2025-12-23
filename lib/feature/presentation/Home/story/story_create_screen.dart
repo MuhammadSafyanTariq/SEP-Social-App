@@ -2,15 +2,21 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:sep/components/styles/appColors.dart';
+import 'package:sep/services/networking/urls.dart';
 import 'package:sep/feature/presentation/controller/createpost/createpost_ctrl.dart';
 import 'package:sep/feature/presentation/controller/story/story_controller.dart';
+import 'package:sep/feature/presentation/controller/auth_Controller/profileCtrl.dart';
 import 'package:sep/feature/data/models/dataModels/Createpost/getcategory_model.dart';
+import 'package:sep/feature/data/models/dataModels/post_data.dart';
 import 'package:sep/utils/appUtils.dart';
 import 'package:sep/components/coreComponents/EditText.dart';
 
 class StoryCreateScreen extends StatefulWidget {
-  const StoryCreateScreen({Key? key}) : super(key: key);
+  final PostData? existingStory;
+
+  const StoryCreateScreen({Key? key, this.existingStory}) : super(key: key);
 
   @override
   State<StoryCreateScreen> createState() => _StoryCreateScreenState();
@@ -27,7 +33,44 @@ class _StoryCreateScreenState extends State<StoryCreateScreen> {
   void initState() {
     super.initState();
     // Load categories
-    Get.find<CreatePostCtrl>().getPostCategories();
+    final createPostCtrl = Get.find<CreatePostCtrl>();
+    createPostCtrl.getPostCategories();
+
+    // If editing, populate form with existing data
+    if (widget.existingStory != null) {
+      // Set caption (remove #SEPStory tag)
+      String caption = widget.existingStory!.content ?? '';
+      caption = caption
+          .replaceAll(RegExp(r'#SEPStory', caseSensitive: false), '')
+          .trim();
+      _captionController.text = caption;
+
+      // Set category after categories are loaded
+      Future.delayed(Duration(milliseconds: 500), () {
+        final categories = createPostCtrl.getCategories;
+        if (widget.existingStory!.categoryId != null && categories.isNotEmpty) {
+          final category = categories.firstWhereOrNull(
+            (cat) => cat.id == widget.existingStory!.categoryId,
+          );
+          if (category != null) {
+            setState(() {
+              _selectedCategory = category;
+            });
+          }
+        }
+      });
+
+      // Load existing image
+      if (widget.existingStory!.files?.isNotEmpty == true) {
+        final imageUrl = widget.existingStory!.files!.first.file;
+        if (imageUrl != null) {
+          // Note: For editing, we'll show the network image
+          // The actual file will be handled differently
+          // You may need to download it or keep the URL
+          AppUtils.log('Editing story with image: $imageUrl');
+        }
+      }
+    }
   }
 
   @override
@@ -89,7 +132,9 @@ class _StoryCreateScreenState extends State<StoryCreateScreen> {
   }
 
   Future<void> _createStory() async {
-    if (_selectedImage == null) {
+    // For editing, image is optional (can keep existing)
+    // For new story, image is required
+    if (_selectedImage == null && widget.existingStory == null) {
       AppUtils.toastError('Please select an image');
       return;
     }
@@ -105,13 +150,25 @@ class _StoryCreateScreenState extends State<StoryCreateScreen> {
 
     try {
       final createPostCtrl = Get.find<CreatePostCtrl>();
+      final isEditing = widget.existingStory != null;
 
-      // Upload the image
-      final uploadedFiles = await createPostCtrl.uploadFiles([_selectedImage!]);
-
-      if (uploadedFiles.isEmpty) {
-        AppUtils.toastError('Failed to upload image');
-        return;
+      // Upload new image if selected, otherwise use existing
+      List<Map<String, dynamic>> uploadedFiles = [];
+      if (_selectedImage != null) {
+        final newFiles = await createPostCtrl.uploadFiles([_selectedImage!]);
+        if (newFiles.isEmpty) {
+          AppUtils.toastError('Failed to upload image');
+          return;
+        }
+        uploadedFiles = newFiles.cast<Map<String, dynamic>>();
+      } else if (isEditing) {
+        // Keep existing files - convert to proper format
+        if (widget.existingStory!.files != null &&
+            widget.existingStory!.files!.isNotEmpty) {
+          uploadedFiles = widget.existingStory!.files!.map((file) {
+            return {'file': file.file ?? '', 'type': file.type ?? 'image'};
+          }).toList();
+        }
       }
 
       // Create caption with #SEPStory tag
@@ -122,13 +179,26 @@ class _StoryCreateScreenState extends State<StoryCreateScreen> {
         caption = '$caption #SEPStory';
       }
 
-      // Create story using dedicated method
-      await createPostCtrl.createStory(
-        categoryId: _selectedCategory?.id,
-        content: caption,
-        files: uploadedFiles,
-        country: '',
-      );
+      if (isEditing) {
+        // Update existing story using ProfileCtrl.editPost
+        final profileCtrl = Get.find<ProfileCtrl>();
+        await profileCtrl.editPost(
+          postId: widget.existingStory!.id!,
+          content: caption,
+          country: '',
+          uploadedFileUrls: uploadedFiles,
+        );
+        AppUtils.toast('Story updated successfully!');
+      } else {
+        // Create new story
+        await createPostCtrl.createStory(
+          categoryId: _selectedCategory?.id,
+          content: caption,
+          files: uploadedFiles,
+          country: '',
+        );
+        AppUtils.toast('Story created successfully!');
+      }
 
       // Refresh stories list
       try {
@@ -138,10 +208,11 @@ class _StoryCreateScreenState extends State<StoryCreateScreen> {
         AppUtils.log('StoryController not found, will refresh on next load');
       }
 
-      AppUtils.toast('Story created successfully!');
       Navigator.pop(context, true); // Return true to indicate success
     } catch (e) {
-      AppUtils.toastError('Failed to create story: $e');
+      AppUtils.toastError(
+        'Failed to ${widget.existingStory != null ? 'update' : 'create'} story: $e',
+      );
     } finally {
       setState(() {
         _isUploading = false;
@@ -159,9 +230,12 @@ class _StoryCreateScreenState extends State<StoryCreateScreen> {
           icon: Icon(Icons.close, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Create Story', style: TextStyle(color: Colors.white)),
+        title: Text(
+          widget.existingStory != null ? 'Edit Story' : 'Create Story',
+          style: TextStyle(color: Colors.white),
+        ),
         actions: [
-          if (_selectedImage != null)
+          if (_selectedImage != null || widget.existingStory != null)
             TextButton(
               onPressed: _isUploading ? null : _createStory,
               child: _isUploading
@@ -184,7 +258,7 @@ class _StoryCreateScreenState extends State<StoryCreateScreen> {
             ),
         ],
       ),
-      body: _selectedImage == null
+      body: _selectedImage == null && widget.existingStory == null
           ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -222,7 +296,37 @@ class _StoryCreateScreenState extends State<StoryCreateScreen> {
                     children: [
                       // Image preview
                       Center(
-                        child: Image.file(_selectedImage!, fit: BoxFit.contain),
+                        child: _selectedImage != null
+                            ? Image.file(_selectedImage!, fit: BoxFit.contain)
+                            : (widget.existingStory?.files?.isNotEmpty == true
+                                  ? CachedNetworkImage(
+                                      imageUrl:
+                                          widget
+                                              .existingStory!
+                                              .files!
+                                              .first
+                                              .file!
+                                              .startsWith('http')
+                                          ? widget
+                                                .existingStory!
+                                                .files!
+                                                .first
+                                                .file!
+                                          : '$baseUrl${widget.existingStory!.files!.first.file}',
+                                      fit: BoxFit.contain,
+                                      placeholder: (context, url) => Center(
+                                        child: CircularProgressIndicator(
+                                          color: AppColors.primaryColor,
+                                        ),
+                                      ),
+                                      errorWidget: (context, url, error) =>
+                                          Icon(
+                                            Icons.error,
+                                            color: Colors.white,
+                                            size: 50,
+                                          ),
+                                    )
+                                  : SizedBox()),
                       ),
                       // Change image button
                       Positioned(

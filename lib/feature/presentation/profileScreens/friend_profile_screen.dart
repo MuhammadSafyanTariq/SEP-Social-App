@@ -1411,11 +1411,19 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
 
   Widget _buildGridItem(PostData post, int index) {
     final firstFile = post.files.isNotEmpty ? post.files.first : null;
+    final imageUrl = firstFile?.file?.isNotEmpty == true
+        ? AppUtils.configImageUrl(firstFile!.file!)
+        : null;
+
+    AppUtils.log(
+      'Friend Profile Grid Item - Post ${post.id}: file=$imageUrl, hasFiles=${post.files.isNotEmpty}',
+    );
 
     return GestureDetector(
       onTap: () {
         context.pushNavigator(
           PostImageBrowsingListing(
+            initialIndex: index,
             list: profileImagePostListFriend,
             onRemovePost: (index) {
               profileImagePostListFriend.removeAt(index);
@@ -1441,12 +1449,9 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(20),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              if (firstFile?.file?.isNotEmpty == true)
-                Image.network(
-                  AppUtils.configImageUrl(firstFile!.file!),
+          child: imageUrl?.isNotEmpty == true
+              ? Image.network(
+                  imageUrl!,
                   fit: BoxFit.cover,
                   errorBuilder: (context, error, stackTrace) {
                     return Container(
@@ -1460,9 +1465,22 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
                       ),
                     );
                   },
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Container(
+                      color: Colors.grey[200],
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          value: loadingProgress.expectedTotalBytes != null
+                              ? loadingProgress.cumulativeBytesLoaded /
+                                    loadingProgress.expectedTotalBytes!
+                              : null,
+                        ),
+                      ),
+                    );
+                  },
                 )
-              else
-                Container(
+              : Container(
                   color: Colors.grey[300],
                   child: Center(
                     child: Icon(
@@ -1472,8 +1490,6 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
                     ),
                   ),
                 ),
-            ],
-          ),
         ),
       ),
     );

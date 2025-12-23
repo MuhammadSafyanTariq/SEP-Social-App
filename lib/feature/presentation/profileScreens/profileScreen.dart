@@ -28,7 +28,6 @@ import '../Home/homeScreenComponents/post_components.dart';
 import '../profileScreens/setting/fullScreenVideoPlayer.dart';
 import '../controller/auth_Controller/profileCtrl.dart';
 import '../screens/post_browsing_listing.dart';
-import '../store/store_view_screen.dart';
 import 'followers.dart';
 import 'setting/following.dart';
 import 'setting/editProfile.dart';
@@ -85,7 +84,9 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   _initData() async {
-    profileCtrl.getProfileDetails().then((value) {});
+    // Fetch profile details first
+    await profileCtrl.getProfileDetails();
+
     String? imageonly = profileimage?.image;
 
     if (imageonly != null && !imageonly.startsWith("http")) {
@@ -101,7 +102,9 @@ class _ProfileScreenState extends State<ProfileScreen>
       getPosts(onChangePage: true);
     });
 
-    getPosts(refresh: true);
+    // Fetch all post types at once to show accurate count immediately
+    // Use applyLoader to show loading indicator while fetching
+    await profileCtrl.fetchAllPostCounts(refresh: true).applyLoader;
   }
 
   Future getPosts({
@@ -307,46 +310,52 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Widget _buildStatsSection() {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 20),
-      child: Center(
-        child: Container(
-          padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          decoration: BoxDecoration(
-            color: Colors.grey[100],
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildStatItem('${profileCtrl.adjustedPostCount}', 'Posts', null),
-              Container(
-                height: 30,
-                width: 1,
-                color: Colors.grey[400],
-                margin: EdgeInsets.symmetric(horizontal: 20),
-              ),
-              _buildStatItem(
-                '${(profileData.followers ?? []).length}',
-                'Linked Me',
-                () {
-                  context.pushNavigator(MyFollowersListScreen());
-                },
-              ),
-              Container(
-                height: 30,
-                width: 1,
-                color: Colors.grey[400],
-                margin: EdgeInsets.symmetric(horizontal: 20),
-              ),
-              _buildStatItem(
-                '${(profileData.following ?? []).length}',
-                'Link Ups',
-                () {
-                  context.pushNavigator(MyFollowingListScreen());
-                },
-              ),
-            ],
+    return Obx(
+      () => Padding(
+        padding: EdgeInsets.symmetric(horizontal: 20),
+        child: Center(
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            decoration: BoxDecoration(
+              color: Colors.grey[100],
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildStatItem(
+                  '${profileCtrl.adjustedPostCount}',
+                  'Posts',
+                  null,
+                ),
+                Container(
+                  height: 30,
+                  width: 1,
+                  color: Colors.grey[400],
+                  margin: EdgeInsets.symmetric(horizontal: 20),
+                ),
+                _buildStatItem(
+                  '${(profileData.followers ?? []).length}',
+                  'Linked Me',
+                  () {
+                    context.pushNavigator(MyFollowersListScreen());
+                  },
+                ),
+                Container(
+                  height: 30,
+                  width: 1,
+                  color: Colors.grey[400],
+                  margin: EdgeInsets.symmetric(horizontal: 20),
+                ),
+                _buildStatItem(
+                  '${(profileData.following ?? []).length}',
+                  'Link Ups',
+                  () {
+                    context.pushNavigator(MyFollowingListScreen());
+                  },
+                ),
+              ],
+            ),
           ),
         ),
       ),

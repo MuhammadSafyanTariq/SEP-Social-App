@@ -4,7 +4,6 @@ import 'package:sep/components/styles/textStyles.dart';
 import 'package:sep/feature/presentation/Home/homeScreenComponents/postCard.dart';
 import 'package:sep/feature/presentation/Home/homeScreenComponents/post_components.dart';
 import 'package:sep/feature/presentation/controller/auth_Controller/profileCtrl.dart';
-import 'package:sep/services/storage/preferences.dart';
 import 'package:sep/utils/extensions/size.dart';
 
 import '../../../components/coreComponents/TextView.dart';
@@ -50,15 +49,15 @@ class _PostImageBrowsingListingState extends State<PostImageBrowsingListing> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.black,
+      backgroundColor: AppColors.white,
       appBar: AppBar(
         elevation: 0,
         centerTitle: true,
-        backgroundColor: AppColors.black,
+        backgroundColor: AppColors.white,
         leading: IconButton(
           icon: Icon(
             Icons.keyboard_arrow_left_rounded,
-            color: Colors.white,
+            color: Colors.black,
             size: 30,
           ),
           onPressed: () {
@@ -68,11 +67,7 @@ class _PostImageBrowsingListingState extends State<PostImageBrowsingListing> {
         title: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextView(
-              text: Preferences.profile?.name ?? '',
-              style: 14.txtRegularprimary,
-            ),
-            TextView(text: "Posts", style: 14.txtRegularWhite),
+            TextView(text: "Posts", style: 14.txtRegularBlack),
           ],
         ),
       ),
@@ -136,7 +131,7 @@ class _PostImageBrowsingListingState extends State<PostImageBrowsingListing> {
                 },
               ),
               caption: post.content ?? '',
-              imageUrls: post.files ?? [],
+              imageUrls: post.files,
               likes: '',
               comments: '',
               footer: footer,

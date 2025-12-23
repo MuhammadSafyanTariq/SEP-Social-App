@@ -33,9 +33,21 @@ class ProfileCtrl extends GetxController {
 
   // Get actual count of displayed posts (excluding stories)
   int get adjustedPostCount {
-    return profileImagePostList.length +
-        profileVideoPostList.length +
-        profilePollPostList.length;
+    // Return backend count while loading
+    if (isProfilePostsLoading.value) {
+      return 0;
+    }
+
+    final imageCount = profileImagePostList.length;
+    final videoCount = profileVideoPostList.length;
+    final pollCount = profilePollPostList.length;
+    final total = imageCount + videoCount + pollCount;
+
+    AppUtils.log(
+      'adjustedPostCount: Image=$imageCount, Video=$videoCount, Poll=$pollCount, Total=$total',
+    );
+
+    return total;
   }
 
   ImageDataModel get profileImageData {
@@ -50,6 +62,7 @@ class ProfileCtrl extends GetxController {
   }
 
   var isLoading = false.obs;
+  var isProfilePostsLoading = false.obs;
   var errorMessage = ''.obs;
   var postList = <PostData>[].obs;
   var globalPostList = <PostData>[].obs;
@@ -518,57 +531,156 @@ class ProfileCtrl extends GetxController {
     if (result.isSuccess) {
       final list = result.data ?? [];
 
-      // Filter out stories (posts with #sepstory tag)
-      AppUtils.log('Profile posts before filtering: ${list.length}');
+      AppUtils.log('=== PROFILE POSTS FILTERING (type: ${type.name}) ===');
+      AppUtils.log('Total posts received: ${list.length}');
+
+      // Log a few sample posts
+      for (var i = 0; i < (list.length > 3 ? 3 : list.length); i++) {
+        final post = list[i];
+        AppUtils.log(
+          '  Sample post #${i + 1}: ID=${post.id}, content="${post.content?.substring(0, post.content!.length > 30 ? 30 : post.content!.length)}...", files=${post.files.length}',
+        );
+      }
+
+      // Filter out stories (posts with #sepstory tag) - only show regular posts
       final filteredList = list.where((post) {
         final content = post.content?.toLowerCase() ?? '';
         final isStory = content.contains('#sepstory');
         if (isStory) {
           AppUtils.log(
-            'Filtering out story: ${post.id} - ${post.content?.substring(0, 50)}',
+            '  ❌ Filtering out story: ${post.id} - content has #sepstory',
           );
         }
+        // Only show regular posts (not stories)
         return !isStory;
       }).toList();
-      AppUtils.log('Profile posts after filtering: ${filteredList.length}');
 
-      if (filteredList.isNotEmpty) {
+      AppUtils.log(
+        'Posts after filtering: ${filteredList.length} (removed ${list.length - filteredList.length} stories)',
+      );
+      AppUtils.log('=== END FILTERING ===');
+
+      // Update page number
+      if (type == PostFileType.poll) {
+        profilePollPageNo = pageNo;
+      } else if (type == PostFileType.video) {
+        profileVideoPageNo = pageNo;
+      } else {
+        profileImagePageNo = pageNo;
+      }
+
+      // Update lists (even if empty, to clear on refresh)
+      if (pageNo == 1) {
         if (type == PostFileType.poll) {
-          profilePollPageNo = pageNo;
+          profilePollPostList.assignAll(filteredList);
+          profilePollPostList.refresh();
         } else if (type == PostFileType.video) {
-          profileVideoPageNo = pageNo;
+          profileVideoPostList.assignAll(filteredList);
+          profileVideoPostList.refresh();
         } else {
-          profileImagePageNo = pageNo;
+          profileImagePostList.assignAll(filteredList);
+          profileImagePostList.refresh();
         }
-
-        if (pageNo == 1) {
-          if (type == PostFileType.poll) {
-            profilePollPostList.assignAll(filteredList);
-            profilePollPostList.refresh();
-          } else if (type == PostFileType.video) {
-            profileVideoPostList.assignAll(filteredList);
-            profileVideoPostList.refresh();
-          } else {
-            profileImagePostList.assignAll(filteredList);
-            profileImagePostList.refresh();
-          }
+      } else if (filteredList.isNotEmpty) {
+        // Only add to list if there are items to add
+        if (type == PostFileType.poll) {
+          profilePollPostList.addAll(filteredList);
+          profilePollPostList.refresh();
+        } else if (type == PostFileType.video) {
+          profileVideoPostList.addAll(filteredList);
+          profileVideoPostList.refresh();
         } else {
-          if (type == PostFileType.poll) {
-            profilePollPostList.addAll(filteredList);
-            profilePollPostList.refresh();
-          } else if (type == PostFileType.video) {
-            profileVideoPostList.addAll(filteredList);
-            profileVideoPostList.refresh();
-          } else {
-            profileImagePostList.addAll(filteredList);
-            profileImagePostList.refresh();
-          }
+          profileImagePostList.addAll(filteredList);
+          profileImagePostList.refresh();
         }
-      } else {}
+      }
       return;
     } else {
       AppUtils.toastError(result.getError);
       throw '';
+    }
+  }
+
+  // Fetch ALL posts at once and categorize them client-side
+  Future<void> fetchAllPostCounts({bool refresh = true}) async {
+    try {
+      isProfilePostsLoading.value = true;
+
+      AppUtils.log('=== FETCHING ALL PROFILE POSTS AT ONCE ===');
+
+      // Fetch ALL posts without filtering by type (single API call)
+      final response = await _apiMethod.get(
+        url: Urls.profileData,
+        query: {'limit': '1000', 'page': '1'},
+        authToken: Preferences.authToken.bearer,
+      );
+
+      if (response.isSuccess) {
+        final allPosts =
+            (response.data?['data']?['posts'] as List?)
+                ?.map((e) => PostData.fromJson(e))
+                .toList() ??
+            [];
+
+        AppUtils.log('Total posts fetched: ${allPosts.length}');
+
+        // Filter out stories
+        final postsWithoutStories = allPosts.where((post) {
+          final content = post.content?.toLowerCase() ?? '';
+          return !content.contains('#sepstory');
+        }).toList();
+
+        AppUtils.log(
+          'Posts after removing stories: ${postsWithoutStories.length}',
+        );
+
+        // Categorize posts by type
+        final images = <PostData>[];
+        final videos = <PostData>[];
+        final polls = <PostData>[];
+
+        for (var post in postsWithoutStories) {
+          // Check if it's a poll
+          if (post.options.isNotEmpty || post.fileType == 'poll') {
+            polls.add(post);
+          }
+          // Check if it has files
+          else if (post.files.isNotEmpty) {
+            final firstFile = post.files.first;
+            final fileType = firstFile.type?.toLowerCase() ?? '';
+
+            if (fileType == 'video' || fileType.contains('video')) {
+              videos.add(post);
+            } else if (fileType == 'image' || fileType.contains('image')) {
+              images.add(post);
+            } else {
+              // Default to image if type is unclear
+              images.add(post);
+            }
+          }
+        }
+
+        // Update all lists at once
+        profileImagePostList.assignAll(images);
+        profileVideoPostList.assignAll(videos);
+        profilePollPostList.assignAll(polls);
+
+        // Reset page numbers
+        profileImagePageNo = 1;
+        profileVideoPageNo = 1;
+        profilePollPageNo = 1;
+
+        AppUtils.log(
+          'Categorized - Images: ${images.length}, Videos: ${videos.length}, Polls: ${polls.length}',
+        );
+        AppUtils.log('=== FETCH COMPLETE - Total: $adjustedPostCount ===');
+      }
+
+      isProfilePostsLoading.value = false;
+    } catch (e) {
+      isProfilePostsLoading.value = false;
+      AppUtils.log('Error fetching all post counts: $e');
+      rethrow;
     }
   }
 
@@ -618,21 +730,38 @@ class ProfileCtrl extends GetxController {
     if (result.isSuccess) {
       final list = result.data ?? [];
 
-      // Filter out stories (posts with #sepstory tag)
-      AppUtils.log('Friend profile posts before filtering: ${list.length}');
+      // Filter out stories (posts with #sepstory tag) - only show regular posts
+      AppUtils.log(
+        '=== FRIEND PROFILE POSTS DEBUG (userId: $userId, type: ${type.name}) ===',
+      );
+      AppUtils.log('API returned: ${list.length} posts');
+
+      // Log all post IDs and content snippets
+      for (var i = 0; i < (list.length > 5 ? 5 : list.length); i++) {
+        final post = list[i];
+        final contentSnippet =
+            post.content?.substring(
+              0,
+              post.content!.length > 50 ? 50 : post.content!.length,
+            ) ??
+            '';
+        AppUtils.log(
+          '  Post #${i + 1}: ID=${post.id}, type=${post.fileType}, hasFiles=${post.files.isNotEmpty}, content="$contentSnippet..."',
+        );
+      }
+
       final filteredList = list.where((post) {
         final content = post.content?.toLowerCase() ?? '';
         final isStory = content.contains('#sepstory');
         if (isStory) {
-          AppUtils.log(
-            'Filtering out friend story: ${post.id} - ${post.content?.substring(0, 50)}',
-          );
+          AppUtils.log('  ❌ Filtering out friend story: ${post.id}');
         }
+        // Only show regular posts (not stories)
         return !isStory;
       }).toList();
-      AppUtils.log(
-        'Friend profile posts after filtering: ${filteredList.length}',
-      );
+
+      AppUtils.log('After filtering stories: ${filteredList.length} posts');
+      AppUtils.log('=== END FRIEND PROFILE DEBUG ===');
 
       return filteredList;
 
