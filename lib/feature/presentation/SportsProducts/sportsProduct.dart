@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -14,8 +13,6 @@ import 'package:sep/components/styles/textStyles.dart';
 import 'package:sep/feature/presentation/SportsProducts/productDetailScreen.dart';
 import 'package:sep/feature/presentation/products/product_details_screen.dart';
 import 'package:sep/feature/data/models/dataModels/user_product_model.dart';
-import 'package:sep/feature/presentation/store/store_view_screen.dart';
-import 'package:sep/feature/presentation/orders/order_history_screen.dart';
 import 'package:sep/feature/presentation/real_estate/real_estate_list_screen.dart';
 import 'package:sep/services/networking/apiMethods.dart';
 import 'package:sep/services/networking/urls.dart';
@@ -24,12 +21,9 @@ import 'package:sep/utils/appUtils.dart';
 import 'package:sep/utils/extensions/contextExtensions.dart';
 import 'package:sep/utils/extensions/extensions.dart';
 import 'package:sep/utils/extensions/size.dart';
-
 import 'package:sep/utils/extensions/widget.dart';
 import 'package:url_launcher/url_launcher.dart';
-
 import '../controller/auth_Controller/product_ctrl.dart';
-import '../Home/CommonBannerAdWidget.dart';
 
 class SportsProduct extends StatefulWidget {
   const SportsProduct({super.key});
@@ -209,6 +203,15 @@ class _SportsProductState extends State<SportsProduct>
 
           // Filter out products from user's own shop by checking shopId
           final filteredProducts = products.where((product) {
+            // Filter out real estate products (category contains "+realestate+")
+            final category = product.category ?? '';
+            if (category.contains('+realestate+')) {
+              AppUtils.log(
+                "  ✓ FILTERING OUT real estate product: ${product.name} (Category: $category)",
+              );
+              return false; // Exclude real estate products
+            }
+
             final productShopId = _extractShopId(product.shopId);
             AppUtils.log(
               "Checking product: ${product.name} (Shop ID: $productShopId)",

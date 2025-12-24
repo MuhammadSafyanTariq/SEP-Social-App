@@ -39,11 +39,37 @@ class _RealEstateListScreenState extends State<RealEstateListScreen> {
   // Search controller
   final TextEditingController searchController = TextEditingController();
 
+  // Store user's shop ID to filter out their own listings
+  String? myShopId;
+
   @override
   void initState() {
     super.initState();
+    _fetchMyShopId();
     _loadRealEstateListings();
     _scrollController.addListener(_onScroll);
+  }
+
+  Future<void> _fetchMyShopId() async {
+    try {
+      final token = Preferences.authToken;
+      final response = await _apiMethod.get(
+        url: Urls.getMyShop,
+        authToken: token,
+        headers: {},
+      );
+
+      if (response.isSuccess && response.data?['data'] != null) {
+        final shopData = response.data!['data'];
+        myShopId = shopData['_id'] as String?;
+        AppUtils.log("My shop ID loaded for real estate filtering: $myShopId");
+      } else {
+        myShopId = null;
+      }
+    } catch (e) {
+      AppUtils.log("Error fetching my shop ID: $e");
+      myShopId = null;
+    }
   }
 
   @override
@@ -103,6 +129,17 @@ class _RealEstateListScreenState extends State<RealEstateListScreen> {
         final filteredProducts = products.where((product) {
           final category = product['category']?.toString().toLowerCase() ?? '';
           if (!category.contains('realestate')) return false;
+
+          // Filter out listings from the current user's shop
+          if (myShopId != null) {
+            final productShopId = _extractShopId(product['shopId']);
+            if (productShopId != null && productShopId == myShopId) {
+              AppUtils.log(
+                "  ✓ FILTERING OUT own real estate listing: ${product['name']} (Shop ID: $productShopId)",
+              );
+              return false; // Exclude user's own listings
+            }
+          }
 
           // Apply country filter
           if (selectedCountry != null && selectedCountry!.isNotEmpty) {
@@ -168,6 +205,19 @@ class _RealEstateListScreenState extends State<RealEstateListScreen> {
     }
   }
 
+  // Helper method to extract shop ID from dynamic shopId field
+  String? _extractShopId(dynamic shopId) {
+    if (shopId == null) return null;
+
+    if (shopId is String) {
+      return shopId;
+    } else if (shopId is Map) {
+      return shopId['_id'] as String?;
+    }
+
+    return null;
+  }
+
   void _applyFilters() {
     setState(() {
       // Apply local filtering for country and city
@@ -184,7 +234,7 @@ class _RealEstateListScreenState extends State<RealEstateListScreen> {
       text: selectedCity ?? '',
     );
 
-    RangeValues currentPriceRange = priceRange ?? RangeValues(0, 10000000);
+    RangeValues currentPriceRange = priceRange ?? RangeValues(0, 100000);
 
     showModalBottomSheet(
       context: context,
@@ -263,7 +313,7 @@ class _RealEstateListScreenState extends State<RealEstateListScreen> {
                   RangeSlider(
                     values: currentPriceRange,
                     min: 0,
-                    max: 100000000,
+                    max: 100000,
                     divisions: 100,
                     activeColor: AppColors.btnColor,
                     inactiveColor: Colors.grey[300],
@@ -313,7 +363,7 @@ class _RealEstateListScreenState extends State<RealEstateListScreen> {
 
                               // Only set price range if it's different from default
                               if (currentPriceRange.start > 0 ||
-                                  currentPriceRange.end < 10000000) {
+                                  currentPriceRange.end < 100000) {
                                 priceRange = currentPriceRange;
                               } else {
                                 priceRange = null;
