@@ -13,9 +13,13 @@ import 'package:sep/components/styles/textStyles.dart';
 import 'package:sep/feature/presentation/controller/auth_Controller/profileCtrl.dart';
 import 'package:sep/utils/extensions/contextExtensions.dart';
 import 'package:sep/utils/extensions/size.dart';
+import 'package:sep/services/storage/preferences.dart';
+import 'package:sep/utils/appUtils.dart';
+import 'package:sep/services/networking/urls.dart';
 import '../controller/auth_Controller/get_stripe_ctrl.dart';
 import 'add_card_screen.dart';
 import 'packages_screen.dart';
+import 'paypal_topup_screen.dart';
 
 class WalletScreen extends StatefulWidget {
   const WalletScreen({super.key});
@@ -75,6 +79,7 @@ class _WalletScreenState extends State<WalletScreen>
           "Wallet Screen - tokenBalance: ${profileData.tokenBalance}, walletTokens: ${profileData.walletTokens}",
         );
         print("Wallet Screen - Using token balance: $tokenBalance");
+        print("Wallet Screen - Profile Image URL: ${profileData.image}");
 
         return Column(
           children: [
@@ -145,10 +150,22 @@ class _WalletScreenState extends State<WalletScreen>
                                     color: Colors.white,
                                   ),
                                   isFilledButton: true,
-                                  onTap: () {
-                                    context.pushNavigator(
-                                      AddCreditCardScreen(),
+                                  onTap: () async {
+                                    final userId = Preferences.uid ?? "";
+                                    if (userId.isEmpty) {
+                                      AppUtils.toastError("User ID not found");
+                                      return;
+                                    }
+                                    await context.pushNavigator(
+                                      PayPalTopUpScreen(
+                                        userId: userId,
+                                        onBalanceUpdated: (newBalance) {
+                                          _refreshData();
+                                        },
+                                      ),
                                     );
+                                    // Refresh after returning
+                                    _refreshData();
                                   },
                                 ),
                               ],
@@ -308,6 +325,7 @@ class TransactionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isPositive = amount >= 0;
+
     return Container(
       margin: EdgeInsets.only(bottom: 12.sdp),
       padding: EdgeInsets.all(16.sdp),
@@ -324,10 +342,31 @@ class TransactionTile extends StatelessWidget {
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 24.sdp,
-            backgroundImage: const AssetImage(AppImages.dummyProfile),
-          ),
+          Obx(() {
+            final profileImage = ProfileCtrl.find.profileData.value.image;
+            print("TransactionTile - Profile Image: $profileImage");
+
+            // Build full image URL
+            String? imageUrl;
+            if (profileImage != null && profileImage.isNotEmpty) {
+              if (profileImage.startsWith('http')) {
+                imageUrl = profileImage;
+              } else {
+                // Relative path - prepend base URL
+                imageUrl = '${Urls.appApiBaseUrl}$profileImage';
+              }
+              print("TransactionTile - Full Image URL: $imageUrl");
+            }
+
+            return CircleAvatar(
+              radius: 24.sdp,
+              backgroundColor: Colors.grey[200],
+              backgroundImage: imageUrl != null ? NetworkImage(imageUrl) : null,
+              child: imageUrl == null
+                  ? Icon(Icons.person, size: 28.sdp, color: Colors.grey[400])
+                  : null,
+            );
+          }),
           SizedBox(width: 12.sdp),
           Expanded(
             child: Column(

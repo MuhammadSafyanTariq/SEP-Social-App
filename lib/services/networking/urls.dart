@@ -42,6 +42,7 @@ class _Collection {
   static const String product = '$_baseUrl';
   static const String profileBrowser = '$_baseUrl';
   static const String stripe = '$_baseUrl${"/stripe"}';
+  static const String paypal = '$_baseUrl${"/paypal"}';
 }
 
 class Urls {
@@ -176,6 +177,13 @@ class Urls {
   static const String topUpAccount = '${_Collection.stripe}/topUpAccount';
 
   static const String moneyWalletTransaction = '/api/transactions';
+
+  ///////////  PayPal   ////////////
+
+  static const String paypalCreateOrder = '${_Collection.paypal}/create-order';
+  static const String paypalProcessPayment =
+      '${_Collection.paypal}/process-payment';
+  static const String paypalCancel = '${_Collection.paypal}/cancel';
 
   // Token Purchase
   static const String tokenPurchase = '/api/tokenPurchase/purchase';

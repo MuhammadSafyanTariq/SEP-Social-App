@@ -10,9 +10,12 @@ import 'package:sep/components/styles/appColors.dart';
 import 'package:sep/utils/extensions/size.dart';
 import 'package:sep/feature/presentation/wallet/add_new_card.dart';
 import 'package:sep/utils/extensions/contextExtensions.dart';
+import 'package:sep/services/storage/preferences.dart';
+import 'package:sep/utils/appUtils.dart';
 import '../controller/auth_Controller/get_stripe_ctrl.dart';
 import '../controller/auth_Controller/profileCtrl.dart';
 import 'PaymentScreen.dart';
+import 'paypal_topup_screen.dart';
 
 class CreditCard {
   final String id;
@@ -301,15 +304,30 @@ class _AddCreditCardScreenState extends State<AddCreditCardScreen>
             child: AppButton(
               radius: 20.sdp,
               buttonColor: AppColors.greenlight,
-              label: "Top Up Wallet",
+              label: "Top Up Wallet with PayPal",
               labelStyle: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
                 color: Colors.white,
               ),
               isFilledButton: true,
-              onTap: () {
-                context.pushNavigator(PaymentScreen());
+              onTap: () async {
+                final userId = Preferences.uid ?? "";
+                if (userId.isEmpty) {
+                  AppUtils.toastError("User ID not found");
+                  return;
+                }
+                await context.pushNavigator(
+                  PayPalTopUpScreen(
+                    userId: userId,
+                    onBalanceUpdated: (newBalance) {
+                      // Refresh profile when balance updates
+                      ProfileCtrl.find.getProfileDetails();
+                    },
+                  ),
+                );
+                // Refresh after returning
+                ProfileCtrl.find.getProfileDetails();
               },
             ),
           ),

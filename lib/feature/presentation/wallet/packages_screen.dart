@@ -39,6 +39,7 @@ class PackagesScreen extends StatefulWidget {
 class _PackagesScreenState extends State<PackagesScreen> {
   final GetStripeCtrl stripeCtrl = Get.put(GetStripeCtrl());
   Package? selectedPackage;
+  final TextEditingController customAmountController = TextEditingController();
 
   final List<Package> packages = [
     Package(
@@ -98,31 +99,76 @@ class _PackagesScreenState extends State<PackagesScreen> {
     super.initState();
   }
 
+  @override
+  void dispose() {
+    customAmountController.dispose();
+    super.dispose();
+  }
+
   void _selectPackage(Package package) {
     setState(() {
       selectedPackage = package;
+      // Clear custom amount when selecting a package
+      customAmountController.clear();
     });
   }
 
+  void _onCustomAmountChanged(String value) {
+    setState(() {
+      // Clear package selection when entering custom amount
+      if (value.isNotEmpty) {
+        selectedPackage = null;
+      }
+    });
+  }
+
+  // Calculate tokens based on amount with tiered pricing
+  // This formula matches the existing packages:
+  // $9.99 → 100 tokens, $19.99 → 250 tokens, $39.99 → 600 tokens, $99.99 → 1500 tokens
+  int _calculateTokensFromAmount(double amount) {
+    if (amount <= 15) {
+      // Basic tier: 10 tokens per dollar (up to $15)
+      return (amount * 10).round();
+    } else if (amount <= 30) {
+      // Popular tier: 12.5 tokens per dollar ($15-$30)
+      return (amount * 12.5).round();
+    } else {
+      // Premium/Enterprise tier: 15 tokens per dollar ($30+)
+      return (amount * 15).round();
+    }
+  }
+
   Future<void> _payNow() async {
-    if (selectedPackage == null) {
-      AppUtils.toast("Please select a package");
+    double? amount;
+    String purchaseType;
+
+    // Check if custom amount is entered
+    if (customAmountController.text.isNotEmpty) {
+      amount = double.tryParse(customAmountController.text);
+      if (amount == null || amount <= 0) {
+        AppUtils.toast("Please enter a valid amount");
+        return;
+      }
+      purchaseType = "Custom Amount";
+    } else if (selectedPackage != null) {
+      amount = selectedPackage!.price;
+      purchaseType = selectedPackage!.name;
+    } else {
+      AppUtils.toast("Please select a package or enter a custom amount");
       return;
     }
 
     AppUtils.log("=== TOKEN PURCHASE STARTED ===");
-    AppUtils.log(
-      "Package: ${selectedPackage!.name} - \$${selectedPackage!.price} for ${selectedPackage!.tokens} tokens",
-    );
+    AppUtils.log("Type: $purchaseType - \$$amount");
 
     try {
       // Use the new token purchase API
-      await stripeCtrl.purchaseTokens(amount: selectedPackage!.price);
+      await stripeCtrl.purchaseTokens(amount: amount);
 
       AppUtils.log("=== TOKEN PURCHASE COMPLETED SUCCESSFULLY ===");
 
       // Show success message and close screen
-      AppUtils.toast("${selectedPackage!.tokens} tokens added successfully!");
+      AppUtils.toast("Tokens added successfully!");
 
       // Small delay to ensure toast is shown and profile data is fully updated
       await Future.delayed(const Duration(milliseconds: 500));
@@ -329,16 +375,152 @@ class _PackagesScreenState extends State<PackagesScreen> {
                     },
                   ),
 
+                  SizedBox(height: 32.sdp),
+
+                  // Custom Amount Section
+                  Container(
+                    padding: EdgeInsets.all(20.sdp),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20.sdp),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.edit_outlined,
+                              color: AppColors.greenlight,
+                              size: 24,
+                            ),
+                            SizedBox(width: 8.sdp),
+                            TextView(
+                              text: 'Custom Amount',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 12.sdp),
+                        TextView(
+                          text: 'Enter your preferred amount',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        SizedBox(height: 16.sdp),
+                        TextField(
+                          controller: customAmountController,
+                          keyboardType: TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          onChanged: _onCustomAmountChanged,
+                          decoration: InputDecoration(
+                            prefixIcon: Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 16.sdp,
+                                vertical: 12.sdp,
+                              ),
+                              child: TextView(
+                                text: '\$',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.greenlight,
+                                ),
+                              ),
+                            ),
+                            hintText: 'Enter amount (e.g., 25.00)',
+                            hintStyle: TextStyle(
+                              color: Colors.grey[400],
+                              fontSize: 14,
+                            ),
+                            filled: true,
+                            fillColor: Colors.grey[50],
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(15.sdp),
+                              borderSide: BorderSide(color: Colors.grey[300]!),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(15.sdp),
+                              borderSide: BorderSide(color: Colors.grey[300]!),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(15.sdp),
+                              borderSide: BorderSide(
+                                color: AppColors.greenlight,
+                                width: 2,
+                              ),
+                            ),
+                          ),
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        // Show estimated tokens for custom amount
+                        if (customAmountController.text.isNotEmpty) ...[
+                          SizedBox(height: 12.sdp),
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 12.sdp,
+                              vertical: 8.sdp,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.greenlight.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(10.sdp),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Image.asset(
+                                  'assets/icons/token.png',
+                                  width: 18,
+                                  height: 18,
+                                ),
+                                SizedBox(width: 8.sdp),
+                                TextView(
+                                  text:
+                                      '≈ ${_calculateTokensFromAmount(double.tryParse(customAmountController.text) ?? 0)} tokens',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.greenlight,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+
                   // Purchase Button Section
-                  if (selectedPackage != null) ...[
+                  if (selectedPackage != null ||
+                      customAmountController.text.isNotEmpty) ...[
                     SizedBox(height: 32.sdp),
 
                     // Purchase Button
                     AppButton(
                       radius: 25.sdp,
                       buttonColor: AppColors.greenlight,
-                      label:
-                          "Purchase ${selectedPackage!.tokens} Tokens for \$${selectedPackage!.price.toStringAsFixed(2)}",
+                      label: customAmountController.text.isNotEmpty
+                          ? "Purchase Tokens for \$${customAmountController.text}"
+                          : "Purchase ${selectedPackage!.tokens} Tokens for \$${selectedPackage!.price.toStringAsFixed(2)}",
                       labelStyle: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,

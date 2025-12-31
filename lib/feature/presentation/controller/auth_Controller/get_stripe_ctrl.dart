@@ -255,16 +255,22 @@ class GetStripeCtrl extends GetxController {
 
     if (userId.isEmpty) {
       AppUtils.toastError("User ID not found");
-      return;
+      throw Exception("User ID not found");
     }
 
-    // Validate amount
-    final validAmounts = [9.99, 19.99, 39.99, 99.99];
-    if (!validAmounts.contains(amount)) {
+    // Validate amount (minimum purchase)
+    if (amount <= 0) {
+      AppUtils.toastError("Invalid amount. Please enter a valid amount.");
+      throw Exception("Invalid amount");
+    }
+
+    // Check if user has sufficient balance
+    final currentBalance = profileCtrl.profileData.value.walletBalance ?? 0.0;
+    if (currentBalance < amount) {
       AppUtils.toastError(
-        "Invalid amount. Please select from available packages.",
+        "Insufficient balance. Please add funds to your wallet first.",
       );
-      return;
+      throw Exception("Insufficient balance");
     }
 
     AppUtils.log(
