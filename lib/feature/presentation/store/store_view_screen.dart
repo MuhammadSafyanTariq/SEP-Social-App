@@ -17,6 +17,7 @@ import 'package:sep/utils/appUtils.dart';
 import 'package:sep/services/storage/preferences.dart';
 import 'package:sep/components/coreComponents/TextView.dart';
 import 'package:sep/components/coreComponents/appBar2.dart';
+import 'package:sep/feature/presentation/subscription/subscription_status_widget.dart';
 
 class StoreViewScreen extends StatefulWidget {
   final String?
@@ -902,6 +903,16 @@ class _StoreViewScreenState extends State<StoreViewScreen> {
             ],
           ),
         ),
+
+        // Subscription Status Widget - Only show for store owner
+        if (isOwner)
+          SubscriptionStatusWidget(
+            showRenewButton: true,
+            onSubscribed: () {
+              // Refresh store after subscription
+              _loadStore();
+            },
+          ),
       ],
     );
   }

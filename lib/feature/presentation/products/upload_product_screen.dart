@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:sep/components/coreComponents/appBar2.dart';
 import 'package:sep/components/styles/appColors.dart';
 import 'package:sep/utils/extensions/size.dart';
 import 'package:sep/feature/presentation/products/widgets/product_upload_form.dart';
+import 'package:sep/services/subscription/subscription_service.dart';
+import 'package:sep/feature/presentation/subscription/subscription_required_screen.dart';
 
 class UploadProductScreen extends StatefulWidget {
   const UploadProductScreen({Key? key}) : super(key: key);
@@ -14,12 +17,28 @@ class UploadProductScreen extends StatefulWidget {
 class _UploadProductScreenState extends State<UploadProductScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final SubscriptionService _subscriptionService = SubscriptionService();
 
   @override
   void initState() {
     super.initState();
     // _tabController = TabController(length: 2, vsync: this);
     _tabController = TabController(length: 1, vsync: this);
+    _checkSubscription();
+  }
+
+  Future<void> _checkSubscription() async {
+    final isActive = await _subscriptionService.isSubscriptionActive();
+    if (!isActive) {
+      // Show subscription required screen
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        final result = await Get.to(() => const SubscriptionRequiredScreen());
+        if (result != true) {
+          // User didn't subscribe, go back
+          Navigator.pop(context);
+        }
+      });
+    }
   }
 
   @override

@@ -12,6 +12,8 @@ import 'package:sep/services/networking/apiMethods.dart';
 import 'package:sep/services/networking/urls.dart';
 import 'package:sep/utils/appUtils.dart';
 import 'package:sep/services/storage/preferences.dart';
+import 'package:sep/services/subscription/subscription_service.dart';
+import 'package:sep/feature/presentation/subscription/subscription_required_screen.dart';
 
 class CreateStoreScreen extends StatefulWidget {
   final StoreModel? existingStore;
@@ -32,6 +34,7 @@ class _CreateStoreScreenState extends State<CreateStoreScreen> {
   final _picker = ImagePicker();
   final IAuthRepository _authRepository = IAuthRepository();
   final IApiMethod _apiMethod = IApiMethod();
+  final SubscriptionService _subscriptionService = SubscriptionService();
 
   final RxString logoUrl = RxString('');
   final RxBool isUploading = RxBool(false);
@@ -44,6 +47,23 @@ class _CreateStoreScreenState extends State<CreateStoreScreen> {
     super.initState();
     if (isEditMode) {
       _populateExistingData();
+    } else {
+      // Check subscription before allowing new store creation
+      _checkSubscription();
+    }
+  }
+
+  Future<void> _checkSubscription() async {
+    final isActive = await _subscriptionService.isSubscriptionActive();
+    if (!isActive) {
+      // Show subscription required screen
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        final result = await Get.to(() => const SubscriptionRequiredScreen());
+        if (result != true) {
+          // User didn't subscribe, go back
+          Get.back();
+        }
+      });
     }
   }
 

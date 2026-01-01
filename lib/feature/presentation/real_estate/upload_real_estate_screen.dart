@@ -14,6 +14,8 @@ import 'package:sep/utils/appUtils.dart';
 import 'package:sep/utils/extensions/size.dart';
 import 'package:sep/utils/extensions/widget.dart';
 import 'package:sep/services/storage/preferences.dart';
+import 'package:sep/services/subscription/subscription_service.dart';
+import 'package:sep/feature/presentation/subscription/subscription_required_screen.dart';
 
 class UploadRealEstateScreen extends StatefulWidget {
   const UploadRealEstateScreen({Key? key}) : super(key: key);
@@ -34,9 +36,30 @@ class _UploadRealEstateScreenState extends State<UploadRealEstateScreen> {
   final _picker = ImagePicker();
   final IAuthRepository _authRepository = IAuthRepository();
   final IApiMethod _apiMethod = IApiMethod();
+  final SubscriptionService _subscriptionService = SubscriptionService();
 
   final RxList<String> selectedImages = RxList([]);
   final RxBool isUploading = RxBool(false);
+
+  @override
+  void initState() {
+    super.initState();
+    _checkSubscription();
+  }
+
+  Future<void> _checkSubscription() async {
+    final isActive = await _subscriptionService.isSubscriptionActive();
+    if (!isActive) {
+      // Show subscription required screen
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        final result = await Get.to(() => const SubscriptionRequiredScreen());
+        if (result != true) {
+          // User didn't subscribe, go back
+          Navigator.pop(context);
+        }
+      });
+    }
+  }
 
   @override
   void dispose() {

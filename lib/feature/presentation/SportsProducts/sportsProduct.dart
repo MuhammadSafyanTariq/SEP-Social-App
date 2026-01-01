@@ -180,6 +180,8 @@ class _SportsProductState extends State<SportsProduct>
       if (isLoadMore) page = communityPageNo + 1;
 
       final token = Preferences.authToken;
+      // NOTE: Backend API should filter out products from sellers with expired subscriptions
+      // This ensures only products from active subscription sellers are returned
       final response = await _apiMethod.get(
         url: Urls.getAllUserProducts,
         authToken: token,
