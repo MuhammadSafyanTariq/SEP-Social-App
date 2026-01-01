@@ -34,6 +34,7 @@ import '../wallet/wallet_screen.dart';
 import '../jobs/jobs_screen.dart';
 import 'contentScreen.dart';
 import 'CommonBannerAdWidget.dart';
+import '../subscription/resubscribe_warning_dialog.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -82,11 +83,25 @@ class _HomeScreenState extends State<HomeScreen> {
 
       // Start ad timer
       _startAdTimer();
+
+      // Check and show subscription warning if needed
+      _checkSubscriptionWarning();
     });
     _connect(() {
       AgoraChatCtrl.find.onLiveStreamChannelList();
       AgoraChatCtrl.find.getLiveStreamChannelList();
     });
+  }
+
+  /// Check and show subscription expiration warning dialog
+  Future<void> _checkSubscriptionWarning() async {
+    // Wait a bit for the screen to fully load
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    if (!mounted) return;
+
+    // Show warning dialog if needed
+    await ResubscribeWarningDialog.showIfNeeded(context);
   }
 
   void _startAdTimer() {

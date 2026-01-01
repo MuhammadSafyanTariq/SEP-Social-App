@@ -110,4 +110,67 @@ class SubscriptionService {
     }
     return null;
   }
+
+  /// Check if user has a store
+  /// Returns true if user has a store, false otherwise
+  Future<bool> hasStore() async {
+    try {
+      final token = Preferences.authToken;
+      if (token == null) return false;
+
+      final response = await _apiMethod.get(
+        url: '/api/shop/my-shop',
+        authToken: token,
+        headers: {},
+      );
+
+      if (response.isSuccess && response.data?['data'] != null) {
+        final shopData = response.data!['data'];
+        final shopId = shopData['_id'] as String?;
+        return shopId != null && shopId.isNotEmpty;
+      }
+      return false;
+    } catch (e) {
+      AppUtils.log('Error checking store: $e');
+      return false;
+    }
+  }
+
+  /// Check if subscription is expired and within 3-day grace period
+  /// Returns true if expired within last 3 days, false otherwise
+  Future<bool> isInGracePeriod() async {
+    try {
+      final data = await getSubscriptionData();
+      if (data == null) return false;
+
+      final status = data['subscriptionStatus'];
+      final expiresAt = data['subscriptionExpiresAt'];
+
+      // Only show warning if subscription is expired (not active, not none)
+      if (status != 'expired' || expiresAt == null) return false;
+
+      // Parse expiration date
+      final expirationDate = DateTime.parse(expiresAt);
+      final now = DateTime.now();
+
+      // Calculate days since expiration
+      final daysSinceExpiration = now.difference(expirationDate).inDays;
+
+      // Show warning if expired within last 3 days (0-3 days)
+      return daysSinceExpiration >= 0 && daysSinceExpiration <= 3;
+    } catch (e) {
+      AppUtils.log('Error checking grace period: $e');
+      return false;
+    }
+  }
+
+  /// Check if should show resubscribe warning
+  /// Returns true if user has expired subscription within grace period and has a store
+  Future<bool> shouldShowResubscribeWarning() async {
+    final hasAStore = await hasStore();
+    if (!hasAStore) return false;
+
+    final inGracePeriod = await isInGracePeriod();
+    return inGracePeriod;
+  }
 }
