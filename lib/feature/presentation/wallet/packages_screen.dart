@@ -141,6 +141,7 @@ class _PackagesScreenState extends State<PackagesScreen> {
   Future<void> _payNow() async {
     double? amount;
     String purchaseType;
+    bool useCustomPurchase = false;
 
     // Check if custom amount is entered
     if (customAmountController.text.isNotEmpty) {
@@ -149,10 +150,16 @@ class _PackagesScreenState extends State<PackagesScreen> {
         AppUtils.toast("Please enter a valid amount");
         return;
       }
+      if (amount < 0.01) {
+        AppUtils.toast("Minimum purchase amount is \$0.01");
+        return;
+      }
       purchaseType = "Custom Amount";
+      useCustomPurchase = true; // Use custom API for custom amounts
     } else if (selectedPackage != null) {
       amount = selectedPackage!.price;
       purchaseType = selectedPackage!.name;
+      useCustomPurchase = false; // Use regular API for packages
     } else {
       AppUtils.toast("Please select a package or enter a custom amount");
       return;
@@ -160,10 +167,17 @@ class _PackagesScreenState extends State<PackagesScreen> {
 
     AppUtils.log("=== TOKEN PURCHASE STARTED ===");
     AppUtils.log("Type: $purchaseType - \$$amount");
+    AppUtils.log(
+      "Using ${useCustomPurchase ? 'Custom' : 'Regular'} Purchase API",
+    );
 
     try {
-      // Use the new token purchase API
-      await stripeCtrl.purchaseTokens(amount: amount);
+      // Use appropriate API based on purchase type
+      if (useCustomPurchase) {
+        await stripeCtrl.purchaseCustomTokens(customAmount: amount);
+      } else {
+        await stripeCtrl.purchaseTokens(amount: amount);
+      }
 
       AppUtils.log("=== TOKEN PURCHASE COMPLETED SUCCESSFULLY ===");
 

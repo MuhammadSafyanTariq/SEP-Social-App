@@ -1502,6 +1502,20 @@ class IAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<ResponseData<Map<String, dynamic>>> purchaseCustomTokens({
+    required String userId,
+    required double customAmount,
+  }) async {
+    final result = await post(
+      url: Urls.customTokenPurchase,
+      data: {"userId": userId, "customAmount": customAmount},
+      enableAuthToken: false,
+    );
+
+    return result;
+  }
+
+  @override
   Future<ResponseData<Map<String, dynamic>>> deductGameTokens({
     required int amount,
   }) async {

@@ -317,6 +317,94 @@ class GetStripeCtrl extends GetxController {
     }
   }
 
+  /// Purchase custom amount of tokens from wallet balance
+  /// Uses the new custom token purchase API endpoint
+  Future<void> purchaseCustomTokens({required double customAmount}) async {
+    final userId = profileCtrl.profileData.value.id ?? "";
+
+    if (userId.isEmpty) {
+      AppUtils.toastError("User ID not found");
+      throw Exception("User ID not found");
+    }
+
+    // Validate custom amount (minimum 0.01)
+    if (customAmount <= 0) {
+      AppUtils.toastError("Invalid amount. Please enter a valid amount.");
+      throw Exception("Invalid amount");
+    }
+
+    if (customAmount < 0.01) {
+      AppUtils.toastError("Minimum purchase amount is \$0.01");
+      throw Exception("Amount too small");
+    }
+
+    // Check if user has sufficient balance
+    final currentBalance = profileCtrl.profileData.value.walletBalance ?? 0.0;
+    if (currentBalance < customAmount) {
+      AppUtils.toastError(
+        "Insufficient balance. Required: \$${customAmount.toStringAsFixed(2)}, Available: \$${currentBalance.toStringAsFixed(2)}",
+      );
+      throw Exception("Insufficient balance");
+    }
+
+    AppUtils.log(
+      "Initiating custom token purchase for user $userId with amount \$${customAmount.toStringAsFixed(2)}",
+    );
+
+    try {
+      final response = await _authRepository.purchaseCustomTokens(
+        userId: userId,
+        customAmount: customAmount,
+      );
+
+      AppUtils.log(
+        "Custom Token Purchase API Response - Success: ${response.isSuccess}",
+      );
+      AppUtils.log(
+        "Custom Token Purchase API Response - Data: ${response.data}",
+      );
+      AppUtils.log(
+        "Custom Token Purchase API Response - Error: ${response.getError}",
+      );
+
+      if (response.isSuccess && response.data != null) {
+        final data = response.data!['data'];
+        final tokensAdded = data['tokensAdded'] ?? 0;
+        final newWalletBalance = data['newWalletBalance'] ?? 0.0;
+        final newTokenBalance = data['newTokenBalance'] ?? 0;
+
+        AppUtils.log("Custom token purchase successful!");
+        AppUtils.log("Tokens added: $tokensAdded");
+        AppUtils.log("New wallet balance: \$${newWalletBalance}");
+        AppUtils.log("New token balance: $newTokenBalance");
+
+        // Refresh profile data to get updated balances
+        await profileCtrl.getProfileDetails();
+
+        // Log the updated profile data after refresh
+        final updatedProfile = profileCtrl.profileData.value;
+        AppUtils.log(
+          "After profile refresh - tokenBalance: ${updatedProfile.tokenBalance}, walletBalance: \$${updatedProfile.walletBalance}",
+        );
+
+        // Refresh transaction list
+        await getTransactionList();
+
+        // Success - no need to throw
+        return;
+      } else {
+        final errorMessage =
+            response.getError?.toString() ?? "Failed to purchase tokens";
+        AppUtils.log("Custom token purchase failed: $errorMessage");
+        throw Exception(errorMessage);
+      }
+    } catch (e, stacktrace) {
+      AppUtils.log("Exception during custom token purchase: $e");
+      AppUtils.log("Stacktrace: $stacktrace");
+      rethrow; // Re-throw to let packages screen handle the error
+    }
+  }
+
   // Method to deduct wallet balance for advertisement boosts
   Future<void> deductWalletForAdvertisement({
     required double amount,

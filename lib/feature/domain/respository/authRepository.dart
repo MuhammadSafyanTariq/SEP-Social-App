@@ -182,5 +182,10 @@ abstract class AuthRepository {
     required double amount,
   });
 
+  Future<ResponseData<Map<String, dynamic>>> purchaseCustomTokens({
+    required String userId,
+    required double customAmount,
+  });
+
   // Future<List<String>> uploadMultipleImages(List<File> images);
 }

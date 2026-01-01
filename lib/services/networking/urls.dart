@@ -187,6 +187,7 @@ class Urls {
 
   // Token Purchase
   static const String tokenPurchase = '/api/tokenPurchase/purchase';
+  static const String customTokenPurchase = '/api/tokenPurchase/custom';
   static const String deductBalance = '/api/tokenPurchase/deduct-balance';
   static const String deductTokens = '/api/tokenPurchase/deduct-tokens';
 
