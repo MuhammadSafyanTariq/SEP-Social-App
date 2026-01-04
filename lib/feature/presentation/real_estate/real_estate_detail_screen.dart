@@ -18,9 +18,13 @@ import 'package:intl/intl.dart';
 
 class RealEstateDetailScreen extends StatefulWidget {
   final String propertyId;
+  final Map<String, dynamic>? propertyData;
 
-  const RealEstateDetailScreen({Key? key, required this.propertyId})
-    : super(key: key);
+  const RealEstateDetailScreen({
+    Key? key,
+    required this.propertyId,
+    this.propertyData,
+  }) : super(key: key);
 
   @override
   State<RealEstateDetailScreen> createState() => _RealEstateDetailScreenState();
@@ -35,7 +39,13 @@ class _RealEstateDetailScreenState extends State<RealEstateDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _loadPropertyDetails();
+    // Use provided data if available, otherwise fetch from API
+    if (widget.propertyData != null) {
+      propertyData = widget.propertyData;
+      isLoading = false;
+    } else {
+      _loadPropertyDetails();
+    }
   }
 
   Future<void> _loadPropertyDetails() async {
@@ -485,8 +495,20 @@ class _RealEstateDetailScreenState extends State<RealEstateDetailScreen> {
                                             final shop =
                                                 propertyData!['shopId']
                                                     as Map<String, dynamic>?;
-                                            String? ownerId =
-                                                shop?['ownerId'] as String?;
+
+                                            // Extract owner ID from nested object or string
+                                            String? ownerId;
+                                            final ownerIdField =
+                                                shop?['ownerId'];
+                                            if (ownerIdField is String) {
+                                              ownerId = ownerIdField;
+                                            } else if (ownerIdField
+                                                is Map<String, dynamic>) {
+                                              ownerId =
+                                                  ownerIdField['_id']
+                                                      as String?;
+                                            }
+
                                             String ownerName =
                                                 shop?['name'] ?? 'Owner';
 

@@ -88,8 +88,8 @@ class _ContactusState extends State<Contactus> {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    AppColors.btnColor,
-                    AppColors.btnColor.withOpacity(0.8),
+                    AppColors.grey,
+                    AppColors.black.withOpacity(0.4),
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
@@ -97,7 +97,7 @@ class _ContactusState extends State<Contactus> {
                 borderRadius: BorderRadius.circular(16.sdp),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.btnColor.withOpacity(0.3),
+                    color: AppColors.greyHint.withOpacity(0.3),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),

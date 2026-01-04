@@ -796,8 +796,8 @@ class ChatSampleState extends State<ChatSample> {
                                         ),
                                       ),
                                       color: isSentByUser
-                                          ? AppColors.btnColor
-                                          : AppColors.primaryColor,
+                                          ? AppColors.txtfieldtext
+                                          : AppColors.Grey,
                                       elevation: 1,
                                       child: Padding(
                                         padding: const EdgeInsets.all(12.0),
@@ -816,7 +816,7 @@ class ChatSampleState extends State<ChatSample> {
                                                   )
                                                 : TextStyle(
                                                     fontSize: 14,
-                                                    color: Colors.white,
+                                                    color: Colors.black87,
                                                     fontWeight:
                                                         FontWeight.normal,
                                                   ),

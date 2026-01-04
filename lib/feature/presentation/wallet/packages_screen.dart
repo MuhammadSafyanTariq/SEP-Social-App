@@ -267,7 +267,7 @@ class _PackagesScreenState extends State<PackagesScreen> {
                               color: isSelected
                                   ? AppColors.greenlight
                                   : Colors.grey[300]!,
-                              width: isSelected ? 3 : 1,
+                              width: isSelected ? 1 : 1,
                             ),
                             boxShadow: [
                               BoxShadow(
@@ -366,7 +366,7 @@ class _PackagesScreenState extends State<PackagesScreen> {
                                           Icon(
                                             Icons.check_circle,
                                             size: 12,
-                                            color: AppColors.greenlight,
+                                            color: AppColors.txtfieldtext,
                                           ),
                                           SizedBox(width: 4.sdp),
                                           Expanded(
@@ -550,14 +550,14 @@ class _PackagesScreenState extends State<PackagesScreen> {
                     Container(
                       padding: EdgeInsets.all(16.sdp),
                       decoration: BoxDecoration(
-                        color: AppColors.greenlight.withOpacity(0.1),
+                        color: AppColors.primaryBlue.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12.sdp),
                       ),
                       child: Row(
                         children: [
                           Icon(
                             Icons.info_outline,
-                            color: AppColors.greenlight,
+                            color: AppColors.primaryBlue,
                             size: 20,
                           ),
                           SizedBox(width: 12.sdp),
@@ -567,7 +567,7 @@ class _PackagesScreenState extends State<PackagesScreen> {
                                   "Tokens will be added to your account instantly after purchase.",
                               style: TextStyle(
                                 fontSize: 14,
-                                color: AppColors.greenlight,
+                                color: AppColors.primaryBlue,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),

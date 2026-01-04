@@ -5,11 +5,9 @@ import 'package:sep/components/coreComponents/TextView.dart';
 import 'package:sep/components/styles/appColors.dart';
 import 'package:sep/components/styles/app_strings.dart';
 import 'package:sep/components/styles/textStyles.dart';
-import 'package:sep/utils/extensions/extensions.dart';
 import 'package:sep/utils/extensions/size.dart';
 import 'package:sep/utils/extensions/textStyle.dart';
 import 'package:sep/utils/extensions/widget.dart';
-
 import '../../../../../utils/appUtils.dart';
 import '../../../controller/auth_Controller/profileCtrl.dart';
 import '../../../controller/settings_ctrl/settingscontroller.dart';
@@ -87,10 +85,10 @@ class _ProfileVisibilityScreenState extends State<Whocansharemypost> {
                     padding: EdgeInsets.all(16.sdp),
                     margin: EdgeInsets.only(bottom: 24.sdp),
                     decoration: BoxDecoration(
-                      color: AppColors.btnColor.withOpacity(0.1),
+                      color: AppColors.primaryBlue.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12.sdp),
                       border: Border.all(
-                        color: AppColors.btnColor.withOpacity(0.2),
+                        color: AppColors.primaryBlue.withOpacity(0.2),
                         width: 1,
                       ),
                     ),
@@ -98,7 +96,7 @@ class _ProfileVisibilityScreenState extends State<Whocansharemypost> {
                       children: [
                         Icon(
                           Icons.share_outlined,
-                          color: AppColors.btnColor,
+                          color: AppColors.primaryBlue,
                           size: 20.sdp,
                         ),
                         12.width,
@@ -106,7 +104,7 @@ class _ProfileVisibilityScreenState extends State<Whocansharemypost> {
                           child: TextView(
                             text: AppStrings.controlWhoCanSharePosts.tr,
                             style: 14.txtMediumBlack.copyWith(
-                              color: AppColors.btnColor,
+                              color: AppColors.primaryBlue,
                             ),
                           ),
                         ),

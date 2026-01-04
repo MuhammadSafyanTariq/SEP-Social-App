@@ -384,7 +384,7 @@ class _HomeScreenState extends State<Contentscreen> {
                                                             ?.toLowerCase() ==
                                                         'other'
                                                   ? Colors.red
-                                                  : AppColors.btnColor,
+                                                  : Colors.black,
                                               fontWeight: FontWeight.bold,
                                             ),
                                           ),
@@ -597,102 +597,4 @@ class _HomeScreenState extends State<Contentscreen> {
       );
     }
   }
-
-  // Widget _buildPostWidget1(PostData item, Function onBlockUser, int index) {
-  //   final coordinates = item.location?.coordinates;
-  //   return FutureBuilder<String>(
-  //     future: coordinates != null
-  //         ? getAddressFromCoordinates(coordinates[1], coordinates[0])
-  //         : Future.value(""),
-  //     builder: (context, snapshot) {
-  //       // String address = "Loading...";
-  //
-  //       // if (snapshot.connectionState == ConnectionState.done) {
-  //       //   address = snapshot.hasData ? snapshot.data! : "No Address Found";
-  //       // }
-  //
-  //       final header = postCardHeader(item, onBlockUser: onBlockUser,
-  //           onRemovePostAction: () {
-  //             profileCtrl.globalPostList.removeAt(index);
-  //             profileCtrl.globalPostList.refresh();
-  //           });
-  //
-  //       final footer = postFooter(
-  //           context: context,
-  //           item: item,
-  //           postLiker: (value) {
-  //             postliker(value);
-  //             final count = item.likeCount ?? 0;
-  //             final status = item.isLikedByUser ?? false;
-  //             profileCtrl.globalPostList[index] = item.copyWith(
-  //                 isLikedByUser: !status,
-  //                 likeCount: status ? count - 1 : count + 1);
-  //             profileCtrl.globalPostList.refresh();
-  //           },
-  //           updateCommentCount: updateCommentCount,
-  //           updatePostOnAction: (commentCount) {
-  //             final postId = item.id!;
-  //             profileCtrl.getSinglePostData(postId).then((value) {
-  //               final index = profileCtrl.globalPostList
-  //                   .indexWhere((element) => element.id == postId);
-  //               if (index > -1) {
-  //                 final existingPost = profileCtrl.globalPostList[index];
-  //                 profileCtrl.globalPostList[index] = existingPost.copyWith(
-  //                   commentCount: commentCount ??
-  //                       value.commentCount ??
-  //                       existingPost.commentCount,
-  //                 );
-  //                 profileCtrl.globalPostList.refresh();
-  //               }
-  //             });
-  //           });
-  //
-  //       if (item.fileType == 'poll') {
-  //         return PollCard(
-  //           footer: footer,
-  //           data: item,
-  //           header: header,
-  //           question: item.content ?? '',
-  //           options: item.options ?? [],
-  //           onPollAction: (String optionId) {
-  //             profileCtrl.givePollToHomePost(item, optionId).applyLoader;
-  //           },
-  //         );
-  //       } else if (item.files != null &&
-  //           item.files!.isNotEmpty &&
-  //           item.files!.first.type == 'video') {
-  //         return PostVideo(
-  //           data: item,
-  //           header: header,
-  //           caption: item.content ?? '',
-  //           videoUrl: _getFormattedVideoUrl(item.files?.first.file),
-  //           likes: '',
-  //           comments: '',
-  //           footer: footer,
-  //           postId: item.id,
-  //           view: () {
-  //             int index = profileCtrl.globalPostList.indexOf(item);
-  //             if (index != -1) {
-  //               final updatedItem = item.copyWith(
-  //                 videoCount: (item.videoCount ?? 0) + 1,
-  //               );
-  //               profileCtrl.globalPostList[index] = updatedItem;
-  //             }
-  //             _loadMorePosts();
-  //             profileCtrl.globalPostList.refresh();
-  //           },
-  //         );
-  //       } else {
-  //         return PostCard(
-  //           header: header,
-  //           caption: item.content ?? '',
-  //           imageUrls: item.files ?? <FileElement>[],
-  //           likes: '',
-  //           comments: '',
-  //           footer: footer,
-  //         );
-  //       }
-  //     },
-  //   );
-  // }
 }

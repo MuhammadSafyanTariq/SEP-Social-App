@@ -127,6 +127,13 @@ class _RealEstateListScreenState extends State<RealEstateListScreen> {
         // Filter for real estate products (category contains 'realestate')
         final searchText = searchController.text.toLowerCase();
         final filteredProducts = products.where((product) {
+          // Debug: Log product structure for first product
+          if (products.indexOf(product) == 0) {
+            AppUtils.log("Sample product structure: ${product.toString()}");
+            AppUtils.log("Product _id: ${product['_id']}");
+            AppUtils.log("Product productId: ${product['productId']}");
+          }
+
           final category = product['category']?.toString().toLowerCase() ?? '';
           if (!category.contains('realestate')) return false;
 
@@ -511,6 +518,22 @@ class _RealEstateListScreenState extends State<RealEstateListScreen> {
     return '${Urls.appApiBaseUrl}$url';
   }
 
+  // Helper method to extract the correct product ID
+  String _extractProductId(Map<String, dynamic> listing) {
+    // Try different possible ID fields
+    if (listing['productId'] != null) {
+      final productId = listing['productId'];
+      if (productId is String) {
+        return productId;
+      } else if (productId is Map && productId['_id'] != null) {
+        return productId['_id'] as String;
+      }
+    }
+
+    // Fallback to _id
+    return listing['_id']?.toString() ?? '';
+  }
+
   Widget _buildRealEstateCard(Map<String, dynamic> listing) {
     final images = listing['mediaUrls'] as List<dynamic>? ?? [];
     final imageUrl = images.isNotEmpty ? images[0] as String : '';
@@ -549,11 +572,21 @@ class _RealEstateListScreenState extends State<RealEstateListScreen> {
 
     return GestureDetector(
       onTap: () {
+        final propertyId = _extractProductId(listing);
+
+        if (propertyId.isEmpty) {
+          AppUtils.toastError("Invalid property ID");
+          return;
+        }
+
+        // Pass the entire listing data to avoid API 404 errors
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) =>
-                RealEstateDetailScreen(propertyId: listing['_id'] ?? ''),
+            builder: (context) => RealEstateDetailScreen(
+              propertyId: propertyId,
+              propertyData: listing,
+            ),
           ),
         );
       },
@@ -674,12 +707,21 @@ class _RealEstateListScreenState extends State<RealEstateListScreen> {
               height: 40.sdp,
               child: ElevatedButton.icon(
                 onPressed: () {
+                  final propertyId = _extractProductId(listing);
+                  AppUtils.log(
+                    "View Details button - Property ID: $propertyId",
+                  );
+
+                  if (propertyId.isEmpty) {
+                    AppUtils.toastError("Invalid property ID");
+                    return;
+                  }
+
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => RealEstateDetailScreen(
-                        propertyId: listing['_id'] ?? '',
-                      ),
+                      builder: (context) =>
+                          RealEstateDetailScreen(propertyId: propertyId),
                     ),
                   );
                 },

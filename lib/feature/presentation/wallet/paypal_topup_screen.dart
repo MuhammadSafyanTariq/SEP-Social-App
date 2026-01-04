@@ -394,7 +394,7 @@ class _PayPalTopUpScreenState extends State<PayPalTopUpScreen> {
                   Container(
                     padding: EdgeInsets.all(20.sdp),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: AppColors.primaryBlue.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(16.sdp),
                       boxShadow: [
                         BoxShadow(
@@ -411,7 +411,7 @@ class _PayPalTopUpScreenState extends State<PayPalTopUpScreen> {
                           children: [
                             Icon(
                               Icons.info_outline,
-                              color: AppColors.greenlight,
+                              color: AppColors.primaryBlue,
                               size: 20,
                             ),
                             SizedBox(width: 8.sdp),
@@ -453,7 +453,7 @@ class _PayPalTopUpScreenState extends State<PayPalTopUpScreen> {
             width: 6,
             height: 6,
             decoration: BoxDecoration(
-              color: AppColors.greenlight,
+              color: AppColors.primaryBlue,
               shape: BoxShape.circle,
             ),
           ),

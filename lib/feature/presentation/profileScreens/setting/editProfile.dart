@@ -141,7 +141,7 @@ class _EditProfileState extends State<EditProfile> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.black,
+      backgroundColor: AppColors.white,
       body: Padding(
         padding: const EdgeInsets.all(10.0),
         child: Column(

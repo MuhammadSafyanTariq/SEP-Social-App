@@ -41,7 +41,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   bool _hasCheckedReferralStatus = false;
   List<Map<String, dynamic>> _winnersData = [];
   bool _isLoadingWinners = false;
-  String _selectedMonth = '';
+  int _selectedMonth = 0;
   String _selectedYear = '';
 
   final List<String> _months = [
@@ -140,47 +140,37 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         return;
       }
 
+      // Use the proper referral status endpoint
       final response = await _apiMethod.get(
-        url: Urls.getUserDetails,
+        url: Urls.referralStatus,
         authToken: authToken,
       );
 
       if (response.isSuccess && response.data != null) {
-        // Try different possible data structures
-        Map<String, dynamic> userData;
+        // According to API guide, response structure is { status, code, message, data }
+        final data = response.data!['data'];
 
-        if (response.data!['user'] != null) {
-          userData = response.data!['user'];
-        } else if (response.data!['data'] != null &&
-            response.data!['data']['user'] != null) {
-          userData = response.data!['data']['user'];
-        } else if (response.data!['data'] != null) {
-          userData = response.data!['data'];
-        } else {
-          userData = response.data!;
+        if (data != null) {
+          final hasReferralCode = data['hasReferralCode'] ?? false;
+
+          setState(() {
+            _hasReferralCode = hasReferralCode;
+            _hasCheckedReferralStatus = true;
+
+            if (hasReferralCode) {
+              // Store the full referral data
+              _referralData = response.data;
+            } else {
+              // Clear referral data if no code
+              _referralData = null;
+            }
+          });
+
+          AppUtils.log(
+            'User referral status: hasReferralCode = $_hasReferralCode',
+          );
+          AppUtils.log('Referral data: $data');
         }
-
-        final referralCode = userData['referralCode'];
-        final hasReferralCode =
-            referralCode != null && referralCode.toString().isNotEmpty;
-
-        setState(() {
-          _hasReferralCode = hasReferralCode;
-          _hasCheckedReferralStatus = true;
-
-          if (hasReferralCode) {
-            // If user already has referral code, populate _referralData
-            _referralData = {'data': userData};
-          } else {
-            // Clear referral data if no code
-            _referralData = null;
-          }
-        });
-
-        AppUtils.log(
-          'User referral status: hasReferralCode = $_hasReferralCode, referralCode = $referralCode',
-        );
-        AppUtils.log('Full user data structure: $userData');
       } else {
         AppUtils.log('Failed to get user referral status: ${response.error}');
         AppUtils.log('Response data: ${response.data}');
@@ -263,14 +253,14 @@ Sign up the app using refer code: $referralCode
     DateTime now = DateTime.now();
     DateTime previousMonth = DateTime(now.year, now.month - 1);
 
-    _selectedMonth = _months[previousMonth.month - 1];
+    _selectedMonth = previousMonth.month;
     _selectedYear = previousMonth.year.toString();
 
     _fetchWinners();
   }
 
   Future<void> _fetchWinners() async {
-    if (_selectedMonth.isEmpty || _selectedYear.isEmpty) return;
+    if (_selectedMonth == 0 || _selectedYear.isEmpty) return;
 
     setState(() {
       _isLoadingWinners = true;
@@ -291,7 +281,15 @@ Sign up the app using refer code: $referralCode
       );
 
       if (response.isSuccess && response.data != null) {
-        final List<dynamic> winnersList = response.data!['data'] ?? [];
+        AppUtils.log('Winners response: ${response.data}');
+
+        // According to API guide, winners are in data.winners array
+        List<dynamic> winnersList = [];
+        if (response.data!['data'] != null &&
+            response.data!['data']['winners'] != null) {
+          winnersList = response.data!['data']['winners'];
+        }
+
         setState(() {
           _winnersData = List<Map<String, dynamic>>.from(winnersList);
         });
@@ -320,7 +318,7 @@ Sign up the app using refer code: $referralCode
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        String tempMonth = _selectedMonth;
+        int tempMonth = _selectedMonth;
         String tempYear = _selectedYear;
 
         return AlertDialog(
@@ -333,21 +331,22 @@ Sign up the app using refer code: $referralCode
               return Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  DropdownButtonFormField<String>(
-                    value: tempMonth.isNotEmpty ? tempMonth : null,
+                  DropdownButtonFormField<int>(
+                    value: tempMonth > 0 ? tempMonth : null,
                     decoration: InputDecoration(
                       labelText: AppStrings.selectWinnerMonth.tr,
                       border: OutlineInputBorder(),
                     ),
-                    items: _months.map((String month) {
-                      return DropdownMenuItem<String>(
-                        value: month,
-                        child: Text(month),
+                    items: List.generate(12, (index) {
+                      int monthNum = index + 1;
+                      return DropdownMenuItem<int>(
+                        value: monthNum,
+                        child: Text(_months[index]),
                       );
-                    }).toList(),
-                    onChanged: (String? newValue) {
+                    }),
+                    onChanged: (int? newValue) {
                       setState(() {
-                        tempMonth = newValue ?? '';
+                        tempMonth = newValue ?? 0;
                       });
                     },
                   ),
@@ -383,7 +382,7 @@ Sign up the app using refer code: $referralCode
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
-                if (tempMonth.isNotEmpty && tempYear.isNotEmpty) {
+                if (tempMonth > 0 && tempYear.isNotEmpty) {
                   setState(() {
                     _selectedMonth = tempMonth;
                     _selectedYear = tempYear;
@@ -703,7 +702,8 @@ Sign up the app using refer code: $referralCode
                 onPressed: _showMonthYearPicker,
                 icon: Icon(Icons.calendar_month, size: 16),
                 label: TextView(
-                  text: '$_selectedMonth $_selectedYear',
+                  text:
+                      '${_selectedMonth > 0 ? _months[_selectedMonth - 1] : ''} $_selectedYear',
                   style: TextStyle(fontSize: 12, color: Colors.white),
                 ),
                 style: ElevatedButton.styleFrom(
@@ -792,7 +792,8 @@ Sign up the app using refer code: $referralCode
             Divider(height: 1, color: Colors.grey.shade200),
         itemBuilder: (context, index) {
           final winner = _winnersData[index];
-          final rank = index + 1;
+          // Use the rank from winner data, fallback to index + 1
+          final rank = winner['rank'] ?? (index + 1);
 
           return _buildWinnerItem(winner, rank);
         },
@@ -801,41 +802,68 @@ Sign up the app using refer code: $referralCode
   }
 
   Widget _buildWinnerItem(Map<String, dynamic> winner, int rank) {
-    final name = winner['name'] ?? 'Unknown Winner';
-    final profileImage = winner['profileImage'] ?? '';
-    final invitesCount = winner['referralInvitesThisMonth'] ?? 0;
+    // Handle both populated user object and user reference
+    final user = winner['user'];
+    String name = 'Unknown Winner';
+    String profileImage = '';
 
-    // Define rewards for top 5 winners (same as leaderboard)
+    if (user != null && user is Map<String, dynamic>) {
+      name = user['name'] ?? 'Unknown Winner';
+      // API guide shows 'image' field, handle both for compatibility
+      profileImage = user['image'] ?? user['profileImage'] ?? '';
+    } else if (winner['name'] != null) {
+      // Fallback: user data might be at root level
+      name = winner['name'];
+      profileImage = winner['profileImage'] ?? winner['image'] ?? '';
+    }
+
+    // According to API guide, the field is 'referralCount'
+    final invitesCount = winner['referralCount'] ?? 0;
+
+    // Get reward info from API response if available
+    final rewardType = winner['rewardType']; // 'cash' or 'tokens'
+    final rewardAmount = winner['rewardAmount'];
+
     String? rewardText;
-    Color rewardColor = Color(
-      0xFF2E7D32,
-    ); // Consistent green color for all rewards
+    Color rewardColor = Color(0xFF2E7D32);
     Widget? rewardIcon;
 
-    switch (rank) {
-      case 1:
-        rewardText = '\$50';
+    // Use actual reward data from API if available
+    if (rewardType != null && rewardAmount != null) {
+      if (rewardType == 'cash') {
+        rewardText = '\$$rewardAmount';
         rewardIcon = Icon(Icons.attach_money, color: rewardColor, size: 16);
-        break;
-      case 2:
-        rewardText = '160';
+      } else if (rewardType == 'tokens') {
+        rewardText = '$rewardAmount';
         rewardIcon = Image.asset(AppImages.token, width: 16, height: 16);
-        break;
-      case 3:
-        rewardText = '120';
-        rewardIcon = Image.asset(AppImages.token, width: 16, height: 16);
-        break;
-      case 4:
-        rewardText = '80';
-        rewardIcon = Image.asset(AppImages.token, width: 16, height: 16);
-        break;
-      case 5:
-        rewardText = '40';
-        rewardIcon = Image.asset(AppImages.token, width: 16, height: 16);
-        break;
-      default:
-        rewardText = null;
-        rewardIcon = null;
+      }
+    } else {
+      // Fallback to hardcoded rewards if API doesn't provide them
+      switch (rank) {
+        case 1:
+          rewardText = '\$50';
+          rewardIcon = Icon(Icons.attach_money, color: rewardColor, size: 16);
+          break;
+        case 2:
+          rewardText = '160';
+          rewardIcon = Image.asset(AppImages.token, width: 16, height: 16);
+          break;
+        case 3:
+          rewardText = '120';
+          rewardIcon = Image.asset(AppImages.token, width: 16, height: 16);
+          break;
+        case 4:
+          rewardText = '80';
+          rewardIcon = Image.asset(AppImages.token, width: 16, height: 16);
+          break;
+        case 5:
+          rewardText = '40';
+          rewardIcon = Image.asset(AppImages.token, width: 16, height: 16);
+          break;
+        default:
+          rewardText = null;
+          rewardIcon = null;
+      }
     }
 
     return Container(

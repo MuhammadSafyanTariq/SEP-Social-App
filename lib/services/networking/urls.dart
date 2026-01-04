@@ -217,6 +217,7 @@ class Urls {
   static String deleteJob(String jobId) => '/api/jobs/$jobId';
 
   // Referral
+  static const String referralStatus = '/api/referral/status';
   static const String referralParticipate = '/api/referral/participate';
   static const String referralLeaderboard = '/api/referral/leaderboard';
   static const String referralWinners = '/api/referral/winners';

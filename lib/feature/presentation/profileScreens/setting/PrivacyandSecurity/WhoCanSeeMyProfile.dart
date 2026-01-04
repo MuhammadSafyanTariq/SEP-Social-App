@@ -84,10 +84,10 @@ class _WhoCanSeeMyProfileState extends State<WhoCanSeeMyProfile> {
                     padding: EdgeInsets.all(16.sdp),
                     margin: EdgeInsets.only(bottom: 24.sdp),
                     decoration: BoxDecoration(
-                      color: AppColors.btnColor.withOpacity(0.1),
+                      color: AppColors.primaryBlue.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12.sdp),
                       border: Border.all(
-                        color: AppColors.btnColor.withOpacity(0.2),
+                        color: AppColors.primaryBlue.withOpacity(0.2),
                         width: 1,
                       ),
                     ),
@@ -95,7 +95,7 @@ class _WhoCanSeeMyProfileState extends State<WhoCanSeeMyProfile> {
                       children: [
                         Icon(
                           Icons.info_outline,
-                          color: AppColors.btnColor,
+                          color: AppColors.primaryBlue,
                           size: 20.sdp,
                         ),
                         12.width,
@@ -103,7 +103,7 @@ class _WhoCanSeeMyProfileState extends State<WhoCanSeeMyProfile> {
                           child: TextView(
                             text: AppStrings.chooseWhoCanViewProfile.tr,
                             style: 14.txtMediumBlack.copyWith(
-                              color: AppColors.btnColor,
+                              color: AppColors.primaryBlue,
                             ),
                           ),
                         ),
