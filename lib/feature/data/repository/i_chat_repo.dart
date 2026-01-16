@@ -124,6 +124,15 @@ class IChatRepo implements ChatRepo {
   }
 
   @override
+  void markMessagesAsRead({required String chatId}) {
+    AppUtils.log('✅ Socket calling markMessagesAsRead for chatId: $chatId');
+    _socket.callEvent(SocketKey.markMessagesAsRead, {
+      'chatId': chatId,
+      'userId': Preferences.uid,
+    });
+  }
+
+  @override
   bool isConnected() {
     return _socket.isConnected;
   }

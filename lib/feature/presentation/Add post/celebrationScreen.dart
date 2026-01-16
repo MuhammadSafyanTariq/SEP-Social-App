@@ -849,29 +849,48 @@ class _CelebrationScreenState extends State<CelebrationScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          contentPadding: EdgeInsets.all(20),
+          contentPadding: EdgeInsets.all(30),
+          backgroundColor: Colors.white,
           title: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              ImageView(url: AppImages.Done),
-              SizedBox(height: 10),
-              Center(
-                child: TextView(
-                  text: "Celebration sent successfully!",
-                  style: TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.btnColor,
-                  ),
-                  textAlign: TextAlign.center,
-                  margin: EdgeInsets.only(top: 20, bottom: 20),
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Color(0xFF00C853),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Color(0xFF00C853).withOpacity(0.3),
+                      blurRadius: 20,
+                      spreadRadius: 5,
+                    ),
+                  ],
                 ),
+                child: Icon(Icons.check, color: Colors.white, size: 50),
               ),
+              SizedBox(height: 25),
+              TextView(
+                text: "Celebration Sent",
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF2C2C2C),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 12),
               TextView(
                 text:
-                    "Your celebration has been sent to $successCount friend${successCount > 1 ? 's' : ''}!",
-                style: TextStyle(fontSize: 20, color: AppColors.btnColor),
+                    "Your celebration has been sent to\n$successCount friend${successCount > 1 ? 's' : ''}!",
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w400,
+                  color: Color(0xFF6B6B6B),
+                  height: 1.5,
+                ),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -879,21 +898,43 @@ class _CelebrationScreenState extends State<CelebrationScreen> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              AppButton(
-                margin: EdgeInsets.only(top: 20),
-                label: AppStrings.gotohome,
-                labelStyle: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
+              SizedBox(height: 20),
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    Navigator.of(context).pop(); // Close dialog
+                    context.pushAndClearNavigator(
+                      HomeScreen(),
+                    ); // Navigate to home
+                  },
+                  borderRadius: BorderRadius.circular(25),
+                  child: Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    decoration: BoxDecoration(
+                      color: Color(0xFF00C853),
+                      borderRadius: BorderRadius.circular(25),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Color(0xFF00C853).withOpacity(0.3),
+                          blurRadius: 15,
+                          offset: Offset(0, 5),
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: Text(
+                        "Return to Home",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
-                buttonColor: AppColors.btnColor,
-                onTap: () {
-                  Navigator.of(context).pop(); // Close dialog
-                  context.pushAndClearNavigator(
-                    HomeScreen(),
-                  ); // Navigate to home
-                },
               ),
             ],
           ),
@@ -1040,24 +1081,41 @@ class _CelebrationScreenState extends State<CelebrationScreen> {
               crossAxisAlignment: CrossAxisAlignment.center,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                ImageView(url: AppImages.Done),
-                SizedBox(height: 10),
-                Center(
-                  child: TextView(
-                    text: "Celebration posted successfully!",
-                    style: TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.btnColor,
-                    ),
-                    textAlign: TextAlign.center,
-                    margin: EdgeInsets.only(top: 20, bottom: 20),
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Color(0xFF00C853),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Color(0xFF00C853).withOpacity(0.3),
+                        blurRadius: 20,
+                        spreadRadius: 5,
+                      ),
+                    ],
                   ),
+                  child: Icon(Icons.check, color: Colors.white, size: 50),
                 ),
+                SizedBox(height: 25),
                 TextView(
-                  text:
-                      "Your celebration has been shared! Go to home to continue your journey.",
-                  style: TextStyle(fontSize: 20, color: AppColors.btnColor),
+                  text: "Celebration Posted",
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF2C2C2C),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 12),
+                TextView(
+                  text: "Your celebration has been shared\nand is now live!",
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w400,
+                    color: Color(0xFF6B6B6B),
+                    height: 1.5,
+                  ),
                   textAlign: TextAlign.center,
                 ),
               ],
@@ -1065,19 +1123,41 @@ class _CelebrationScreenState extends State<CelebrationScreen> {
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                AppButton(
-                  margin: EdgeInsets.only(top: 20),
-                  label: AppStrings.gotohome,
-                  labelStyle: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                SizedBox(height: 20),
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () {
+                      Navigator.of(context).pop(); // Close dialog first
+                      context.pushAndClearNavigator(HomeScreen());
+                    },
+                    borderRadius: BorderRadius.circular(25),
+                    child: Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      decoration: BoxDecoration(
+                        color: Color(0xFF00C853),
+                        borderRadius: BorderRadius.circular(25),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Color(0xFF00C853).withOpacity(0.3),
+                            blurRadius: 15,
+                            offset: Offset(0, 5),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Text(
+                          "Return to Home",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
-                  buttonColor: AppColors.btnColor,
-                  onTap: () {
-                    Navigator.of(context).pop(); // Close dialog first
-                    context.pushAndClearNavigator(HomeScreen());
-                  },
                 ),
               ],
             ),

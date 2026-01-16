@@ -8,11 +8,9 @@ import 'package:intl_phone_number_input/intl_phone_number_input.dart';
 import 'package:sep/components/styles/textStyles.dart';
 import 'package:sep/feature/presentation/controller/auth_Controller/auth_ctrl.dart';
 import 'package:sep/utils/appUtils.dart';
-import 'package:sep/utils/extensions/contextExtensions.dart';
 import 'package:sep/utils/extensions/dateTimeUtils.dart';
 import 'package:sep/utils/extensions/extensions.dart';
 import 'package:sep/utils/extensions/size.dart';
-
 import '../../../../components/appLoader.dart';
 import '../../../../components/coreComponents/AppButton.dart';
 import '../../../../components/coreComponents/EditText.dart';
@@ -579,10 +577,8 @@ class _EditProfileState extends State<EditProfile> {
         "Updated Profile Image After API Call: ${profileCtrl.profileData.value.image}",
       );
 
-      context.pop();
-      context.pop();
-
-      // context.pushAndClearNavigator(HomeScreen());
+      // Navigate back to profile screen
+      Navigator.of(context).popUntil((route) => route.isFirst);
     }
   }
 }

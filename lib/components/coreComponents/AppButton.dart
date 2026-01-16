@@ -23,7 +23,8 @@ class AppButton extends StatelessWidget {
   final double? height;
   final bool isLoading;
   final Widget? startImage;
-
+  final TextOverflow? textOverflow;
+  final int? maxLines;
 
   const AppButton({
     super.key,
@@ -43,7 +44,10 @@ class AppButton extends StatelessWidget {
     this.alignment = Alignment.center,
     this.width,
     this.height,
-    this.isLoading = false, this.startImage,
+    this.isLoading = false,
+    this.startImage,
+    this.textOverflow,
+    this.maxLines,
   });
 
   @override
@@ -56,7 +60,8 @@ class AppButton extends StatelessWidget {
           Align(
             alignment: alignment,
             child: Container(
-              padding: padding ?? EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+              padding:
+                  padding ?? EdgeInsets.symmetric(horizontal: 18, vertical: 15),
               width: width ?? (isFilledButton ? double.maxFinite : null),
               height: height,
               decoration: BoxDecoration(
@@ -64,7 +69,9 @@ class AppButton extends StatelessWidget {
                 borderRadius: BorderRadius.circular(radius ?? 20),
                 border: Border.all(
                   color: buttonBorderColor ?? Colors.transparent,
-                  width: buttonBorderWidth ?? 1, // Use custom border width or default to 1
+                  width:
+                      buttonBorderWidth ??
+                      1, // Use custom border width or default to 1
                 ),
               ),
               child: Row(
@@ -73,29 +80,26 @@ class AppButton extends StatelessWidget {
                   if (prefix != null && !isLoading) prefix!,
                   isLoading
                       ? SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      color: Colors.white, // Adjust based on theme
-                      strokeWidth: 2,
-                    ),
-                  )
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white, // Adjust based on theme
+                            strokeWidth: 2,
+                          ),
+                        )
                       : TextView(
-                    text: label ?? '',
-                    style: labelStyle ?? 14.txtMediumWhite,
-                  ),
-                  if(child != null) child!,
+                          text: label ?? '',
+                          style: labelStyle ?? 14.txtMediumWhite,
+                          overflow: textOverflow,
+                          maxlines: maxLines,
+                        ),
+                  if (child != null) child!,
                   if (suffix != null && !isLoading) suffix!,
-
                 ],
               ),
             ),
           ),
-          Positioned.fill(
-            child: TapWidget(
-              onTap: isLoading ? null : onTap,
-            ),
-          ),
+          Positioned.fill(child: TapWidget(onTap: isLoading ? null : onTap)),
         ],
       ),
     );

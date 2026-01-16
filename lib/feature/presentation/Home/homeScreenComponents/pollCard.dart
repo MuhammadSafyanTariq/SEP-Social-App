@@ -68,6 +68,7 @@ class _PollCardState extends State<PollCard> {
   bool hasSelected = false;
   bool isCountdownActive = true;
   bool isPollEnded = false;
+  bool showResults = false;
 
   DateTime get getCloseTime =>
       (widget.data.createdAt.localDateTime ?? DateTime.now()).add(
@@ -203,7 +204,7 @@ class _PollCardState extends State<PollCard> {
 
                 TextView(
                   text:
-                      'Click on your choice and share your thoughts in the comments! Tap the image to expand. Play nice and Happy Polling!',
+                      'Cast your vote and share your perspective in the comments. Community guidelines apply to all discussions.',
                   style: TextStyle(
                     fontSize: 12,
                     color: Colors.grey.shade600,
@@ -298,164 +299,266 @@ class _PollCardState extends State<PollCard> {
                 : pollState.value == PollState.notStarted
                 ? SizedBox()
                 : getPollState == PollState.complete
-                ? Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 10),
-                    child: Visibility(
-                      visible: true,
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          ImageView(
-                            url: AppImages.winnerImg,
-                            height: 80,
-                            width: 75,
-                            margin: EdgeInsets.only(right: 10),
-                          ),
-
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                TextView(
-                                  text: "WINNER:",
-                                  style: 20.txtboldgreen,
-                                  maxlines: null,
-                                  overflow: TextOverflow.visible,
+                ? GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        showResults = !showResults;
+                      });
+                    },
+                    child: AnimatedSwitcher(
+                      duration: Duration(milliseconds: 600),
+                      transitionBuilder:
+                          (Widget child, Animation<double> animation) {
+                            return AnimatedBuilder(
+                              animation: animation,
+                              child: child,
+                              builder: (context, child) {
+                                final isShowingResults =
+                                    child!.key == ValueKey(true);
+                                final rotationValue = isShowingResults
+                                    ? animation.value
+                                    : 1.0 - animation.value;
+                                return Transform(
+                                  transform: Matrix4.identity()
+                                    ..setEntry(3, 2, 0.001)
+                                    ..rotateY(3.14159 * rotationValue),
+                                  alignment: Alignment.center,
+                                  child: child,
+                                );
+                              },
+                            );
+                          },
+                      child: showResults
+                          ? Transform(
+                              key: ValueKey(true),
+                              alignment: Alignment.center,
+                              transform: Matrix4.rotationY(3.14159),
+                              child: Container(
+                                margin: EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 10,
                                 ),
-                                TextView(
-                                  text: winner != null
-                                      ? "${winner.name}"
-                                      : "No winner yet",
-                                  style: 20.txtboldred,
-                                  maxlines: null,
-                                  overflow: TextOverflow.visible,
+                                padding: EdgeInsets.all(20),
+                                decoration: BoxDecoration(
+                                  gradient: RadialGradient(
+                                    center: Alignment.center,
+                                    radius: 1.5,
+                                    colors: [
+                                      Color(0xFF2A1810),
+                                      Color(0xFF1A1410),
+                                      Color(0xFF0A0A0A),
+                                    ],
+                                    stops: [0.0, 0.5, 1.0],
+                                  ),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: Color(0xFFD4AF37).withOpacity(0.3),
+                                    width: 1.5,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Color(0xFFD4AF37).withOpacity(0.1),
+                                      blurRadius: 15,
+                                      spreadRadius: 2,
+                                    ),
+                                  ],
                                 ),
-
-                                Row(
+                                child: Column(
                                   children: [
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          TextView(
-                                            text: "THANK YOU FOR PLAYING!",
-                                            style: 15.txtMediumPrimary,
+                                    // Trophy Image with glow
+                                    Container(
+                                      width: 100,
+                                      height: 100,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Color(
+                                              0xFFD4AF37,
+                                            ).withOpacity(0.4),
+                                            blurRadius: 30,
+                                            spreadRadius: 5,
                                           ),
-                                          TextView(
-                                            text:
-                                                "RESULTS ARE FOR ENTERTAINMENT PURPOSES ONLY",
-                                            style: 10.txtMediumPrimary,
-                                            margin: EdgeInsets.only(bottom: 5),
-                                            maxlines: null,
-                                            overflow: TextOverflow.visible,
+                                        ],
+                                      ),
+                                      child: ImageView(
+                                        url: AppImages.winnerImg,
+                                        height: 100,
+                                        width: 100,
+                                      ),
+                                    ),
+
+                                    SizedBox(height: 12),
+
+                                    // Winner Name
+                                    Text(
+                                      winner != null
+                                          ? "${winner.name}"
+                                          : "No winner yet",
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: Color(0xFFD4AF37),
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 1.2,
+                                        shadows: [
+                                          Shadow(
+                                            color: Color(
+                                              0xFFD4AF37,
+                                            ).withOpacity(0.5),
+                                            blurRadius: 10,
                                           ),
                                         ],
                                       ),
                                     ),
-                                    Visibility(
-                                      visible: widget.showPollButton,
-                                      child: GestureDetector(
-                                        onTap: () {
-                                          context.pushNavigator(
-                                            ShowPollScreen(),
-                                          );
-                                        },
-                                        child: Container(
-                                          margin: 10.right,
-                                          child: Icon(
-                                            Icons.poll_outlined,
-                                            color: AppColors.greynew,
-                                            size: 25,
-                                          ),
+
+                                    SizedBox(height: 15),
+
+                                    // Result Card
+                                    Container(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 20,
+                                        vertical: 14,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Color(
+                                          0xFF1A1410,
+                                        ).withOpacity(0.5),
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(
+                                          color: Color(
+                                            0xFFD4AF37,
+                                          ).withOpacity(0.2),
+                                          width: 1,
                                         ),
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          Text(
+                                            'Thank you for playing',
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              color: Color(0xFFD4AF37),
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w600,
+                                              letterSpacing: 0.5,
+                                            ),
+                                          ),
+                                          SizedBox(height: 10),
+                                          Container(
+                                            height: 1,
+                                            width: double.infinity,
+                                            decoration: BoxDecoration(
+                                              gradient: LinearGradient(
+                                                colors: [
+                                                  Colors.transparent,
+                                                  Color(
+                                                    0xFFD4AF37,
+                                                  ).withOpacity(0.3),
+                                                  Colors.transparent,
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                          SizedBox(height: 10),
+                                          Text(
+                                            'Results are for\nentertainment purposes only',
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              color: Color(0xFFB8A070),
+                                              fontSize: 11,
+                                              height: 1.4,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ],
                                 ),
-
-                                //// old ui..........
-                                Visibility(
-                                  visible: false,
-                                  child: SizedBox(
-                                    height: 25,
-                                    width: double.infinity,
-                                    child: Row(
+                              ),
+                            )
+                          : Container(
+                              key: ValueKey(false),
+                              margin: EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 10,
+                              ),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 16,
+                              ),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Color(0xFF2A1810),
+                                    Color(0xFF1A1410),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: Color(0xFFD4AF37).withOpacity(0.3),
+                                  width: 1.5,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Color(0xFFD4AF37).withOpacity(0.15),
+                                    blurRadius: 12,
+                                    spreadRadius: 1,
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: Color(
+                                        0xFFD4AF37,
+                                      ).withOpacity(0.15),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      Icons.emoji_events,
+                                      size: 32,
+                                      color: Color(0xFFD4AF37),
+                                    ),
+                                  ),
+                                  SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
                                       crossAxisAlignment:
-                                          CrossAxisAlignment.end,
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
+                                          CrossAxisAlignment.start,
                                       children: [
-                                        Container(
-                                          decoration: BoxDecoration(
-                                            gradient: LinearGradient(
-                                              colors: [
-                                                Colors.white,
-                                                Colors.red,
-                                              ],
-                                              begin: Alignment.topCenter,
-                                              end: Alignment.bottomCenter,
-                                            ),
-                                            border: Border.all(
-                                              color: Colors.black,
-                                              width: 1,
-                                            ),
-                                            borderRadius: BorderRadius.circular(
-                                              8,
-                                            ),
-                                          ),
-                                          child: Center(
-                                            child: Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.center,
-                                              children: [
-                                                Padding(
-                                                  padding: const EdgeInsets.all(
-                                                    3.5,
-                                                  ),
-                                                  child: Icon(
-                                                    Icons.poll,
-                                                    size: 15,
-                                                    color:
-                                                        AppColors.primaryColor,
-                                                  ),
-                                                ),
-                                                Text(
-                                                  'VIEW MORE POLLS',
-                                                  style: 12.txtMediumPrimary,
-                                                  textAlign: TextAlign.center,
-                                                ),
-                                              ],
-                                            ),
+                                        Text(
+                                          'Poll Has Ended',
+                                          style: TextStyle(
+                                            color: Color(0xFFD4AF37),
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                            letterSpacing: 0.5,
                                           ),
                                         ),
-                                        Visibility(
-                                          visible: widget.showPollButton,
-                                          child: GestureDetector(
-                                            onTap: () {
-                                              context.pushNavigator(
-                                                ShowPollScreen(),
-                                              );
-                                            },
-                                            child: Container(
-                                              margin: 15.right,
-                                              child: Icon(
-                                                Icons.poll,
-                                                color: AppColors.greynew,
-                                                size: 25,
-                                              ),
-                                            ),
+                                        SizedBox(height: 4),
+                                        Text(
+                                          'Tap to view results',
+                                          style: TextStyle(
+                                            color: Color(0xFFB8A070),
+                                            fontSize: 13,
                                           ),
                                         ),
                                       ],
                                     ),
                                   ),
-                                ),
-                              ],
+                                  Icon(
+                                    Icons.chevron_right,
+                                    color: Color(0xFFD4AF37),
+                                    size: 28,
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
                     ),
                   )
                 : SizedBox.shrink(),

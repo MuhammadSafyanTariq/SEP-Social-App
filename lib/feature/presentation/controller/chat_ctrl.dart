@@ -84,6 +84,45 @@ class ChatCtrl extends GetxController {
     AppUtils.toast('Chat deleted');
   }
 
+  /// Mark all messages in a chat as read
+  Future<void> markAllMessagesAsRead(String chatId) async {
+    if (chatId.isEmpty) {
+      AppUtils.logEr('❌ Cannot mark messages as read: chatId is empty');
+      return;
+    }
+
+    AppUtils.log('✅ Marking all messages as read in chat: $chatId');
+
+    // Update local messages immediately
+    for (int i = 0; i < chatMessages.length; i++) {
+      final msg = chatMessages[i];
+      if (msg.sender?.id != Preferences.uid) {
+        // Add current user to readBy list if not already there
+        final readBy = List<dynamic>.from(msg.readBy ?? []);
+        if (!readBy.contains(Preferences.uid)) {
+          readBy.add(Preferences.uid);
+          chatMessages[i] = msg.copyWith(readBy: readBy);
+        }
+      }
+    }
+    chatMessages.refresh();
+
+    // Update unread count in recent chat list
+    final recentChatIndex = recentChat.indexWhere((chat) => chat.id == chatId);
+    if (recentChatIndex != -1) {
+      final chat = recentChat[recentChatIndex];
+      final updatedUnreadCount = Map<String, int>.from(chat.unreadCount ?? {});
+      updatedUnreadCount[Preferences.uid ?? ''] = 0;
+      recentChat[recentChatIndex] = chat.copyWith(unreadCount: updatedUnreadCount);
+      recentChat.refresh();
+    }
+
+    // Notify server
+    _repo.markMessagesAsRead(chatId: chatId);
+
+    AppUtils.toast('Messages marked as read');
+  }
+
   void deleteChatListener() {
     _repo.deleteChatListener(
       data: (data) {

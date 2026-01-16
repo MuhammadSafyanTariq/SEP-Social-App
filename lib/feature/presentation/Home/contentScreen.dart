@@ -214,191 +214,180 @@ class _HomeScreenState extends State<Contentscreen> {
         onLoading: _loadMorePosts,
         child: CustomScrollView(
           slivers: [
+            // Search Bar
+            SliverToBoxAdapter(
+              child: GestureDetector(
+                onTap: () {
+                  context.pushNavigator(
+                    const Search(autoFocus: true),
+                  );
+                },
+                child: Container(
+                  margin: EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(25),
+                    border: Border.all(
+                      color: Colors.grey.shade300,
+                      width: 1,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 8,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.search,
+                        color: Colors.grey.shade600,
+                        size: 22,
+                      ),
+                      SizedBox(width: 12),
+                      Text(
+                        'Search users...',
+                        style: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            // Story section
+            SliverToBoxAdapter(
+              child: StoryListWidget(),
+            ),
+            // Live Stream section
             Obx(
-              () => SliverAppBar(
-                automaticallyImplyLeading: false,
-                pinned: false,
-                floating: true,
-                backgroundColor: Colors.white,
-                expandedHeight: AgoraChatCtrl.find.liveStreamChannels.isNotEmpty
-                    ? 340
-                    : 240,
-                flexibleSpace: SingleChildScrollView(
-                  physics: NeverScrollableScrollPhysics(),
-                  child: Padding(
-                    padding: EdgeInsets.zero,
-                    child: Column(
-                      children: [
-                        // Clickable Search Bar
-                        GestureDetector(
-                          onTap: () {
-                            context.pushNavigator(
-                              const Search(autoFocus: true),
+              () => AgoraChatCtrl.find.liveStreamChannels.isNotEmpty
+                  ? SliverToBoxAdapter(
+                      child: Container(
+                        margin: EdgeInsets.symmetric(vertical: 10),
+                        height: 65,
+                        child: ListView.separated(
+                          padding: EdgeInsets.symmetric(horizontal: 16),
+                          scrollDirection: Axis.horizontal,
+                          itemBuilder: (context, index) {
+                            final item = AgoraChatCtrl
+                                .find
+                                .liveStreamChannels[index];
+                            return SizedBox(
+                              width: 50,
+                              child: Column(
+                                children: [
+                                  ProfileImage(
+                                    size: 40,
+                                    image: item.hostImage.fileUrl,
+                                    uid: item.hostId,
+                                    socketConnection: socketConnectionFlag,
+                                  ),
+                                  TextView(
+                                    margin: EdgeInsets.only(top: 3),
+                                    text: item.hostName ?? '',
+                                    maxlines: 1,
+                                    style: 12.txtRegularMainBlack,
+                                  ),
+                                ],
+                              ),
                             );
                           },
-                          child: Container(
-                            margin: EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 10,
-                            ),
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(25),
-                              border: Border.all(
-                                color: Colors.grey.shade300,
-                                width: 1,
+                          separatorBuilder: (context, index) =>
+                              SizedBox(width: 20),
+                          itemCount:
+                              AgoraChatCtrl.find.liveStreamChannels.length,
+                        ),
+                      ),
+                    )
+                  : SliverToBoxAdapter(child: SizedBox.shrink()),
+            ),
+            // Category Filter
+            SliverToBoxAdapter(
+              child: Container(
+                color: Colors.white,
+                height: 50,
+                child: Obx(
+                  () => ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: categories.length,
+                    itemBuilder: (context, index) {
+                      return GestureDetector(
+                        onTap: () {
+                          selectedCategory.value = categories[index];
+                          selectedCategory.refresh();
+                          AppUtils.log('hiihgjfgygj');
+                          _loadInitialPosts().applyLoader;
+                        },
+                        child: Obx(
+                          () => Padding(
+                            padding: const EdgeInsets.only(left: 7.0),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 10,
                               ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.05),
-                                  blurRadius: 8,
-                                  offset: Offset(0, 2),
+                              margin: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color:
+                                    categories[index].name ==
+                                            selectedCategory
+                                                .value
+                                                .name &&
+                                        categories[index].id ==
+                                            selectedCategory.value.id
+                                    ? AppColors.btnColor
+                                    : AppColors.grey.withValues(
+                                        alpha: 0.1,
+                                      ),
+                                borderRadius: BorderRadius.circular(
+                                  30,
                                 ),
-                              ],
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.search,
-                                  color: Colors.grey.shade600,
-                                  size: 22,
-                                ),
-                                SizedBox(width: 12),
-                                Text(
-                                  'Search users...',
+                              ),
+                              child: Center(
+                                child: TextView(
+                                  text: _getCategoryDisplayName(
+                                    categories[index].name,
+                                  ),
                                   style: TextStyle(
-                                    color: Colors.grey.shade600,
-                                    fontSize: 15,
+                                    color:
+                                        categories[index].name ==
+                                                selectedCategory
+                                                    .value
+                                                    .name &&
+                                            categories[index].id ==
+                                                selectedCategory
+                                                    .value
+                                                    .id
+                                        ? Colors.white
+                                        : categories[index].name
+                                                  ?.toLowerCase() ==
+                                              'other'
+                                        ? Colors.red
+                                        : Colors.black,
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                              ],
+                              ),
                             ),
                           ),
                         ),
-                        // Story section
-                        StoryListWidget(),
-                        Visibility(
-                          visible:
-                              AgoraChatCtrl.find.liveStreamChannels.isNotEmpty,
-                          child: Container(
-                            margin: EdgeInsets.symmetric(vertical: 10),
-                            height: 65,
-                            child: ListView.separated(
-                              padding: EdgeInsets.symmetric(horizontal: 16),
-                              scrollDirection: Axis.horizontal,
-                              itemBuilder: (context, index) {
-                                final item = AgoraChatCtrl
-                                    .find
-                                    .liveStreamChannels[index];
-                                return SizedBox(
-                                  width: 50,
-                                  child: Column(
-                                    children: [
-                                      ProfileImage(
-                                        size: 40,
-                                        image: item.hostImage.fileUrl,
-                                        uid: item.hostId,
-                                        socketConnection: socketConnectionFlag,
-                                      ),
-                                      TextView(
-                                        margin: EdgeInsets.only(top: 3),
-                                        text: item.hostName ?? '',
-                                        maxlines: 1,
-                                        style: 12.txtRegularMainBlack,
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              },
-                              separatorBuilder: (context, index) =>
-                                  SizedBox(width: 20),
-                              itemCount:
-                                  AgoraChatCtrl.find.liveStreamChannels.length,
-                            ),
-                          ),
-                        ),
-                        Container(
-                          color: Colors.white,
-                          height: 50,
-                          child: Obx(
-                            () => ListView.builder(
-                              scrollDirection: Axis.horizontal,
-                              itemCount: categories.length,
-                              itemBuilder: (context, index) {
-                                return GestureDetector(
-                                  onTap: () {
-                                    selectedCategory.value = categories[index];
-                                    selectedCategory.refresh();
-                                    AppUtils.log('hiihgjfgygj');
-                                    _loadInitialPosts().applyLoader;
-                                  },
-                                  child: Obx(
-                                    () => Padding(
-                                      padding: const EdgeInsets.only(left: 7.0),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 20,
-                                          vertical: 10,
-                                        ),
-                                        margin: const EdgeInsets.symmetric(
-                                          horizontal: 4,
-                                          vertical: 4,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color:
-                                              categories[index].name ==
-                                                      selectedCategory
-                                                          .value
-                                                          .name &&
-                                                  categories[index].id ==
-                                                      selectedCategory.value.id
-                                              ? AppColors.btnColor
-                                              : AppColors.grey.withValues(
-                                                  alpha: 0.1,
-                                                ),
-                                          borderRadius: BorderRadius.circular(
-                                            30,
-                                          ),
-                                        ),
-                                        child: Center(
-                                          child: TextView(
-                                            text: _getCategoryDisplayName(
-                                              categories[index].name,
-                                            ),
-                                            style: TextStyle(
-                                              color:
-                                                  categories[index].name ==
-                                                          selectedCategory
-                                                              .value
-                                                              .name &&
-                                                      categories[index].id ==
-                                                          selectedCategory
-                                                              .value
-                                                              .id
-                                                  ? Colors.white
-                                                  : categories[index].name
-                                                            ?.toLowerCase() ==
-                                                        'other'
-                                                  ? Colors.red
-                                                  : Colors.black,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
                 ),
               ),

@@ -3,6 +3,7 @@ import 'package:video_player/video_player.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 import 'package:sep/utils/appUtils.dart';
 import 'package:get/get.dart';
+import 'package:sep/feature/presentation/controller/auth_Controller/profileCtrl.dart';
 
 // Global video controller manager
 class VideoControllerManager extends GetxController {
@@ -67,6 +68,8 @@ class _AutoPlayVideoPlayerState extends State<AutoPlayVideoPlayer> {
   bool _isInitialized = false;
   bool _isPlaying = false;
   bool _isMuted = true;
+  bool _hasReachedHalfway = false;
+  bool _viewCounted = false;
 
   @override
   void initState() {
@@ -108,6 +111,7 @@ class _AutoPlayVideoPlayerState extends State<AutoPlayVideoPlayer> {
           setState(() {
             _isPlaying = _controller!.value.isPlaying;
           });
+          _checkVideoProgress();
         }
       });
 
@@ -150,6 +154,64 @@ class _AutoPlayVideoPlayerState extends State<AutoPlayVideoPlayer> {
           _isPlaying = false;
         });
       }
+    }
+  }
+
+  void _checkVideoProgress() {
+    if (_controller == null ||
+        !_controller!.value.isInitialized ||
+        _viewCounted)
+      return;
+
+    final position = _controller!.value.position;
+    final duration = _controller!.value.duration;
+
+    if (duration.inMilliseconds > 0) {
+      final progress = position.inMilliseconds / duration.inMilliseconds;
+
+      // Check if video has been played more than 50%
+      if (progress >= 0.5 && !_hasReachedHalfway) {
+        _hasReachedHalfway = true;
+        _incrementViewCount();
+      }
+    }
+  }
+
+  void _incrementViewCount() {
+    if (_viewCounted || widget.postId.isEmpty) return;
+
+    _viewCounted = true;
+
+    try {
+      final profileCtrl = Get.find<ProfileCtrl>();
+
+      // Update video count on server
+      profileCtrl
+          .videoCount(widget.postId)
+          .then((_) {
+            // Update globalPostList to reflect changes
+            final globalIndex = profileCtrl.globalPostList.indexWhere(
+              (p) => p.id == widget.postId,
+            );
+
+            if (globalIndex != -1) {
+              final post = profileCtrl.globalPostList[globalIndex];
+              final updatedPost = post.copyWith(
+                videoCount: (post.videoCount ?? 0) + 1,
+              );
+              profileCtrl.globalPostList[globalIndex] = updatedPost;
+              profileCtrl.globalPostList.refresh();
+            }
+
+            AppUtils.log('Video count incremented for post: ${widget.postId}');
+          })
+          .catchError((error) {
+            AppUtils.log('Error updating video count: $error');
+            _viewCounted = false; // Reset so it can be retried
+          });
+    } catch (e) {
+      AppUtils.log('Error finding ProfileCtrl: $e');
+      _viewCounted = false;
     }
   }
 

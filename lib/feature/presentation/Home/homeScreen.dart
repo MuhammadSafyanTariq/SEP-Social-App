@@ -26,6 +26,7 @@ import '../controller/agora_chat_ctrl.dart';
 import '../controller/auth_Controller/networkCtrl.dart';
 import '../controller/chat_ctrl.dart';
 import '../game_screens/game_screen.dart';
+import '../notifactionScreens/notificationScreen.dart' as notif_screen;
 import '../notifactionScreens/notificationScreen.dart';
 import '../profileScreens/profileScreen.dart';
 import '../profileScreens/setting/noInternetScreen.dart';
@@ -80,6 +81,9 @@ class _HomeScreenState extends State<HomeScreen> {
       if (stripeId == null || stripeId.isEmpty) {
         stripeCreateAccount();
       }
+
+      // Load notifications to show unread count
+      getNotification();
 
       // Start ad timer
       _startAdTimer();
@@ -387,18 +391,62 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: Colors.transparent,
                   child: InkWell(
                     onTap: () {
-                      context.pushNavigator(Notificationscreen());
+                      context.pushNavigator(notif_screen.Notificationscreen());
                     },
                     borderRadius: BorderRadius.circular(24),
-                    child: Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(shape: BoxShape.circle),
-                      child: Icon(
-                        Icons.notifications_none_rounded,
-                        size: 24,
-                        color: AppColors.primaryColor,
-                      ),
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(shape: BoxShape.circle),
+                          child: Icon(
+                            Icons.notifications_none_rounded,
+                            size: 24,
+                            color: AppColors.primaryColor,
+                          ),
+                        ),
+                        Obx(() {
+                          final unreadNotifCount = notificationlist
+                              .where((notif) => notif.isRead == false)
+                              .length;
+                          if (unreadNotifCount > 0) {
+                            return Positioned(
+                              right: -4,
+                              top: -4,
+                              child: Container(
+                                padding: EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: Colors.red,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors.white,
+                                    width: 1.5,
+                                  ),
+                                ),
+                                constraints: BoxConstraints(
+                                  minWidth: 18,
+                                  minHeight: 18,
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    unreadNotifCount > 99
+                                        ? '99+'
+                                        : unreadNotifCount.toString(),
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          }
+                          return SizedBox.shrink();
+                        }),
+                      ],
                     ),
                   ),
                 ),
@@ -616,11 +664,24 @@ class _HomeScreenState extends State<HomeScreen> {
                       width: 80,
                       height: 80,
                       decoration: BoxDecoration(
-                        color: AppColors.btnColor,
+                        color: Colors.black,
                         shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 4),
+                        border: Border.all(color: Colors.black, width: 3),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.green.withOpacity(0.3),
+                            blurRadius: 15,
+                            spreadRadius: 2,
+                          ),
+                        ],
                       ),
-                      child: Icon(Icons.add, size: 32, color: Colors.white),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.green, width: 1),
+                        ),
+                        child: Icon(Icons.add, size: 40, color: Colors.green),
+                      ),
                     ),
                   ),
                 ),

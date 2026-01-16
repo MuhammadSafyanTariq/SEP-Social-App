@@ -358,14 +358,6 @@ class _ProfileScreenState extends State<ProfileScreen>
                               true
                           ? NetworkImage(profileCtrl.profileImageData.network!)
                           : AssetImage(AppImages.dummyProfile) as ImageProvider,
-                      child:
-                          profileCtrl.profileImageData.network?.isEmpty ?? true
-                          ? Icon(
-                              Icons.person,
-                              size: 60,
-                              color: Colors.grey[600],
-                            )
-                          : null,
                     ),
                   ),
                 );
@@ -501,6 +493,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               child: AppButton(
                 label: 'Edit Profile',
                 buttonColor: AppColors.btnColor,
+                textOverflow: TextOverflow.ellipsis,
                 onTap: () {
                   // Navigate to edit profile
                   context.pushNavigator(EditProfile());
@@ -576,49 +569,52 @@ class _ProfileScreenState extends State<ProfileScreen>
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       child: Obx(
-        () => Row(
-          children: [
-            _buildTab(
-              icon: Icons.image_outlined,
-              label: 'Images',
-              isSelected: tabIndex.value == 0,
-              onTap: () {
-                tabIndex.value = 0;
-                _tabController.animateTo(0);
-                getPosts(onChangePage: true);
-              },
-            ),
-            _buildTab(
-              icon: Icons.videocam_outlined,
-              label: 'Videos',
-              isSelected: tabIndex.value == 1,
-              onTap: () {
-                tabIndex.value = 1;
-                _tabController.animateTo(1);
-                getPosts(onChangePage: true);
-              },
-            ),
-            _buildTab(
-              icon: Icons.poll_outlined,
-              label: 'Polls',
-              isSelected: tabIndex.value == 2,
-              onTap: () {
-                tabIndex.value = 2;
-                _tabController.animateTo(2);
-                getPosts(onChangePage: true);
-              },
-            ),
-            _buildTab(
-              icon: Icons.celebration_outlined,
-              label: 'Celebrations',
-              isSelected: tabIndex.value == 3,
-              onTap: () {
-                tabIndex.value = 3;
-                _tabController.animateTo(3);
-                getPosts(onChangePage: true);
-              },
-            ),
-          ],
+        () => SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              _buildTab(
+                icon: Icons.image_outlined,
+                label: 'Images',
+                isSelected: tabIndex.value == 0,
+                onTap: () {
+                  tabIndex.value = 0;
+                  _tabController.animateTo(0);
+                  getPosts(onChangePage: true);
+                },
+              ),
+              _buildTab(
+                icon: Icons.videocam_outlined,
+                label: 'Videos',
+                isSelected: tabIndex.value == 1,
+                onTap: () {
+                  tabIndex.value = 1;
+                  _tabController.animateTo(1);
+                  getPosts(onChangePage: true);
+                },
+              ),
+              _buildTab(
+                icon: Icons.poll_outlined,
+                label: 'Polls',
+                isSelected: tabIndex.value == 2,
+                onTap: () {
+                  tabIndex.value = 2;
+                  _tabController.animateTo(2);
+                  getPosts(onChangePage: true);
+                },
+              ),
+              _buildTab(
+                icon: Icons.celebration_outlined,
+                label: 'Celebrations',
+                isSelected: tabIndex.value == 3,
+                onTap: () {
+                  tabIndex.value = 3;
+                  _tabController.animateTo(3);
+                  getPosts(onChangePage: true);
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -630,37 +626,37 @@ class _ProfileScreenState extends State<ProfileScreen>
     required bool isSelected,
     required VoidCallback onTap,
   }) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            border: isSelected
-                ? Border(
-                    bottom: BorderSide(color: AppColors.primaryColor, width: 2),
-                  )
-                : null,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 85,
+        padding: EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+        decoration: BoxDecoration(
+          border: isSelected
+              ? Border(
+                  bottom: BorderSide(color: AppColors.primaryColor, width: 2),
+                )
+              : null,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? AppColors.primaryColor : Colors.grey[600],
+              size: 24,
+            ),
+            SizedBox(height: 4),
+            TextView(
+              text: label,
+              style: TextStyle(
                 color: isSelected ? AppColors.primaryColor : Colors.grey[600],
-                size: 24,
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
-              SizedBox(height: 4),
-              TextView(
-                text: label,
-                style: TextStyle(
-                  color: isSelected ? AppColors.primaryColor : Colors.grey[600],
-                  fontSize: 12,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                ),
-              ),
-            ],
-          ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
         ),
       ),
     );

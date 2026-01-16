@@ -90,6 +90,10 @@ abstract class TempRepository {
 
   Future<List<NotificationItem>> notification({required int page});
 
+  Future<ResponseData<String>> markNotificationAsRead({required String notificationId});
+
+  Future<ResponseData<String>> markAllNotificationsAsRead();
+
   Future<ResponseData<SeemyprofileModel>> seemyprofile({
     required String seemyprofile,
   });

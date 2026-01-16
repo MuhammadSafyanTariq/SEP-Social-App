@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:sep/components/dialogs/game_start_dialog.dart';
 import 'package:sep/components/styles/appColors.dart';
+import 'package:sep/feature/presentation/wallet/packages_screen.dart';
 import 'package:sep/services/game/game_manager.dart';
 import 'package:sep/utils/appUtils.dart';
+import 'package:sep/utils/extensions/contextExtensions.dart';
 import 'home.dart';
 
 /// Wrapper screen for 2048 game that integrates with the app's game management system
@@ -34,8 +36,7 @@ class _Game2048ScreenState extends State<Game2048Screen> {
         context: context,
         tokensRequired: GameManager.TOKEN_COST_PER_RETRY,
         onBuyTokens: () {
-          // Navigate to token purchase screen or wallet
-          AppUtils.toast('Token purchase coming soon!');
+          context.pushNavigator(PackagesScreen());
         },
       );
       // Go back after showing dialog

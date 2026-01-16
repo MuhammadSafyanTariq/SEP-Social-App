@@ -61,7 +61,8 @@ class _CountdownTimerState extends State<CountdownTimer> {
       if (now.isBefore(widget.startTime)) {
         duration = widget.startTime.difference(now);
         changePollState(PollState.notStarted);
-      } else if (now.isAfter(widget.startTime) && now.isBefore(widget.endTime)) {
+      } else if (now.isAfter(widget.startTime) &&
+          now.isBefore(widget.endTime)) {
         duration = widget.endTime.difference(now);
         changePollState(PollState.inProgress);
       } else {
@@ -106,30 +107,47 @@ class _CountdownTimerState extends State<CountdownTimer> {
 
   Widget buildSeparator() => const Padding(
     padding: EdgeInsets.symmetric(horizontal: 5),
-    child: Text(":", style: TextStyle(fontSize: 24, color: Colors.green)),
+    child: Text(
+      ":",
+      style: TextStyle(
+        fontSize: 24,
+        color: Colors.grey,
+        fontWeight: FontWeight.bold,
+      ),
+    ),
   );
 
   Widget buildTimeBox(int value, String label) {
-    Color textColor = widget.countdownColor ?? AppColors.btnColor;
-
     return Column(
       children: [
         Container(
-          width: 38.sdp,
-          padding: const EdgeInsets.symmetric(vertical: 4),
+          width: 42.sdp,
+          padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 4),
           decoration: BoxDecoration(
-            color: AppColors.white,
+            color: Colors.transparent,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: textColor, width: 1),
+            border: Border.all(color: Colors.grey[400]!, width: 1.5),
           ),
           child: Center(
             child: Column(
               children: [
                 Text(
                   value.toString().padLeft(2, '0'),
-                  style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-                Text(label, style: TextStyle(color: textColor, fontSize: 6)),
+                SizedBox(height: 2),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: Colors.black87,
+                    fontSize: 7,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ],
             ),
           ),

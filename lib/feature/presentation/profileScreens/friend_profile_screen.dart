@@ -177,11 +177,15 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
           .then((list) {
             // Filter celebrations for celebration tab
             if (postType == PostFileType.post) {
-              list = list.where((post) => 
-                post.content != null && post.content!.startsWith('SEP#Celebrate')
-              ).toList();
+              list = list
+                  .where(
+                    (post) =>
+                        post.content != null &&
+                        post.content!.startsWith('SEP#Celebrate'),
+                  )
+                  .toList();
             }
-            
+
             if (list.isNotEmpty) {
               if (postType == PostFileType.poll) {
                 profilePollPageNoFriend = pageNo;
@@ -823,6 +827,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
                         padding: EdgeInsets.symmetric(vertical: 8),
                         radius: 10,
                         buttonBorderColor: AppColors.btnColor,
+                        textOverflow: TextOverflow.ellipsis,
                         // buttonColor: AppColors.green,
                         label: 'Linked',
                       ),
@@ -838,6 +843,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
                         padding: EdgeInsets.symmetric(vertical: 8),
                         radius: 10,
                         buttonBorderColor: AppColors.btnColor,
+                        textOverflow: TextOverflow.ellipsis,
                         // buttonColor: AppColors.green,
                         label: 'Message',
                       ),
@@ -1110,13 +1116,6 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
                       backgroundImage: imageUrl.isNotEmpty
                           ? NetworkImage(imageUrl)
                           : AssetImage(AppImages.dummyProfile) as ImageProvider,
-                      child: imageUrl.isEmpty
-                          ? Icon(
-                              Icons.person,
-                              size: 60,
-                              color: Colors.grey[600],
-                            )
-                          : null,
                     ),
                   ),
                 );
@@ -1326,49 +1325,52 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       child: Obx(
-        () => Row(
-          children: [
-            _buildTab(
-              icon: Icons.image_outlined,
-              label: 'Images',
-              isSelected: tabIndex.value == 0,
-              onTap: () {
-                tabIndex.value = 0;
-                _tabController.animateTo(0);
-                getPosts(onChangePage: true);
-              },
-            ),
-            _buildTab(
-              icon: Icons.videocam_outlined,
-              label: 'Videos',
-              isSelected: tabIndex.value == 1,
-              onTap: () {
-                tabIndex.value = 1;
-                _tabController.animateTo(1);
-                getPosts(onChangePage: true);
-              },
-            ),
-            _buildTab(
-              icon: Icons.poll_outlined,
-              label: 'Polls',
-              isSelected: tabIndex.value == 2,
-              onTap: () {
-                tabIndex.value = 2;
-                _tabController.animateTo(2);
-                getPosts(onChangePage: true);
-              },
-            ),
-            _buildTab(
-              icon: Icons.celebration_outlined,
-              label: 'Celebrations',
-              isSelected: tabIndex.value == 3,
-              onTap: () {
-                tabIndex.value = 3;
-                _tabController.animateTo(3);
-                getPosts(onChangePage: true);
-              },
-            ),
-          ],
+        () => SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              _buildTab(
+                icon: Icons.image_outlined,
+                label: 'Images',
+                isSelected: tabIndex.value == 0,
+                onTap: () {
+                  tabIndex.value = 0;
+                  _tabController.animateTo(0);
+                  getPosts(onChangePage: true);
+                },
+              ),
+              _buildTab(
+                icon: Icons.videocam_outlined,
+                label: 'Videos',
+                isSelected: tabIndex.value == 1,
+                onTap: () {
+                  tabIndex.value = 1;
+                  _tabController.animateTo(1);
+                  getPosts(onChangePage: true);
+                },
+              ),
+              _buildTab(
+                icon: Icons.poll_outlined,
+                label: 'Polls',
+                isSelected: tabIndex.value == 2,
+                onTap: () {
+                  tabIndex.value = 2;
+                  _tabController.animateTo(2);
+                  getPosts(onChangePage: true);
+                },
+              ),
+              _buildTab(
+                icon: Icons.celebration_outlined,
+                label: 'Celebrations',
+                isSelected: tabIndex.value == 3,
+                onTap: () {
+                  tabIndex.value = 3;
+                  _tabController.animateTo(3);
+                  getPosts(onChangePage: true);
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1380,37 +1382,35 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
     required bool isSelected,
     required VoidCallback onTap,
   }) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            border: isSelected
-                ? Border(
-                    bottom: BorderSide(color: AppColors.btnColor, width: 2),
-                  )
-                : null,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 85,
+        padding: EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+        decoration: BoxDecoration(
+          border: isSelected
+              ? Border(bottom: BorderSide(color: AppColors.btnColor, width: 2))
+              : null,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? AppColors.btnColor : Colors.grey[600],
+              size: 24,
+            ),
+            SizedBox(height: 4),
+            TextView(
+              text: label,
+              style: TextStyle(
                 color: isSelected ? AppColors.btnColor : Colors.grey[600],
-                size: 24,
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
-              SizedBox(height: 4),
-              TextView(
-                text: label,
-                style: TextStyle(
-                  color: isSelected ? AppColors.btnColor : Colors.grey[600],
-                  fontSize: 12,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                ),
-              ),
-            ],
-          ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
         ),
       ),
     );
@@ -1493,7 +1493,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
       separatorBuilder: (context, index) => SizedBox(height: 10),
       itemBuilder: (context, index) {
         final post = posts[index];
-        
+
         return PollCard(
           data: post,
           header: postCardHeader(
@@ -1965,7 +1965,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
       separatorBuilder: (context, index) => SizedBox(height: 10),
       itemBuilder: (context, index) {
         final post = posts[index];
-        
+
         return CelebrationCard(
           header: postCardHeader(
             post,

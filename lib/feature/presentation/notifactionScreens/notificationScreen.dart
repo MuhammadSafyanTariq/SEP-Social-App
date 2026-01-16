@@ -412,6 +412,19 @@ class _NotificationscreenState extends State<Notificationscreen> {
     return message;
   }
 
+  Future<void> markAllAsRead() async {
+    try {
+      await _repo.markAllNotificationsAsRead();
+      // Update local list
+      for (int i = 0; i < notificationlist.length; i++) {
+        notificationlist[i] = notificationlist[i].copyWith(isRead: true);
+      }
+      notificationlist.refresh();
+    } catch (e) {
+      AppUtils.log('Error marking all as read: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -428,6 +441,21 @@ class _NotificationscreenState extends State<Notificationscreen> {
             prefixImage: 'back',
             onPrefixTap: () => Navigator.pop(context),
             backgroundColor: Colors.white,
+            suffixWidget: Obx(() {
+              final hasUnread = notificationlist.any((notif) => notif.isRead == false);
+              if (!hasUnread) return SizedBox.shrink();
+              return TextButton(
+                onPressed: markAllAsRead,
+                child: Text(
+                  'Mark all as read',
+                  style: TextStyle(
+                    color: AppColors.btnColor,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              );
+            }),
           ),
           Expanded(
             child: SafeArea(
@@ -498,6 +526,24 @@ class _NotificationscreenState extends State<Notificationscreen> {
                               item,
                               context,
                               liveIndex > -1,
+                              onTap: () async {
+                                // Mark as read when tapped
+                                if (item.isRead == false) {
+                                  try {
+                                    await _repo.markNotificationAsRead(
+                                      notificationId: item.id ?? '',
+                                    );
+                                    // Update local list
+                                    final index = notificationlist.indexOf(item);
+                                    if (index != -1) {
+                                      notificationlist[index] = item.copyWith(isRead: true);
+                                      notificationlist.refresh();
+                                    }
+                                  } catch (e) {
+                                    AppUtils.log('Error marking as read: $e');
+                                  }
+                                }
+                              },
                             );
                           });
                         }
@@ -533,8 +579,9 @@ class _NotificationscreenState extends State<Notificationscreen> {
   Widget buildNotificationList(
     NotificationItem item,
     BuildContext context,
-    bool liveStatus,
-  ) {
+    bool liveStatus, {
+    VoidCallback? onTap,
+  }) {
     return Dismissible(
       key: Key(item.id ?? UniqueKey().toString()),
       direction: DismissDirection.endToStart,
@@ -551,6 +598,7 @@ class _NotificationscreenState extends State<Notificationscreen> {
       ),
       child: InkWell(
         onTap: () {
+          onTap?.call();
           if (item.notificationType == 'live' ||
               item.notificationType == 'inviteForLive') {
             bool liveStatus1 =
@@ -790,6 +838,17 @@ class NotificationItemComponent extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Unread indicator (green dot)
+          if (data.isRead == false)
+            Container(
+              margin: EdgeInsets.only(top: 16, right: 8),
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(
+                color: Colors.green,
+                shape: BoxShape.circle,
+              ),
+            ),
           // Notification Icon
           Container(
             width: 44,

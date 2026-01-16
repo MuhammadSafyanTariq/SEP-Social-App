@@ -3,19 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:get/get.dart';
 import 'package:sep/components/coreComponents/TextView.dart';
-import 'package:sep/components/styles/textStyles.dart';
 import 'package:sep/feature/data/models/dataModels/Createpost/address_model.dart';
 import 'package:sep/feature/data/models/dataModels/poll_item_model/poll_item_model.dart';
 import 'package:sep/feature/presentation/Home/homeScreen.dart';
 import 'package:sep/utils/appUtils.dart';
 import 'package:sep/utils/extensions/contextExtensions.dart';
 import 'package:sep/utils/extensions/extensions.dart';
-import 'package:sep/utils/extensions/size.dart';
-import '../../../components/coreComponents/AppButton.dart';
-import '../../../components/coreComponents/ImageView.dart';
 import '../../../components/styles/appColors.dart';
-import '../../../components/styles/appImages.dart';
-import '../../../components/styles/app_strings.dart';
 import '../../../services/storage/preferences.dart';
 import '../../data/models/dataModels/Createpost/getcategory_model.dart';
 import '../controller/createpost/createpost_ctrl.dart';
@@ -727,25 +721,54 @@ class _AddPollState extends State<AddPoll> {
                             context: context,
                             builder: (BuildContext context) {
                               return AlertDialog(
-                                contentPadding: EdgeInsets.all(20),
+                                contentPadding: EdgeInsets.all(30),
+                                backgroundColor: Colors.white,
                                 title: Column(
                                   crossAxisAlignment: CrossAxisAlignment.center,
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    ImageView(url: AppImages.Done),
-                                    SizedBox(width: 10),
-                                    Center(
-                                      child: TextView(
-                                        text: "Poll added successfully!",
-                                        style: 26.txtboldBtncolor,
-                                        textAlign: TextAlign.center,
-                                        margin: 20.top + 20.bottom,
+                                    Container(
+                                      width: 80,
+                                      height: 80,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: Color(0xFF00C853),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Color(
+                                              0xFF00C853,
+                                            ).withOpacity(0.3),
+                                            blurRadius: 20,
+                                            spreadRadius: 5,
+                                          ),
+                                        ],
+                                      ),
+                                      child: Icon(
+                                        Icons.check,
+                                        color: Colors.white,
+                                        size: 50,
                                       ),
                                     ),
+                                    SizedBox(height: 25),
+                                    TextView(
+                                      text: "Poll Published",
+                                      style: TextStyle(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF2C2C2C),
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    SizedBox(height: 12),
                                     TextView(
                                       text:
-                                          "Thank you for adding the poll. Success! Go to home to continue your journey.",
-                                      style: 20.txtregularBtncolor,
+                                          "Your poll is now live\nand ready for engagement.",
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w400,
+                                        color: Color(0xFF6B6B6B),
+                                        height: 1.5,
+                                      ),
                                       textAlign: TextAlign.center,
                                     ),
                                   ],
@@ -753,22 +776,54 @@ class _AddPollState extends State<AddPoll> {
                                 content: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    AppButton(
-                                      margin: 20.top,
-                                      label: AppStrings.gotohome,
-                                      labelStyle: 17.txtBoldWhite,
-                                      buttonColor: AppColors.btnColor,
-                                      onTap: () {
-                                        context.pushAndClearNavigator(
-                                          HomeScreen(),
-                                        );
-                                      },
+                                    SizedBox(height: 20),
+                                    Material(
+                                      color: Colors.transparent,
+                                      child: InkWell(
+                                        onTap: () {
+                                          context.pushAndClearNavigator(
+                                            HomeScreen(),
+                                          );
+                                        },
+                                        borderRadius: BorderRadius.circular(25),
+                                        child: Container(
+                                          width: double.infinity,
+                                          padding: EdgeInsets.symmetric(
+                                            vertical: 16,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Color(0xFF00C853),
+                                            borderRadius: BorderRadius.circular(
+                                              25,
+                                            ),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Color(
+                                                  0xFF00C853,
+                                                ).withOpacity(0.3),
+                                                blurRadius: 15,
+                                                offset: Offset(0, 5),
+                                              ),
+                                            ],
+                                          ),
+                                          child: Center(
+                                            child: Text(
+                                              "Return to Home",
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
                                     ),
                                   ],
                                 ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.all(
-                                    Radius.circular(20),
+                                    Radius.circular(30),
                                   ),
                                 ),
                               );

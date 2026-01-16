@@ -10,6 +10,7 @@ enum SocketKey {
   getMessages,
   deleteMessages,
   deleteChat,
+  markMessagesAsRead,
 
   joinLiveChatRoom,
   sendLiveChatMessage,

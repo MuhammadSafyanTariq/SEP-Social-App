@@ -1,6 +1,4 @@
 import 'dart:io';
-
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -18,10 +16,8 @@ import 'package:sep/utils/extensions/widget.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:url_launcher/url_launcher.dart';
-
 import '../../../components/coreComponents/AppButton.dart';
 import '../../../components/coreComponents/TextView.dart';
-import '../../../components/coreComponents/editProfileImage.dart';
 import '../../../components/styles/appColors.dart';
 import '../../../core/core/model/imageDataModel.dart';
 import '../../../services/networking/urls.dart';

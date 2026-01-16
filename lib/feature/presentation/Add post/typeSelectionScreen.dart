@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:sep/components/coreComponents/TextView.dart';
 import 'package:sep/utils/extensions/contextExtensions.dart';
 import 'package:sep/utils/appUtils.dart';
@@ -142,148 +141,108 @@ class _TypeSelectionScreenState extends State<TypeSelectionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Color(0xFF1a1a1a),
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.close, color: Colors.black),
+          icon: Icon(Icons.close, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
         title: TextView(
-          text: "Post",
+          text: "Select Type",
           style: TextStyle(
-            fontSize: 18,
+            fontSize: 20,
             fontWeight: FontWeight.w600,
-            color: Colors.black,
+            color: Colors.white,
           ),
         ),
         centerTitle: true,
       ),
-      body: Padding(
-        padding: EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(height: 20),
-            TextView(
-              text: "Select Type",
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: Colors.grey[600],
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: RadialGradient(
+            center: Alignment.center,
+            radius: 1.2,
+            colors: [Color(0xFF2a2a2a), Color(0xFF0f0f0f)],
+          ),
+        ),
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.all(24.0),
+            child: GridView.builder(
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 0,
+                mainAxisSpacing: 0,
+                childAspectRatio: 1.3,
               ),
+              shrinkWrap: true,
+              physics: NeverScrollableScrollPhysics(),
+              itemCount: 7,
+              itemBuilder: (context, index) {
+                final items = [
+                  {
+                    'title': 'Post',
+                    'icon': 'assets/icons/photo.png',
+                    'onTap': () {
+                      Navigator.pop(context);
+                      context.pushNavigator(CreatePost(categoryid: ''));
+                    },
+                  },
+                  {
+                    'title': 'Poll',
+                    'icon': 'assets/icons/poll.png',
+                    'onTap': () {
+                      Navigator.pop(context);
+                      context.pushNavigator(AddPoll());
+                    },
+                  },
+                  {
+                    'title': 'Announcement',
+                    'icon': 'assets/icons/celebrate.png',
+                    'onTap': () {
+                      Navigator.pop(context);
+                      context.pushNavigator(CelebrationScreen());
+                    },
+                  },
+                  {
+                    'title': 'Opportunity',
+                    'icon': 'assets/icons/bag.png',
+                    'onTap': () {
+                      Navigator.pop(context);
+                      context.pushNavigator(const PostJobScreen());
+                    },
+                  },
+                  {
+                    'title': 'Marketplace',
+                    'icon': 'assets/icons/carnival.png',
+                    'onTap': () => _checkStoreAndNavigate(context),
+                  },
+                  {
+                    'title': 'Invite',
+                    'icon': 'assets/icons/gift.png',
+                    'onTap': () {
+                      Navigator.pop(context);
+                      context.pushNavigator(const GameScreen(initialTab: 1));
+                    },
+                  },
+                  {
+                    'title': 'Property',
+                    'icon': AppImages.realEstate,
+                    'onTap': () => _checkStoreAndNavigateToRealEstate(context),
+                  },
+                ];
+
+                return _buildOptionItem(
+                  title: items[index]['title'] as String,
+                  iconPath: items[index]['icon'] as String,
+                  onTap: items[index]['onTap'] as VoidCallback,
+                  index: index,
+                  totalItems: items.length,
+                );
+              },
             ),
-            SizedBox(height: 20),
-            // Center the options vertically
-            Expanded(
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 2),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildOptionItem(
-                              title: "Media",
-                              iconPath: 'assets/icons/photo.png',
-                              onTap: () {
-                                Navigator.pop(context);
-                                context.pushNavigator(
-                                  CreatePost(categoryid: ''),
-                                );
-                              },
-                            ),
-                          ),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: _buildOptionItem(
-                              title: "Poll",
-                              iconPath: 'assets/icons/poll.png',
-                              onTap: () {
-                                Navigator.pop(context);
-                                context.pushNavigator(AddPoll());
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 32),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildOptionItem(
-                              title: "Celebrate",
-                              iconPath: 'assets/icons/celebrate.png',
-                              onTap: () {
-                                Navigator.pop(context);
-                                context.pushNavigator(CelebrationScreen());
-                              },
-                            ),
-                          ),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: _buildOptionItem(
-                              title: "Job",
-                              iconPath: 'assets/icons/bag.png',
-                              onTap: () {
-                                Navigator.pop(context);
-                                context.pushNavigator(const PostJobScreen());
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 32),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildOptionItem(
-                              title: "Product",
-                              iconPath: 'assets/icons/carnival.png',
-                              onTap: () => _checkStoreAndNavigate(context),
-                            ),
-                          ),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: _buildOptionItem(
-                              title: "Refer",
-                              iconPath: 'assets/icons/gift.png',
-                              onTap: () {
-                                Navigator.pop(context);
-                                // Navigate to GameScreen's Refer a Friend tab (index 1)
-                                context.pushNavigator(
-                                  const GameScreen(initialTab: 1),
-                                );
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 32),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildOptionItem(
-                              title: "Real Estate",
-                              iconPath: AppImages.realEstate,
-                              onTap: () =>
-                                  _checkStoreAndNavigateToRealEstate(context),
-                            ),
-                          ),
-                          SizedBox(width: 12),
-                          // Empty space for grid alignment
-                          Expanded(child: SizedBox()),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -293,24 +252,48 @@ class _TypeSelectionScreenState extends State<TypeSelectionScreen> {
     required String title,
     required String iconPath,
     required VoidCallback onTap,
+    required int index,
+    required int totalItems,
   }) {
+    // Calculate if borders should be shown
+    final bool showRight = index % 2 == 0; // Show right border on left column
+
+    // Calculate how many items are in the last row
+    final int itemsInLastRow = totalItems % 2 == 0 ? 2 : totalItems % 2;
+    final int lastRowStartIndex = totalItems - itemsInLastRow;
+    final bool showBottom =
+        index < lastRowStartIndex; // Show bottom for all except last row
+
     return GestureDetector(
       onTap: onTap,
-      child: Row(
-        children: [
-          Image.asset(iconPath, width: 36, height: 36, fit: BoxFit.contain),
-          SizedBox(width: 12),
-          Expanded(
-            child: TextView(
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border(
+            right: showRight
+                ? BorderSide(color: Colors.white.withOpacity(0.05), width: 0.5)
+                : BorderSide.none,
+            bottom: showBottom
+                ? BorderSide(color: Colors.white.withOpacity(0.05), width: 0.5)
+                : BorderSide.none,
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset(iconPath, width: 50, height: 50, fit: BoxFit.contain),
+            SizedBox(height: 12),
+            TextView(
               text: title,
+              textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: Colors.grey[800],
+                color: Colors.white,
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

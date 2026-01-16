@@ -627,6 +627,17 @@ class ChatSampleState extends State<ChatSample> {
                   ? MainAxisAlignment.end
                   : MainAxisAlignment.start,
               children: [
+                // Unread indicator (green dot) - only show for received messages that haven't been read
+                if (!isSentByUser && !(data.readBy?.contains(Preferences.uid) ?? false))
+                  Container(
+                    margin: EdgeInsets.only(top: 20, right: 6),
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: Colors.green,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
                 Column(
                   crossAxisAlignment: isSentByUser
                       ? CrossAxisAlignment.end

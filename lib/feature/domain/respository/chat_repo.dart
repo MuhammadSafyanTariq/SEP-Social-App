@@ -27,5 +27,6 @@ abstract class ChatRepo {
   void deleteMessageListener({required Function(dynamic p1) data});
   void deleteChat({required String chatId});
   void deleteChatListener({required Function(dynamic p1) data});
+  void markMessagesAsRead({required String chatId});
   bool isConnected();
 }
