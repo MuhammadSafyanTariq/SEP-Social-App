@@ -259,8 +259,13 @@ class ProfileCtrl extends GetxController {
           "Profile Update - walletTokens: $oldWalletTokens -> $newWalletTokens",
         );
 
+        // Debug coverPhoto
+        AppUtils.log("Cover Photo from API: ${userDetails.coverPhoto}");
+
         profileData.value = userDetails;
         profileData.refresh();
+
+        AppUtils.log("Cover Photo after save: ${profileData.value.coverPhoto}");
 
         // AppUtils.log("Profile Image URL: ${userDetails.image}");
         // AppUtils.log("Parsed Profile Data: $userDetails");
@@ -1079,6 +1084,8 @@ class ProfileCtrl extends GetxController {
     required String? country,
     required String? bio,
     required String? webSite,
+    String? coverPhoto,
+    String? localCoverPhoto,
   }) async {
     isLoading.value = true;
     errorMessage.value = '';
@@ -1087,6 +1094,7 @@ class ProfileCtrl extends GetxController {
 
     try {
       String? localFileToUrl;
+      String? localCoverPhotoUrl;
 
       if (localImage != null) {
         AppUtils.log('fileImageTest 1111');
@@ -1103,6 +1111,19 @@ class ProfileCtrl extends GetxController {
         AppUtils.log('fileImageTest 000000');
       }
 
+      // Upload cover photo if provided
+      if (localCoverPhoto != null) {
+        AppUtils.log('Uploading cover photo...');
+        final coverPhotoResult = await _authRepository.uploadPhoto(
+          imageFile: File(localCoverPhoto),
+        );
+        if (coverPhotoResult.isSuccess) {
+          final data = coverPhotoResult.data ?? [];
+          localCoverPhotoUrl = data[0];
+          AppUtils.log('Cover photo uploaded: $localCoverPhotoUrl');
+        }
+      }
+
       AppUtils.log({
         'name': name,
         'email': email,
@@ -1112,6 +1133,7 @@ class ProfileCtrl extends GetxController {
         'country': country,
         'gender': gender,
         'image': localFileToUrl ?? image,
+        'coverPhoto': localCoverPhotoUrl ?? coverPhoto,
       });
 
       final result = await _apiMethod.put(
@@ -1128,6 +1150,7 @@ class ProfileCtrl extends GetxController {
           'bio': bio,
           'website': webSite,
           'image': localFileToUrl ?? image,
+          'coverPhoto': localCoverPhotoUrl ?? coverPhoto,
         },
         // multipartFile: multipartFile,
         headers: {},
@@ -1150,7 +1173,9 @@ class ProfileCtrl extends GetxController {
           dob: dob,
           country: country,
           gender: gender,
-          image: image ?? profileData.value.image,
+          image: localFileToUrl ?? image ?? profileData.value.image,
+          coverPhoto:
+              localCoverPhotoUrl ?? coverPhoto ?? profileData.value.coverPhoto,
         );
 
         profileData.value = updatedProfile;
@@ -1158,6 +1183,7 @@ class ProfileCtrl extends GetxController {
 
         AppUtils.log("Profile updated successfully.");
         AppUtils.log("Updated Image: ${updatedProfile.image}");
+        AppUtils.log("Updated Cover Photo: ${updatedProfile.coverPhoto}");
       } else {
         errorMessage.value = "Profile update failed";
         AppUtils.log("Profile update failed!");

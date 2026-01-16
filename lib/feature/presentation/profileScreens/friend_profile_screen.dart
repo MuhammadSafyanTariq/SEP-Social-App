@@ -947,34 +947,19 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
             width: double.infinity,
             child: profileData.value.coverPhoto?.isNotEmpty == true
                 ? ImageView(
-                    url: profileData.value.coverPhoto!,
-                    fit: BoxFit.fill,
+                    url: AppUtils.configImageUrl(profileData.value.coverPhoto!),
+                    fit: BoxFit.cover,
                     imageType: ImageType.network,
+                    height: 200,
+                    width: double.infinity,
                   )
                 : Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.black,
-                          AppColors.greenSplash,
-                          Colors.black,
-                        ],
-                        stops: [0.0, 0.5, 1.0],
-                      ),
-                    ),
+                    color: Colors.grey[300],
                     child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          ImageView(
-                            url: AppImages.splashLogo,
-                            height: 70,
-                            width: 70,
-                            fit: BoxFit.contain,
-                          ),
-                        ],
+                      child: Icon(
+                        Icons.image_outlined,
+                        size: 60,
+                        color: Colors.grey[400],
                       ),
                     ),
                   ),

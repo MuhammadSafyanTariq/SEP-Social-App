@@ -101,10 +101,31 @@ Future<void> getNotification({
   }
   final response = await _repo.notification(page: localPage);
   if (response.isNotEmpty) {
+    // Get cached read notification IDs
+    final cachedReadIds = Preferences.readNotificationIds;
+
+    // Merge server response with cached read status
+    final mergedNotifications = response.map((notification) {
+      if (cachedReadIds.contains(notification.id)) {
+        // Override server's isRead if we have it cached as read
+        return notification.copyWith(isRead: true);
+      }
+      return notification;
+    }).toList();
+
+    // Log notification read states from server
+    final serverUnreadCount = response.where((n) => n.isRead == false).length;
+    final actualUnreadCount = mergedNotifications
+        .where((n) => n.isRead == false)
+        .length;
+    AppUtils.log(
+      "Fetched ${response.length} notifications. Server unread: $serverUnreadCount, Actual unread (after cache merge): $actualUnreadCount, Cached read IDs: ${cachedReadIds.length}",
+    );
+
     if (localPage == 1) {
-      notificationlist.assignAll(response);
+      notificationlist.assignAll(mergedNotifications);
     } else {
-      notificationlist.addAll(response);
+      notificationlist.addAll(mergedNotifications);
     }
 
     currentPage.value = localPage;
@@ -414,12 +435,29 @@ class _NotificationscreenState extends State<Notificationscreen> {
 
   Future<void> markAllAsRead() async {
     try {
-      await _repo.markAllNotificationsAsRead();
-      // Update local list
-      for (int i = 0; i < notificationlist.length; i++) {
-        notificationlist[i] = notificationlist[i].copyWith(isRead: true);
+      final result = await _repo.markAllNotificationsAsRead();
+
+      if (result.isSuccess) {
+        // Cache all notification IDs as read
+        final allIds = notificationlist
+            .where((n) => n.id != null)
+            .map((n) => n.id!)
+            .toSet();
+        Preferences.readNotificationIds = allIds;
+
+        // Update local list only if API call succeeded
+        for (int i = 0; i < notificationlist.length; i++) {
+          notificationlist[i] = notificationlist[i].copyWith(isRead: true);
+        }
+        notificationlist.refresh();
+        AppUtils.log(
+          'Successfully marked all ${allIds.length} notifications as read',
+        );
+      } else {
+        AppUtils.log(
+          'Failed to mark all notifications as read: ${result.error}',
+        );
       }
-      notificationlist.refresh();
     } catch (e) {
       AppUtils.log('Error marking all as read: $e');
     }
@@ -532,18 +570,36 @@ class _NotificationscreenState extends State<Notificationscreen> {
                                 // Mark as read when tapped
                                 if (item.isRead == false) {
                                   try {
-                                    await _repo.markNotificationAsRead(
-                                      notificationId: item.id ?? '',
-                                    );
-                                    // Update local list
-                                    final index = notificationlist.indexOf(
-                                      item,
-                                    );
-                                    if (index != -1) {
-                                      notificationlist[index] = item.copyWith(
-                                        isRead: true,
+                                    final result = await _repo
+                                        .markNotificationAsRead(
+                                          notificationId: item.id ?? '',
+                                        );
+
+                                    if (result.isSuccess) {
+                                      // Cache the read notification ID
+                                      if (item.id != null) {
+                                        Preferences.addReadNotificationId(
+                                          item.id!,
+                                        );
+                                      }
+
+                                      // Update local list only if API call succeeded
+                                      final index = notificationlist.indexOf(
+                                        item,
                                       );
-                                      notificationlist.refresh();
+                                      if (index != -1) {
+                                        notificationlist[index] = item.copyWith(
+                                          isRead: true,
+                                        );
+                                        notificationlist.refresh();
+                                      }
+                                      AppUtils.log(
+                                        'Successfully marked notification ${item.id} as read',
+                                      );
+                                    } else {
+                                      AppUtils.log(
+                                        'Failed to mark notification as read: ${result.error}',
+                                      );
                                     }
                                   } catch (e) {
                                     AppUtils.log('Error marking as read: $e');

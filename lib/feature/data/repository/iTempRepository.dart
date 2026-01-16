@@ -957,6 +957,7 @@ class ITempRepository implements TempRepository {
   }) async {
     String? authToken = Preferences.authToken?.bearer;
 
+    AppUtils.log('Marking notification as read: $notificationId');
     final response = await _apiMethod.put(
       url: '${Urls.markNotificationAsRead}/$notificationId',
       authToken: authToken,
@@ -964,8 +965,12 @@ class ITempRepository implements TempRepository {
     );
 
     if (response.isSuccess) {
+      AppUtils.log(
+        'Mark notification as read API success for: $notificationId',
+      );
       return ResponseData(isSuccess: true);
     } else {
+      AppUtils.log('Mark notification as read API failed: ${response.error}');
       return ResponseData(isSuccess: false, error: response.error);
     }
   }
@@ -974,6 +979,7 @@ class ITempRepository implements TempRepository {
   Future<ResponseData<String>> markAllNotificationsAsRead() async {
     String? authToken = Preferences.authToken?.bearer;
 
+    AppUtils.log('Marking all notifications as read');
     final response = await _apiMethod.put(
       url: Urls.markAllNotificationsAsRead,
       authToken: authToken,
@@ -981,8 +987,12 @@ class ITempRepository implements TempRepository {
     );
 
     if (response.isSuccess) {
+      AppUtils.log('Mark all notifications as read API success');
       return ResponseData(isSuccess: true);
     } else {
+      AppUtils.log(
+        'Mark all notifications as read API failed: ${response.error}',
+      );
       return ResponseData(isSuccess: false, error: response.error);
     }
   }

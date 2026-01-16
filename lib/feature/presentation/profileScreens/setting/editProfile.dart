@@ -51,6 +51,7 @@ class _EditProfileState extends State<EditProfile> {
   bool emailReadOnlyState = false;
   Rx<Country?> countryData = Rx(null);
   Rx<ImageDataModel> profileImageData = Rx(ImageDataModel());
+  Rx<ImageDataModel> coverPhotoData = Rx(ImageDataModel());
 
   String? emailError;
 
@@ -58,6 +59,13 @@ class _EditProfileState extends State<EditProfile> {
   void initState() {
     super.initState();
     profileImageData.value = profileCtrl.profileImageData;
+    // Initialize cover photo if exists
+    if (profileCtrl.profileData.value.coverPhoto?.isNotEmpty == true) {
+      coverPhotoData.value = ImageDataModel(
+        network: profileCtrl.profileData.value.coverPhoto,
+        type: ImageType.network,
+      );
+    }
     nameController = TextEditingController(
       text: profileCtrl.profileData.value.name ?? "",
     );
@@ -164,21 +172,11 @@ class _EditProfileState extends State<EditProfile> {
                   child: Column(
                     children: [
                       SizedBox(height: 10),
-                      Obx(
-                        () => EditProfileImage(
-                          size: 100,
-                          imageData: profileImageData.value,
-                        ),
-                      ),
+                      // Cover Photo and Profile Photo Section Combined
+                      _buildCoverPhotoWithProfileSection(),
+                      SizedBox(height: 60),
 
-                      TextView(
-                        onTap: () => _showImagePicker(context),
-                        text: AppStrings.changePhoto.tr,
-                        style: 16.txtregularBtncolor,
-                        margin: EdgeInsets.only(top: 20),
-                      ),
-
-                      Divider(thickness: 1, color: AppColors.white, height: 30),
+                      Divider(thickness: 1, color: AppColors.white, height: 20),
                       EditText(
                         hint: "Enter Name",
                         hintStyle: 16.txtRegularGrey,
@@ -543,6 +541,137 @@ class _EditProfileState extends State<EditProfile> {
     return image?.path;
   }
 
+  void _showCoverPhotoPicker(BuildContext context) {
+    appBSheet(
+      context,
+      EditImageBSheetView(
+        onItemTap: (source) async {
+          Navigator.pop(context);
+          final path = await _imagePickerOpen(source.imageSource);
+          if (path.isNotNullEmpty) {
+            coverPhotoData.value.file = path;
+            coverPhotoData.value.type = ImageType.file;
+            coverPhotoData.refresh();
+          }
+        },
+      ),
+    );
+  }
+
+  Widget _buildCoverPhotoSection() {
+    return Obx(
+      () => Container(
+        height: 180,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: Colors.grey[300],
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Stack(
+          children: [
+            // Cover Photo Display
+            ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: SizedBox(
+                height: 180,
+                width: double.infinity,
+                child:
+                    coverPhotoData.value.type == ImageType.file &&
+                        coverPhotoData.value.file?.isNotEmpty == true
+                    ? ImageView(
+                        url: coverPhotoData.value.file!,
+                        fit: BoxFit.cover,
+                        imageType: ImageType.file,
+                        height: 180,
+                        width: double.infinity,
+                      )
+                    : coverPhotoData.value.network?.isNotEmpty == true
+                    ? ImageView(
+                        url: AppUtils.configImageUrl(
+                          coverPhotoData.value.network!,
+                        ),
+                        fit: BoxFit.cover,
+                        imageType: ImageType.network,
+                        height: 180,
+                        width: double.infinity,
+                      )
+                    : Container(
+                        color: Colors.grey[300],
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.image_outlined,
+                              size: 40,
+                              color: Colors.grey[500],
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'Add Cover Photo',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+              ),
+            ),
+            // Edit Button
+            Positioned(
+              bottom: 10,
+              right: 10,
+              child: GestureDetector(
+                onTap: () => _showCoverPhotoPicker(context),
+                child: Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.greenlight,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black26,
+                        blurRadius: 4,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCoverPhotoWithProfileSection() {
+    return SizedBox(
+      height: 200,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          // Cover Photo
+          _buildCoverPhotoSection(),
+          // Profile Photo (overlapping)
+          Positioned(
+            bottom: -30,
+            left: MediaQuery.of(context).size.width / 2 - 50,
+            child: Obx(
+              () => EditProfileImage(
+                size: 100,
+                imageData: profileImageData.value,
+                onImageTap: () => _showImagePicker(context),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _updateProfile() async {
     if (_formKey.currentState!.validate()) {
       AppLoader.showLoader(context);
@@ -562,6 +691,8 @@ class _EditProfileState extends State<EditProfile> {
         gender: profileCtrl.profileData.value.gender ?? "Other",
         image: profileCtrl.profileData.value.image,
         localImage: profileImageData.value.file,
+        coverPhoto: profileCtrl.profileData.value.coverPhoto,
+        localCoverPhoto: coverPhotoData.value.file,
       );
 
       AppLoader.hideLoader(context);
