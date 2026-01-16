@@ -99,8 +99,7 @@ class Urls {
 
   static const String deleteNotification =
       '${_Collection.api}/deleteNotification';
-  static const String markNotificationAsRead =
-      '${_Collection.api}/markAsRead';
+  static const String markNotificationAsRead = '${_Collection.api}/markAsRead';
   static const String markAllNotificationsAsRead =
       '${_Collection.api}/markAllAsRead';
   static const String markChatMessagesAsRead =

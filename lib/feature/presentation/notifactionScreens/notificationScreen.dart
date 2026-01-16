@@ -442,7 +442,9 @@ class _NotificationscreenState extends State<Notificationscreen> {
             onPrefixTap: () => Navigator.pop(context),
             backgroundColor: Colors.white,
             suffixWidget: Obx(() {
-              final hasUnread = notificationlist.any((notif) => notif.isRead == false);
+              final hasUnread = notificationlist.any(
+                (notif) => notif.isRead == false,
+              );
               if (!hasUnread) return SizedBox.shrink();
               return TextButton(
                 onPressed: markAllAsRead,
@@ -534,9 +536,13 @@ class _NotificationscreenState extends State<Notificationscreen> {
                                       notificationId: item.id ?? '',
                                     );
                                     // Update local list
-                                    final index = notificationlist.indexOf(item);
+                                    final index = notificationlist.indexOf(
+                                      item,
+                                    );
                                     if (index != -1) {
-                                      notificationlist[index] = item.copyWith(isRead: true);
+                                      notificationlist[index] = item.copyWith(
+                                        isRead: true,
+                                      );
                                       notificationlist.refresh();
                                     }
                                   } catch (e) {

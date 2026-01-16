@@ -113,7 +113,9 @@ class ChatCtrl extends GetxController {
       final chat = recentChat[recentChatIndex];
       final updatedUnreadCount = Map<String, int>.from(chat.unreadCount ?? {});
       updatedUnreadCount[Preferences.uid ?? ''] = 0;
-      recentChat[recentChatIndex] = chat.copyWith(unreadCount: updatedUnreadCount);
+      recentChat[recentChatIndex] = chat.copyWith(
+        unreadCount: updatedUnreadCount,
+      );
       recentChat.refresh();
     }
 

@@ -218,26 +218,15 @@ class _HomeScreenState extends State<Contentscreen> {
             SliverToBoxAdapter(
               child: GestureDetector(
                 onTap: () {
-                  context.pushNavigator(
-                    const Search(autoFocus: true),
-                  );
+                  context.pushNavigator(const Search(autoFocus: true));
                 },
                 child: Container(
-                  margin: EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
-                  ),
-                  padding: EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
+                  margin: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(25),
-                    border: Border.all(
-                      color: Colors.grey.shade300,
-                      width: 1,
-                    ),
+                    border: Border.all(color: Colors.grey.shade300, width: 1),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.05),
@@ -248,11 +237,7 @@ class _HomeScreenState extends State<Contentscreen> {
                   ),
                   child: Row(
                     children: [
-                      Icon(
-                        Icons.search,
-                        color: Colors.grey.shade600,
-                        size: 22,
-                      ),
+                      Icon(Icons.search, color: Colors.grey.shade600, size: 22),
                       SizedBox(width: 12),
                       Text(
                         'Search users...',
@@ -267,9 +252,7 @@ class _HomeScreenState extends State<Contentscreen> {
               ),
             ),
             // Story section
-            SliverToBoxAdapter(
-              child: StoryListWidget(),
-            ),
+            SliverToBoxAdapter(child: StoryListWidget()),
             // Live Stream section
             Obx(
               () => AgoraChatCtrl.find.liveStreamChannels.isNotEmpty
@@ -281,9 +264,8 @@ class _HomeScreenState extends State<Contentscreen> {
                           padding: EdgeInsets.symmetric(horizontal: 16),
                           scrollDirection: Axis.horizontal,
                           itemBuilder: (context, index) {
-                            final item = AgoraChatCtrl
-                                .find
-                                .liveStreamChannels[index];
+                            final item =
+                                AgoraChatCtrl.find.liveStreamChannels[index];
                             return SizedBox(
                               width: 50,
                               child: Column(
@@ -345,18 +327,12 @@ class _HomeScreenState extends State<Contentscreen> {
                               decoration: BoxDecoration(
                                 color:
                                     categories[index].name ==
-                                            selectedCategory
-                                                .value
-                                                .name &&
+                                            selectedCategory.value.name &&
                                         categories[index].id ==
                                             selectedCategory.value.id
                                     ? AppColors.btnColor
-                                    : AppColors.grey.withValues(
-                                        alpha: 0.1,
-                                      ),
-                                borderRadius: BorderRadius.circular(
-                                  30,
-                                ),
+                                    : AppColors.grey.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(30),
                               ),
                               child: Center(
                                 child: TextView(
@@ -366,13 +342,9 @@ class _HomeScreenState extends State<Contentscreen> {
                                   style: TextStyle(
                                     color:
                                         categories[index].name ==
-                                                selectedCategory
-                                                    .value
-                                                    .name &&
+                                                selectedCategory.value.name &&
                                             categories[index].id ==
-                                                selectedCategory
-                                                    .value
-                                                    .id
+                                                selectedCategory.value.id
                                         ? Colors.white
                                         : categories[index].name
                                                   ?.toLowerCase() ==

@@ -956,13 +956,13 @@ class ITempRepository implements TempRepository {
     required String notificationId,
   }) async {
     String? authToken = Preferences.authToken?.bearer;
-    
+
     final response = await _apiMethod.put(
       url: '${Urls.markNotificationAsRead}/$notificationId',
       authToken: authToken,
       headers: {},
     );
-    
+
     if (response.isSuccess) {
       return ResponseData(isSuccess: true);
     } else {
@@ -973,13 +973,13 @@ class ITempRepository implements TempRepository {
   @override
   Future<ResponseData<String>> markAllNotificationsAsRead() async {
     String? authToken = Preferences.authToken?.bearer;
-    
+
     final response = await _apiMethod.put(
       url: Urls.markAllNotificationsAsRead,
       authToken: authToken,
       headers: {},
     );
-    
+
     if (response.isSuccess) {
       return ResponseData(isSuccess: true);
     } else {
