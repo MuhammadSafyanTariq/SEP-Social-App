@@ -1043,6 +1043,7 @@ class _StoreViewScreenState extends State<StoreViewScreen> {
                     () => ProductDetailsScreen(
                       productId: productId,
                       productType: 'user-product',
+                      productData: product,
                     ),
                   );
                 },
@@ -1185,7 +1186,12 @@ class _StoreViewScreenState extends State<StoreViewScreen> {
                 },
                 onDelete: () => _showDeleteProductConfirmation(productId),
                 onTap: () {
-                  Get.to(() => RealEstateDetailScreen(propertyId: productId));
+                  Get.to(
+                    () => RealEstateDetailScreen(
+                      propertyId: productId,
+                      propertyData: realEstate,
+                    ),
+                  );
                 },
               );
             },
