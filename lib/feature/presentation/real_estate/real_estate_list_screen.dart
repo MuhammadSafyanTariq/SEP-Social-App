@@ -717,11 +717,14 @@ class _RealEstateListScreenState extends State<RealEstateListScreen> {
                     return;
                   }
 
+                  // Pass the entire listing data to avoid API 404 errors
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) =>
-                          RealEstateDetailScreen(propertyId: propertyId),
+                      builder: (context) => RealEstateDetailScreen(
+                        propertyId: propertyId,
+                        propertyData: listing,
+                      ),
                     ),
                   );
                 },

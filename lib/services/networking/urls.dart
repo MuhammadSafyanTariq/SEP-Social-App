@@ -99,9 +99,10 @@ class Urls {
 
   static const String deleteNotification =
       '${_Collection.api}/deleteNotification';
-  static const String markNotificationAsRead = '${_Collection.api}/markAsRead';
+  static const String markNotificationAsRead =
+      '${_Collection.api}/notification';
   static const String markAllNotificationsAsRead =
-      '${_Collection.api}/markAllAsRead';
+      '${_Collection.api}/notification/read-all';
   static const String markChatMessagesAsRead =
       '${_Collection.api}/markMessagesAsRead';
 
@@ -226,6 +227,17 @@ class Urls {
   static const String referralParticipate = '/api/referral/participate';
   static const String referralLeaderboard = '/api/referral/leaderboard';
   static const String referralWinners = '/api/referral/winners';
+
+  // Story
+  static const String createStory = '/api/story/create';
+  static const String getAllStories =
+      '/api/story/all'; // Get all stories grouped by user
+  static const String getMyStories = '/api/story/my-stories';
+  static String getUserStories(String userId) => '/api/story/user/$userId';
+  static String getStoryDetails(String storyId) => '/api/story/$storyId';
+  static String viewStory(String storyId) => '/api/story/$storyId/view';
+  static String likeStory(String storyId) => '/api/story/$storyId/like';
+  static String deleteStory(String storyId) => '/api/story/$storyId';
 
   // Helper method to convert relative URLs to full URLs
   static String getFullImageUrl(String url) {

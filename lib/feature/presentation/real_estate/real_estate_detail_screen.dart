@@ -53,21 +53,32 @@ class _RealEstateDetailScreenState extends State<RealEstateDetailScreen> {
 
     try {
       final token = Preferences.authToken;
+      final url = '${Urls.userProduct}/${widget.propertyId}';
+      AppUtils.log("Loading property details from: $url");
+      AppUtils.log("Property ID: ${widget.propertyId}");
+
       final response = await _apiMethod.get(
-        url: '${Urls.userProduct}/${widget.propertyId}',
+        url: url,
         authToken: token,
         headers: {},
       );
+
+      AppUtils.log("Property details response status: ${response.isSuccess}");
+      AppUtils.log("Property details response: ${response.data}");
 
       if (response.isSuccess && response.data?['data'] != null) {
         setState(() {
           propertyData = response.data!['data'];
         });
       } else {
-        AppUtils.toastError("Failed to load property details");
+        final errorMsg = response.getError ?? "Failed to load property details";
+        AppUtils.log("Failed to load property: $errorMsg");
+        AppUtils.toastError(errorMsg);
         Navigator.pop(context);
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      AppUtils.log("Error loading property details: $e");
+      AppUtils.log("Stack trace: $stackTrace");
       AppUtils.toastError("Error: ${e.toString()}");
       Navigator.pop(context);
     } finally {

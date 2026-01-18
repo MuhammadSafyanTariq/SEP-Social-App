@@ -17,9 +17,13 @@ import 'package:sep/services/storage/preferences.dart';
 
 class EditRealEstateScreen extends StatefulWidget {
   final String propertyId;
+  final Map<String, dynamic>? propertyData;
 
-  const EditRealEstateScreen({Key? key, required this.propertyId})
-    : super(key: key);
+  const EditRealEstateScreen({
+    Key? key,
+    required this.propertyId,
+    this.propertyData,
+  }) : super(key: key);
 
   @override
   State<EditRealEstateScreen> createState() => _EditRealEstateScreenState();
@@ -49,7 +53,12 @@ class _EditRealEstateScreenState extends State<EditRealEstateScreen> {
   @override
   void initState() {
     super.initState();
-    _loadPropertyData();
+    // Use provided data if available, otherwise fetch from API
+    if (widget.propertyData != null) {
+      _populateFromData(widget.propertyData!);
+    } else {
+      _loadPropertyData();
+    }
   }
 
   @override
@@ -75,11 +84,18 @@ class _EditRealEstateScreenState extends State<EditRealEstateScreen> {
   Future<void> _loadPropertyData() async {
     try {
       final token = Preferences.authToken;
+      AppUtils.log("Loading property data for ID: ${widget.propertyId}");
+      AppUtils.log("API URL: ${Urls.userProduct}/${widget.propertyId}");
+
       final response = await _apiMethod.get(
         url: '${Urls.userProduct}/${widget.propertyId}',
         authToken: token,
         headers: {},
       );
+
+      AppUtils.log("Property load response - isSuccess: ${response.isSuccess}");
+      AppUtils.log("Property load response - data: ${response.data}");
+      AppUtils.log("Property load response - error: ${response.error}");
 
       if (response.isSuccess && response.data?['data'] != null) {
         propertyData = response.data!['data'];
@@ -111,14 +127,58 @@ class _EditRealEstateScreenState extends State<EditRealEstateScreen> {
         final mediaUrls = propertyData!['mediaUrls'] as List<dynamic>? ?? [];
         existingImages.value = mediaUrls;
 
+        AppUtils.log("Property data loaded successfully");
         setState(() => isLoading.value = false);
       } else {
+        AppUtils.log(
+          "Failed to load - response.isSuccess: ${response.isSuccess}, has data: ${response.data?['data'] != null}",
+        );
         AppUtils.toastError("Failed to load property details");
         Navigator.pop(context);
       }
     } catch (e) {
+      AppUtils.log("Exception loading property: $e");
       AppUtils.toastError("Error: ${e.toString()}");
       Navigator.pop(context);
+    }
+  }
+
+  void _populateFromData(Map<String, dynamic> data) {
+    try {
+      propertyData = data;
+      shopId = (data['shopId'] as Map<String, dynamic>?)?['_id'];
+
+      // Populate form fields
+      _propertyNameController.text = data['name'] ?? '';
+      _descriptionController.text = data['description'] ?? '';
+      _priceController.text = data['price']?.toString() ?? '';
+
+      // Parse category to extract location info
+      final category = data['category']?.toString() ?? '';
+      final parts = category.split('+');
+
+      if (parts.isNotEmpty) {
+        _propertyTypeController.text = parts[0];
+      }
+      if (parts.length >= 3) {
+        _countryController.text = parts[2];
+      }
+      if (parts.length >= 4) {
+        _cityController.text = parts[3];
+      }
+      if (parts.length >= 5) {
+        _contactInfoController.text = parts[4];
+      }
+
+      // Load existing images
+      final mediaUrls = data['mediaUrls'] as List<dynamic>? ?? [];
+      existingImages.value = mediaUrls;
+
+      AppUtils.log("Property data populated from provided data");
+    } catch (e) {
+      AppUtils.log("Error populating property data: $e");
+    } finally {
+      setState(() => isLoading.value = false);
     }
   }
 

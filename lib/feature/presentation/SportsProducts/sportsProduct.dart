@@ -649,19 +649,67 @@ class _SportsProductState extends State<SportsProduct>
                       productType: 'user-product',
                       showOwnerActions: false,
                       onTap: () {
+                        final productId = product.id ?? '';
+                        if (productId.isEmpty) {
+                          AppUtils.toastError("Invalid product ID");
+                          return;
+                        }
+
+                        // Convert product model to Map for compatibility
+                        final productMap = {
+                          '_id': product.id,
+                          'name': product.name,
+                          'description': product.description,
+                          'price': product.price,
+                          'mediaUrls': product.mediaUrls,
+                          'category': product.category,
+                          'isAvailable': product.isAvailable,
+                          'shopId': product.shopId,
+                          'createdAt': product.createdAt,
+                          'updatedAt': product.updatedAt,
+                        };
+
+                        AppUtils.log(
+                          "Navigating to product details with data: $productId - ${product.name}",
+                        );
                         Get.to(
                           () => ProductDetailsScreen(
-                            productId: product.id ?? '',
+                            productId: productId,
                             productType: 'user-product',
+                            productData: productMap,
                           ),
                         );
                       },
                       onBuyNow: () {
                         // Navigate to product details screen on "Buy Now" button click
+                        final productId = product.id ?? '';
+                        if (productId.isEmpty) {
+                          AppUtils.toastError("Invalid product ID");
+                          return;
+                        }
+
+                        // Convert product model to Map for compatibility
+                        final productMap = {
+                          '_id': product.id,
+                          'name': product.name,
+                          'description': product.description,
+                          'price': product.price,
+                          'mediaUrls': product.mediaUrls,
+                          'category': product.category,
+                          'isAvailable': product.isAvailable,
+                          'shopId': product.shopId,
+                          'createdAt': product.createdAt,
+                          'updatedAt': product.updatedAt,
+                        };
+
+                        AppUtils.log(
+                          "Navigating to product details (Buy Now) with data: $productId - ${product.name}",
+                        );
                         Get.to(
                           () => ProductDetailsScreen(
-                            productId: product.id ?? '',
+                            productId: productId,
                             productType: 'user-product',
+                            productData: productMap,
                           ),
                         );
                       },

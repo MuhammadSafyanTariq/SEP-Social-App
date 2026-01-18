@@ -968,6 +968,32 @@ class _StoreViewScreenState extends State<StoreViewScreen> {
     );
   }
 
+  // Helper method to extract the correct product ID
+  String _extractProductId(Map<String, dynamic> product) {
+    // Log the full product structure for debugging
+    AppUtils.log("Full product data: ${product.toString()}");
+
+    if (product['_id'] != null) {
+      AppUtils.log("Product _id: ${product['_id']}");
+    }
+    if (product['productId'] != null) {
+      AppUtils.log("Product productId: ${product['productId']}");
+    }
+
+    // Try different possible ID fields
+    if (product['productId'] != null) {
+      final productId = product['productId'];
+      if (productId is String) {
+        return productId;
+      } else if (productId is Map && productId['_id'] != null) {
+        return productId['_id'] as String;
+      }
+    }
+
+    // Fallback to _id
+    return product['_id']?.toString() ?? '';
+  }
+
   Widget _buildProductsGrid(List<Map<String, dynamic>> filteredProducts) {
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -985,7 +1011,7 @@ class _StoreViewScreenState extends State<StoreViewScreen> {
             itemCount: filteredProducts.length,
             itemBuilder: (context, index) {
               final product = filteredProducts[index];
-              final productId = product['_id'] ?? '';
+              final productId = _extractProductId(product);
               final name = product['name'] ?? 'Product ${index + 1}';
               final description = product['description'] ?? '';
               final price = product['price']?.toString() ?? '0.00';
@@ -1023,7 +1049,10 @@ class _StoreViewScreenState extends State<StoreViewScreen> {
                 onEdit: isOwner
                     ? () async {
                         final result = await Get.to(
-                          () => EditProductScreen(productId: productId),
+                          () => EditProductScreen(
+                            productId: productId,
+                            productData: product,
+                          ),
                         );
                         if (result == true) {
                           await _loadStore();
@@ -1111,7 +1140,7 @@ class _StoreViewScreenState extends State<StoreViewScreen> {
             itemCount: realEstateListings.length,
             itemBuilder: (context, index) {
               final realEstate = realEstateListings[index];
-              final productId = realEstate['_id'] as String? ?? '';
+              final productId = _extractProductId(realEstate);
               final category = realEstate['category'] as String? ?? '';
 
               // Extract property type from category if exists
@@ -1145,7 +1174,10 @@ class _StoreViewScreenState extends State<StoreViewScreen> {
                 showOwnerActions: isOwner,
                 onEdit: () async {
                   final result = await Get.to(
-                    () => EditRealEstateScreen(propertyId: productId),
+                    () => EditRealEstateScreen(
+                      propertyId: productId,
+                      propertyData: realEstate,
+                    ),
                   );
                   if (result == true) {
                     await _loadStore();

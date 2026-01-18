@@ -23,14 +23,16 @@ import 'package:sep/utils/extensions/extensions.dart';
 import '../../../services/storage/preferences.dart';
 import '../../../utils/appUtils.dart';
 import '../../data/models/dataModels/profile_data/profile_data_model.dart';
+import '../../data/models/dataModels/getUserDetailModel.dart';
 import '../Home/homeScreenComponents/pollCard.dart';
 import '../Home/homeScreenComponents/celebrationCard.dart';
 import '../Home/homeScreenComponents/post_components.dart';
 import '../profileScreens/setting/fullScreenVideoPlayer.dart';
 import '../controller/auth_Controller/profileCtrl.dart';
 import '../controller/story/story_controller.dart';
+import '../../data/models/dataModels/story_model.dart';
+import '../Home/story/story_view_screen_new.dart';
 import '../screens/post_browsing_listing.dart';
-import '../Home/story/story_view_screen.dart';
 import 'followers.dart';
 import 'setting/following.dart';
 import 'setting/editProfile.dart';
@@ -59,8 +61,8 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   bool get hasStories {
     if (storyController == null) return false;
-    final userId = Preferences.uid;
-    return storyController!.getStoriesForUser(userId ?? '').isNotEmpty;
+    // Use the reactive myStories list from the controller
+    return storyController!.myStories.isNotEmpty;
   }
 
   // Cache for video thumbnails
@@ -105,6 +107,11 @@ class _ProfileScreenState extends State<ProfileScreen>
   _initData() async {
     // Fetch profile details first
     await profileCtrl.getProfileDetails();
+
+    // Fetch my stories if story controller is available
+    if (storyController != null) {
+      await storyController!.fetchMyStories();
+    }
 
     String? imageonly = profileimage?.image;
 
@@ -188,8 +195,8 @@ class _ProfileScreenState extends State<ProfileScreen>
   void _showProfileImageOptions() {
     final hasProfileImage =
         profileCtrl.profileImageData.network?.isNotEmpty == true;
-    final userId = Preferences.uid ?? '';
-    final userStories = storyController?.getStoriesForUser(userId) ?? [];
+    // Use the reactive myStories list from the controller
+    final userStories = storyController?.myStories ?? <Story>[];
     final showStoryOption = userStories.isNotEmpty;
 
     showModalBottomSheet(
@@ -222,8 +229,26 @@ class _ProfileScreenState extends State<ProfileScreen>
                   title: Text('View Story'),
                   onTap: () {
                     Navigator.pop(context);
+                    // Convert Story list to UserStoryGroup for StoryViewScreenNew
+                    final profileData = profileCtrl.profileData.value;
+                    final currentUser = UserData(
+                      id: int.tryParse(profileData.id ?? '0'),
+                      name: profileData.name ?? 'Unknown',
+                      email: profileData.email ?? '',
+                      phone: profileData.phone ?? '',
+                      image: profileData.image ?? '',
+                      createdAt: profileData.createdAt ?? '',
+                      updatedAt: profileData.updatedAt ?? '',
+                    );
+                    final storyGroup = UserStoryGroup(
+                      user: currentUser,
+                      stories: userStories,
+                    );
                     context.pushNavigator(
-                      StoryViewScreen(initialIndex: 0, stories: userStories),
+                      StoryViewScreenNew(
+                        storyGroups: [storyGroup],
+                        initialGroupIndex: 0,
+                      ),
                     );
                   },
                 ),

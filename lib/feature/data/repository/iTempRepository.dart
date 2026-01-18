@@ -958,8 +958,8 @@ class ITempRepository implements TempRepository {
     String? authToken = Preferences.authToken?.bearer;
 
     AppUtils.log('Marking notification as read: $notificationId');
-    final response = await _apiMethod.put(
-      url: '${Urls.markNotificationAsRead}/$notificationId',
+    final response = await _apiMethod.patch(
+      url: '${Urls.markNotificationAsRead}/$notificationId/read',
       authToken: authToken,
       headers: {},
     );
@@ -980,7 +980,7 @@ class ITempRepository implements TempRepository {
     String? authToken = Preferences.authToken?.bearer;
 
     AppUtils.log('Marking all notifications as read');
-    final response = await _apiMethod.put(
+    final response = await _apiMethod.patch(
       url: Urls.markAllNotificationsAsRead,
       authToken: authToken,
       headers: {},

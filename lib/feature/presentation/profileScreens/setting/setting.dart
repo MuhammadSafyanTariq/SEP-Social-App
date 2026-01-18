@@ -18,6 +18,7 @@ import 'package:sep/utils/extensions/widget.dart';
 import '../../../../components/coreComponents/TextView.dart';
 import '../../../../components/styles/appColors.dart';
 import '../../../../utils/appUtils.dart';
+import '../../../data/repository/iAuthRepository.dart';
 import '../../../data/repository/iTempRepository.dart';
 import '../../../domain/respository/templateRepository.dart';
 import '../../controller/auth_Controller/profileCtrl.dart';
@@ -472,11 +473,27 @@ class _SettingState extends State<Setting> {
                     labelStyle: 14.txtMediumWhite,
                     buttonColor: Colors.red,
                     onTap: () async {
-                      // Add delete account logic here
                       Navigator.pop(context);
-                      AppUtils.toast(
-                        "Account deletion functionality to be implemented",
-                      );
+
+                      try {
+                        final authRepo = IAuthRepository();
+                        final response = await authRepo
+                            .deleteAccount()
+                            .applyLoader;
+
+                        if (response.isSuccess) {
+                          AppUtils.toast("Account deleted successfully");
+                          Get.offAll(() => Login());
+                        } else {
+                          AppUtils.toastError(
+                            "Failed to delete account. Please try again.",
+                          );
+                        }
+                      } catch (e) {
+                        AppUtils.toastError(
+                          "An error occurred. Please try again.",
+                        );
+                      }
                     },
                   ),
                 ],

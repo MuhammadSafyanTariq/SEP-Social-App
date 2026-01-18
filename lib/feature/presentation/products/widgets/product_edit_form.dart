@@ -17,8 +17,10 @@ import 'package:sep/services/storage/preferences.dart';
 
 class ProductEditForm extends StatefulWidget {
   final String productId;
+  final Map<String, dynamic>? productData;
 
-  const ProductEditForm({Key? key, required this.productId}) : super(key: key);
+  const ProductEditForm({Key? key, required this.productId, this.productData})
+    : super(key: key);
 
   @override
   State<ProductEditForm> createState() => _ProductEditFormState();
@@ -47,7 +49,19 @@ class _ProductEditFormState extends State<ProductEditForm> {
   @override
   void initState() {
     super.initState();
-    _loadProductData();
+    AppUtils.log(
+      "ProductEditForm initState - productData is null: ${widget.productData == null}",
+    );
+    if (widget.productData != null) {
+      AppUtils.log("Using provided product data");
+    }
+    // Use provided data if available, otherwise fetch from API
+    if (widget.productData != null) {
+      _populateFromData(widget.productData!);
+    } else {
+      AppUtils.log("Fetching product data from API");
+      _loadProductData();
+    }
   }
 
   @override
@@ -63,11 +77,18 @@ class _ProductEditFormState extends State<ProductEditForm> {
   Future<void> _loadProductData() async {
     try {
       final token = Preferences.authToken;
+      AppUtils.log("Loading product data for ID: ${widget.productId}");
+      AppUtils.log("API URL: ${Urls.userProduct}/${widget.productId}");
+
       final response = await _apiMethod.get(
         url: '${Urls.userProduct}/${widget.productId}',
         authToken: token,
         headers: {},
       );
+
+      AppUtils.log("Product load response - isSuccess: ${response.isSuccess}");
+      AppUtils.log("Product load response - data: ${response.data}");
+      AppUtils.log("Product load response - error: ${response.error}");
 
       if (response.isSuccess && response.data?['data'] != null) {
         final product = response.data!['data'];
@@ -98,13 +119,56 @@ class _ProductEditFormState extends State<ProductEditForm> {
         if (product['mediaUrls'] != null && product['mediaUrls'] is List) {
           existingMediaUrls.value = List<String>.from(product['mediaUrls']);
         }
+
+        AppUtils.log("Product data loaded successfully");
       } else {
+        AppUtils.log(
+          "Failed to load - response.isSuccess: ${response.isSuccess}, has data: ${response.data?['data'] != null}",
+        );
         AppUtils.toastError("Failed to load product data");
         Navigator.pop(context);
       }
     } catch (e) {
+      AppUtils.log("Exception loading product: $e");
       AppUtils.toastError("Error loading product: ${e.toString()}");
       Navigator.pop(context);
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  void _populateFromData(Map<String, dynamic> product) {
+    try {
+      _nameController.text = product['name'] ?? '';
+      _descriptionController.text = product['description'] ?? '';
+      _priceController.text = product['price']?.toString() ?? '';
+
+      // Parse category to extract base category and type
+      String category = product['category'] ?? '';
+      if (category.contains('+drop+')) {
+        isDropship.value = true;
+        final parts = category.split('+drop+');
+        _categoryController.text = parts[0];
+        if (parts.length > 1) {
+          _linkController.text = parts[1];
+        }
+      } else if (category.contains('+simple')) {
+        isDropship.value = false;
+        _categoryController.text = category.replaceAll('+simple', '');
+      } else {
+        _categoryController.text = category;
+      }
+
+      isAvailable.value = product['isAvailable'] ?? true;
+
+      // Load existing media URLs
+      if (product['mediaUrls'] != null && product['mediaUrls'] is List) {
+        existingMediaUrls.value = List<String>.from(product['mediaUrls']);
+      }
+
+      AppUtils.log("Product data populated from provided data");
+    } catch (e) {
+      AppUtils.log("Error populating product data: $e");
     } finally {
       isLoading.value = false;
     }

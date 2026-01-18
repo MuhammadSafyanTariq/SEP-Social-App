@@ -955,7 +955,7 @@ class IAuthRepository implements AuthRepository {
       final response = await _apiMethod.delete(
         url: Urls.deleteAccount,
         authToken: authToken,
-        query: {'id': '$userid'},
+        body: {'id': '$userid'},
       );
 
       AppUtils.log(

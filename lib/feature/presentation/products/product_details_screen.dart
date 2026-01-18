@@ -18,11 +18,13 @@ import 'package:url_launcher/url_launcher.dart';
 class ProductDetailsScreen extends StatefulWidget {
   final String productId;
   final String? productType;
+  final Map<String, dynamic>? productData; // Pre-loaded product data
 
   const ProductDetailsScreen({
     Key? key,
     required this.productId,
     this.productType,
+    this.productData,
   }) : super(key: key);
 
   @override
@@ -43,7 +45,26 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   @override
   void initState() {
     super.initState();
-    _loadProductDetails();
+    // Use provided data if available, otherwise fetch from API
+    if (widget.productData != null) {
+      AppUtils.log("Using pre-loaded product data for: ${widget.productId}");
+      productData = widget.productData;
+
+      // Check if current user is the owner
+      final currentUserId = Preferences.uid;
+      final shop = productData!['shopId'] as Map<String, dynamic>?;
+      // Handle ownerId - it might be a String or a Map with _id field
+      final ownerIdField = shop?['ownerId'];
+      final ownerId = ownerIdField is String
+          ? ownerIdField
+          : (ownerIdField is Map ? ownerIdField['_id'] as String? : null);
+      isOwner = currentUserId == ownerId;
+
+      setState(() => isLoading = false);
+    } else {
+      AppUtils.log("Fetching product data from API for: ${widget.productId}");
+      _loadProductDetails();
+    }
   }
 
   @override
@@ -86,12 +107,17 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
 
     try {
       final token = Preferences.authToken;
+      final url = '${Urls.userProduct}/${widget.productId}';
+      AppUtils.log("Loading product details from: $url");
+      AppUtils.log("Product ID: ${widget.productId}");
+
       final response = await _apiMethod.get(
-        url: '${Urls.userProduct}/${widget.productId}',
+        url: url,
         authToken: token,
         headers: {},
       );
 
+      AppUtils.log("Product details response status: ${response.isSuccess}");
       AppUtils.log("Product details response: ${response.data}");
 
       if (response.isSuccess && response.data?['data'] != null) {
@@ -100,7 +126,11 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
         // Check if current user is the owner
         final currentUserId = Preferences.uid;
         final shop = data['shopId'] as Map<String, dynamic>?;
-        final ownerId = shop?['ownerId'] as String?;
+        // Handle ownerId - it might be a String or a Map with _id field
+        final ownerIdField = shop?['ownerId'];
+        final ownerId = ownerIdField is String
+            ? ownerIdField
+            : (ownerIdField is Map ? ownerIdField['_id'] as String? : null);
 
         setState(() {
           productData = data;
@@ -109,12 +139,15 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
         });
       } else {
         setState(() => isLoading = false);
-        AppUtils.toastError("Failed to load product details");
+        final errorMsg = response.getError ?? "Failed to load product details";
+        AppUtils.log("Failed to load product: $errorMsg");
+        AppUtils.toastError(errorMsg);
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       setState(() => isLoading = false);
       AppUtils.log("Error loading product details: $e");
-      AppUtils.toastError("Error loading product details");
+      AppUtils.log("Stack trace: $stackTrace");
+      AppUtils.toastError("Error loading product details: ${e.toString()}");
     }
   }
 
@@ -127,7 +160,11 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     if (productData != null && productData!['shopId'] != null) {
       final shop = productData!['shopId'] as Map<String, dynamic>;
       final shopId = shop['_id'] as String?;
-      final ownerId = shop['ownerId'] as String?;
+      // Handle ownerId - it might be a String or a Map with _id field
+      final ownerIdField = shop['ownerId'];
+      final ownerId = ownerIdField is String
+          ? ownerIdField
+          : (ownerIdField is Map ? ownerIdField['_id'] as String? : null);
 
       if (shopId != null) {
         Get.to(() => StoreViewScreen(shopId: shopId, ownerId: ownerId));
@@ -1081,7 +1118,13 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                         // For in-app products or dropship without URL, navigate to seller profile
                         final shop =
                             productData!['shopId'] as Map<String, dynamic>?;
-                        String? ownerId = shop?['ownerId'] as String?;
+                        // Handle ownerId - it might be a String or a Map with _id field
+                        final ownerIdField = shop?['ownerId'];
+                        String? ownerId = ownerIdField is String
+                            ? ownerIdField
+                            : (ownerIdField is Map
+                                  ? ownerIdField['_id'] as String?
+                                  : null);
                         String ownerName = shop?['name'] ?? 'Seller';
 
                         if (ownerId != null && ownerId.isNotEmpty) {

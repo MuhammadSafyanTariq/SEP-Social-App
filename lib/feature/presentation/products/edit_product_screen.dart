@@ -5,8 +5,9 @@ import 'package:sep/feature/presentation/products/widgets/product_edit_form.dart
 
 class EditProductScreen extends StatelessWidget {
   final String productId;
+  final Map<String, dynamic>? productData;
 
-  const EditProductScreen({Key? key, required this.productId})
+  const EditProductScreen({Key? key, required this.productId, this.productData})
     : super(key: key);
 
   @override
@@ -31,7 +32,12 @@ class EditProductScreen extends StatelessWidget {
             ),
 
             // Edit Form
-            Expanded(child: ProductEditForm(productId: productId)),
+            Expanded(
+              child: ProductEditForm(
+                productId: productId,
+                productData: productData,
+              ),
+            ),
           ],
         ),
       ),

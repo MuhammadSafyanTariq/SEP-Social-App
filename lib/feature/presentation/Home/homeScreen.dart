@@ -233,17 +233,13 @@ class _HomeScreenState extends State<HomeScreen> {
           leading: null,
           title: _currentIndex == 0
               ? Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Text(
-                      "SEP Media",
-                      style: TextStyle(
-                        fontFamily: GoogleFonts.oregano().fontFamily,
-                        fontSize: 28,
-                        fontStyle: FontStyle.italic,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.primaryColor,
-                        letterSpacing: 1.5,
-                      ),
+                    Image.asset(
+                      'assets/images/homeLogo.png',
+                      height: 60,
+                      fit: BoxFit.contain,
                     ),
                   ],
                 )
@@ -299,182 +295,191 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
 
-            if (_currentIndex == 0) ...[
-              Obx(() {
-                final unreadCount = msgCount;
-                return Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () {
-                        // Navigate to messages screen
-                        context.pushNavigator(ChatScreen());
-                      },
-                      borderRadius: BorderRadius.circular(24),
-                      child: Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          Container(
-                            width: 32,
-                            height: 32,
-                            decoration: BoxDecoration(shape: BoxShape.circle),
-                            child: Icon(
-                              Icons.mail_outline_rounded,
-                              size: 24,
-                              color: AppColors.primaryColor,
-                            ),
-                          ),
-                          if (unreadCount > 0)
-                            Positioned(
-                              right: -4,
-                              top: -4,
-                              child: Container(
-                                padding: EdgeInsets.all(4),
+            if (_currentIndex == 0)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Obx(() {
+                    final unreadCount = msgCount;
+                    return Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () {
+                            // Navigate to messages screen
+                            context.pushNavigator(ChatScreen());
+                          },
+                          borderRadius: BorderRadius.circular(24),
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              Container(
+                                width: 32,
+                                height: 32,
                                 decoration: BoxDecoration(
-                                  color: Colors.red,
                                   shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: Colors.white,
-                                    width: 1.5,
-                                  ),
                                 ),
-                                constraints: BoxConstraints(
-                                  minWidth: 18,
-                                  minHeight: 18,
+                                child: Icon(
+                                  Icons.mail_outline_rounded,
+                                  size: 24,
+                                  color: AppColors.primaryColor,
                                 ),
-                                child: Center(
-                                  child: Text(
-                                    unreadCount > 99
-                                        ? '99+'
-                                        : unreadCount.toString(),
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
+                              ),
+                              if (unreadCount > 0)
+                                Positioned(
+                                  right: -4,
+                                  top: -4,
+                                  child: Container(
+                                    padding: EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: Colors.white,
+                                        width: 1.5,
+                                      ),
+                                    ),
+                                    constraints: BoxConstraints(
+                                      minWidth: 18,
+                                      minHeight: 18,
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        unreadCount > 99
+                                            ? '99+'
+                                            : unreadCount.toString(),
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                            ),
-                        ],
+                            ],
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                );
-              }),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () {
-                      context.pushNavigator(ReelsScreen());
-                    },
-                    borderRadius: BorderRadius.circular(24),
-                    child: Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(shape: BoxShape.circle),
-                      child: Icon(
-                        Icons.video_collection_outlined,
-                        size: 24,
-                        color: AppColors.primaryColor,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () {
-                      context.pushNavigator(notif_screen.Notificationscreen());
-                    },
-                    borderRadius: BorderRadius.circular(24),
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        Container(
+                    );
+                  }),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () {
+                          context.pushNavigator(ReelsScreen());
+                        },
+                        borderRadius: BorderRadius.circular(24),
+                        child: Container(
                           width: 32,
                           height: 32,
                           decoration: BoxDecoration(shape: BoxShape.circle),
                           child: Icon(
-                            Icons.notifications_none_rounded,
+                            Icons.video_collection_outlined,
                             size: 24,
                             color: AppColors.primaryColor,
                           ),
                         ),
-                        Obx(() {
-                          final unreadNotifCount = notificationlist
-                              .where((notif) => notif.isRead == false)
-                              .length;
-                          if (unreadNotifCount > 0) {
-                            return Positioned(
-                              right: -4,
-                              top: -4,
-                              child: Container(
-                                padding: EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  color: Colors.red,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: Colors.white,
-                                    width: 1.5,
-                                  ),
-                                ),
-                                constraints: BoxConstraints(
-                                  minWidth: 18,
-                                  minHeight: 18,
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    unreadNotifCount > 99
-                                        ? '99+'
-                                        : unreadNotifCount.toString(),
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            );
-                          }
-                          return SizedBox.shrink();
-                        }),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () {
-                      context.pushNavigator(JobsScreen());
-                    },
-                    borderRadius: BorderRadius.circular(24),
-                    child: Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(shape: BoxShape.circle),
-                      child: Icon(
-                        Icons.work_outline_rounded,
-                        size: 24,
-                        color: AppColors.primaryColor,
                       ),
                     ),
                   ),
-                ),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () {
+                          context.pushNavigator(
+                            notif_screen.Notificationscreen(),
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(24),
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(shape: BoxShape.circle),
+                              child: Icon(
+                                Icons.notifications_none_rounded,
+                                size: 24,
+                                color: AppColors.primaryColor,
+                              ),
+                            ),
+                            Obx(() {
+                              final unreadNotifCount = notificationlist
+                                  .where((notif) => notif.isRead == false)
+                                  .length;
+                              if (unreadNotifCount > 0) {
+                                return Positioned(
+                                  right: -4,
+                                  top: -4,
+                                  child: Container(
+                                    padding: EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: Colors.white,
+                                        width: 1.5,
+                                      ),
+                                    ),
+                                    constraints: BoxConstraints(
+                                      minWidth: 18,
+                                      minHeight: 18,
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        unreadNotifCount > 99
+                                            ? '99+'
+                                            : unreadNotifCount.toString(),
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }
+                              return SizedBox.shrink();
+                            }),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () {
+                          context.pushNavigator(JobsScreen());
+                        },
+                        borderRadius: BorderRadius.circular(24),
+                        child: Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(shape: BoxShape.circle),
+                          child: Icon(
+                            Icons.work_outline_rounded,
+                            size: 24,
+                            color: AppColors.primaryColor,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 10),
+                ],
               ),
-              SizedBox(width: 10),
-            ],
             if (_currentIndex == 4)
               IconButton(
                 icon: Icon(

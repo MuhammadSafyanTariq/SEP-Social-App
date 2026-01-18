@@ -14,6 +14,7 @@ import 'package:sep/components/styles/appImages.dart';
 import 'package:sep/components/styles/textStyles.dart';
 import 'package:sep/core/core/model/imageDataModel.dart';
 import 'package:sep/feature/data/models/dataModels/post_data.dart';
+import 'package:sep/feature/data/models/dataModels/story_model.dart';
 import 'package:sep/feature/data/models/dataModels/profile_data/profile_data_model.dart';
 import 'package:sep/feature/presentation/profileScreens/followers.dart';
 import 'package:sep/feature/presentation/profileScreens/profileScreen.dart';
@@ -32,11 +33,12 @@ import '../../../utils/appUtils.dart';
 import '../Home/homeScreenComponents/pollCard.dart';
 import '../Home/homeScreenComponents/celebrationCard.dart';
 import '../Home/homeScreenComponents/post_components.dart';
+import '../Home/story/story_view_screen_new.dart';
+import '../../data/models/dataModels/getUserDetailModel.dart';
 import '../Home/video.dart';
 import '../chatScreens/Messages_Screen.dart';
 import '../controller/auth_Controller/profileCtrl.dart';
 import '../controller/story/story_controller.dart';
-import '../Home/story/story_view_screen.dart';
 import '../screens/post_browsing_listing.dart';
 
 class FriendProfileScreen extends StatefulWidget {
@@ -59,12 +61,6 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
   String? name;
   String? namee;
   StoryController? storyController;
-
-  bool get hasStories {
-    if (storyController == null) return false;
-    final userId = profileData.value.id;
-    return storyController!.getStoriesForUser(userId ?? '').isNotEmpty;
-  }
 
   // Cache for video thumbnails
   final Map<String, String?> _thumbnailCache = {};
@@ -459,11 +455,15 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
     _showFriendSelector();
   }
 
-  void _showProfileImageOptions() {
+  void _showProfileImageOptions() async {
     final imageUrl = AppUtils.configImageUrl(profileData.value.image ?? '');
     final hasProfileImage = imageUrl.isNotEmpty;
     final userId = profileData.value.id ?? '';
-    final userStories = storyController?.getStoriesForUser(userId) ?? [];
+
+    // Fetch user stories from backend (returns List<Story>, not List<PostData>)
+    final userStories = storyController != null
+        ? await storyController!.getStoriesForUser(userId)
+        : <Story>[];
     final showStoryOption = userStories.isNotEmpty;
 
     showModalBottomSheet(
@@ -494,8 +494,26 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
                   title: Text('View Story'),
                   onTap: () {
                     Navigator.pop(context);
+                    // Convert Story list to UserStoryGroup for StoryViewScreenNew
+                    final friendData = profileData.value;
+                    final friendUser = UserData(
+                      id: int.tryParse(friendData.id ?? '0'),
+                      name: friendData.name ?? 'Unknown',
+                      email: friendData.email ?? '',
+                      phone: friendData.phone ?? '',
+                      image: friendData.image ?? '',
+                      createdAt: friendData.createdAt ?? '',
+                      updatedAt: friendData.updatedAt ?? '',
+                    );
+                    final storyGroup = UserStoryGroup(
+                      user: friendUser,
+                      stories: userStories,
+                    );
                     context.pushNavigator(
-                      StoryViewScreen(initialIndex: 0, stories: userStories),
+                      StoryViewScreenNew(
+                        storyGroups: [storyGroup],
+                        initialGroupIndex: 0,
+                      ),
                     );
                   },
                 ),
@@ -1061,7 +1079,8 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
                 final imageUrl = AppUtils.configImageUrl(
                   profileData.value.image ?? '',
                 );
-                final showStoryRing = hasStories;
+                // Story ring removed - requires async check which can't be done here
+                final showStoryRing = false;
                 return Container(
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,

@@ -23,7 +23,7 @@ abstract class ApiMethods {
     Map<String, dynamic>? responseStatusValue,
     required Map<String, String> headers,
     bool? withoutStatus,
-    bool? isMultipartFromPath
+    bool? isMultipartFromPath,
   });
 
   Future<ResponseData<Map<String, dynamic>>> put({
@@ -36,13 +36,21 @@ abstract class ApiMethods {
     required Map<String, String> headers,
   });
 
+  Future<ResponseData<Map<String, dynamic>>> patch({
+    required String url,
+    String? authToken,
+    Map<String, dynamic>? body,
+    Map<String, String>? query,
+    Map<String, dynamic>? responseStatusValue,
+    required Map<String, String> headers,
+  });
+
   Future<ResponseData<Map<String, dynamic>>> delete({
     required String url,
     String? authToken,
     Map<String, String>? query,
     Map<String, dynamic>? responseStatusValue,
   });
-
 }
 
 class IApiMethod implements ApiMethods {
@@ -61,12 +69,9 @@ class IApiMethod implements ApiMethods {
     Map<String, dynamic>? body,
     Map<String, dynamic>? responseStatusValue,
   }) async {
-
     final effectiveHeaders = {
-      ...ApiUtils.headerGen(
-        authToken: authToken
-      ),
-      ...(headers?? {}),
+      ...ApiUtils.headerGen(authToken: authToken),
+      ...(headers ?? {}),
     };
     final bUrl = baseUrl;
     final uri = ApiUtils.generateUri('$bUrl$url', query);
@@ -76,7 +81,7 @@ class IApiMethod implements ApiMethods {
         url: uri,
         // headers: ApiUtils.headerGen(authToken: authToken),
         headers: effectiveHeaders,
-        body: body
+        body: body,
       ),
       data: (data) => data,
       error: (error) => error,
@@ -94,7 +99,7 @@ class IApiMethod implements ApiMethods {
     Map<String, dynamic>? responseStatusValue,
     bool? withoutStatus,
     required Map<String, String> headers,
-    bool? isMultipartFromPath
+    bool? isMultipartFromPath,
   }) {
     final bUrl = baseUrl;
     final uri = ApiUtils.generateUri('$bUrl$url', query);
@@ -115,7 +120,7 @@ class IApiMethod implements ApiMethods {
         body: body,
         multipartFile: multipartFile,
         headers: effectiveHeaders,
-          isMultipartFromPath: isMultipartFromPath ?? true
+        isMultipartFromPath: isMultipartFromPath ?? true,
       ),
 
       data: (data) => data,
@@ -123,7 +128,6 @@ class IApiMethod implements ApiMethods {
       responseStatusValue: responseStatusValue,
     );
   }
-
 
   @override
   Future<ResponseData<Map<String, dynamic>>> put({
@@ -159,6 +163,34 @@ class IApiMethod implements ApiMethods {
     );
   }
 
+  @override
+  Future<ResponseData<Map<String, dynamic>>> patch({
+    required String url,
+    String? authToken,
+    Map<String, dynamic>? body,
+    Map<String, String>? query,
+    Map<String, dynamic>? responseStatusValue,
+    required Map<String, String> headers,
+  }) {
+    final effectiveHeaders = {
+      ...ApiUtils.headerGen(authToken: authToken),
+      ...headers,
+    };
+    final bUrl = baseUrl;
+    final uri = ApiUtils.generateUri('$bUrl$url', query);
+    return ApiUtils.call(
+      requestData: body,
+      request: ApiUtils.patchMethod(
+        url: uri,
+        body: body,
+        headers: effectiveHeaders,
+      ),
+
+      data: (data) => data,
+      error: (error) => error,
+      responseStatusValue: responseStatusValue,
+    );
+  }
 
   @override
   Future<ResponseData<Map<String, dynamic>>> delete({
@@ -183,6 +215,4 @@ class IApiMethod implements ApiMethods {
       responseStatusValue: responseStatusValue,
     );
   }
-
 }
-

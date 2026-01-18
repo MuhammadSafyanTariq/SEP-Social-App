@@ -21,7 +21,7 @@ import 'homeScreenComponents/postVideo.dart';
 import 'homeScreenComponents/post_components.dart';
 import 'homeScreenComponents/celebrationCard.dart';
 import 'searchScreen.dart';
-import 'story/story_list_widget.dart';
+import 'story/story_list_widget_new.dart';
 
 class Contentscreen extends StatefulWidget {
   final Function()? getLiveStreamList;
@@ -252,7 +252,7 @@ class _HomeScreenState extends State<Contentscreen> {
               ),
             ),
             // Story section
-            SliverToBoxAdapter(child: StoryListWidget()),
+            SliverToBoxAdapter(child: StoryListWidgetNew()),
             // Live Stream section
             Obx(
               () => AgoraChatCtrl.find.liveStreamChannels.isNotEmpty

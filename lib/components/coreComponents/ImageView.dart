@@ -8,58 +8,58 @@ import '../styles/appColors.dart';
 import 'TapWidget.dart';
 import 'TextView.dart';
 
-enum ImageType { asset, file, network, thumbnail}
+enum ImageType { asset, file, network, thumbnail }
 
 class ImageView extends FormField<String> {
-  ImageView(
-      {Key? key,
-      super.validator,
-      required String url,
-      ImageType? imageType,
-      double? size,
-      double? height,
-      double? width,
-      EdgeInsets? imagePadding,
-      BoxFit? fit,
-      dynamic Function()? onTap,
-      double? radius,
-      Color? tintColor,
-      EdgeInsets? margin,
-      bool hasBorder = false,
-      Color? bgColor,
-      double? radiusWidth,
-      Color? borderColor,
-      EdgeInsets? padding,
-      String? defaultImage,
-      bool hasGradient = false,
-      bool fastLoading = false})
-      : super(
-          key: key,
-          builder: (FormFieldState<String> state) {
-            return ImageViewContent(
-              url: url,
-              imageType: imageType,
-              size: size,
-              height: height,
-              width: width,
-              imagePadding: imagePadding,
-              fit: fit,
-              onTap: onTap,
-              radius: radius,
-              tintColor: tintColor,
-              margin: margin,
-              hasBorder: hasBorder,
-              borderColor: borderColor,
-              bgColor: bgColor,
-              radiusWidth: radiusWidth,
-              padding: padding,
-              hasGradient: hasGradient,
-              defaultImage: defaultImage,
-              fastLoading: fastLoading,
-              error: state.errorText,
-            );
-          },
-        );
+  ImageView({
+    Key? key,
+    super.validator,
+    required String url,
+    ImageType? imageType,
+    double? size,
+    double? height,
+    double? width,
+    EdgeInsets? imagePadding,
+    BoxFit? fit,
+    dynamic Function()? onTap,
+    double? radius,
+    Color? tintColor,
+    EdgeInsets? margin,
+    bool hasBorder = false,
+    Color? bgColor,
+    double? radiusWidth,
+    Color? borderColor,
+    EdgeInsets? padding,
+    String? defaultImage,
+    bool hasGradient = false,
+    bool fastLoading = false,
+  }) : super(
+         key: key,
+         builder: (FormFieldState<String> state) {
+           return ImageViewContent(
+             url: url,
+             imageType: imageType,
+             size: size,
+             height: height,
+             width: width,
+             imagePadding: imagePadding,
+             fit: fit,
+             onTap: onTap,
+             radius: radius,
+             tintColor: tintColor,
+             margin: margin,
+             hasBorder: hasBorder,
+             borderColor: borderColor,
+             bgColor: bgColor,
+             radiusWidth: radiusWidth,
+             padding: padding,
+             hasGradient: hasGradient,
+             defaultImage: defaultImage,
+             fastLoading: fastLoading,
+             error: state.errorText,
+           );
+         },
+       );
 }
 
 class ImageViewContent extends StatelessWidget {
@@ -84,35 +84,36 @@ class ImageViewContent extends StatelessWidget {
   final String? error;
   final bool fastLoading;
 
-  const ImageViewContent(
-      {super.key,
-      required this.url,
-      this.imageType,
-      this.size,
-      this.height,
-      this.width,
-      this.imagePadding,
-      this.fit,
-      this.onTap,
-      this.radius,
-      this.tintColor,
-      this.margin,
-      this.hasBorder = false,
-      this.borderColor,
-      this.bgColor,
-      this.radiusWidth,
-      this.padding,
-      this.fastLoading = false,
-      this.hasGradient = false,
-      this.defaultImage,
-      this.error});
+  const ImageViewContent({
+    super.key,
+    required this.url,
+    this.imageType,
+    this.size,
+    this.height,
+    this.width,
+    this.imagePadding,
+    this.fit,
+    this.onTap,
+    this.radius,
+    this.tintColor,
+    this.margin,
+    this.hasBorder = false,
+    this.borderColor,
+    this.bgColor,
+    this.radiusWidth,
+    this.padding,
+    this.fastLoading = false,
+    this.hasGradient = false,
+    this.defaultImage,
+    this.error,
+  });
 
   ImageProvider image() {
     switch (imageType) {
       case ImageType.network:
         return url.trim().isEmpty && defaultImage != null
             ? AssetImage(defaultImage!)
-            : CachedNetworkImageProvider(url, cacheKey: url,)
+            : CachedNetworkImageProvider(url, cacheKey: url)
         // fastLoading
         //         ? CachedNetworkImageProvider(url, cacheKey: url)
         //         : NetworkImage(url)
@@ -129,71 +130,68 @@ class ImageViewContent extends StatelessWidget {
     return Padding(
       padding: margin ?? EdgeInsets.zero,
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Stack(
-            children: [
-              Container(
-                decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(radius ?? 10),
-                    gradient: hasGradient ? AppColors.gradientBtn : null),
-                // padding: const EdgeInsets.all(4),
-                child: Container(
-                  height: size ?? height,
-                  width: size ?? width,
+          Flexible(
+            fit: FlexFit.loose,
+            child: Stack(
+              children: [
+                Container(
                   decoration: BoxDecoration(
-                      color: bgColor
+                    borderRadius: BorderRadius.circular(radius ?? 10),
+                    gradient: hasGradient ? AppColors.gradientBtn : null,
+                  ),
+                  // padding: const EdgeInsets.all(4),
+                  child: Container(
+                    height: size ?? height,
+                    width: size ?? width,
+                    decoration: BoxDecoration(
+                      color: bgColor,
                       // ?? Colors.white
-                      ,
                       borderRadius: BorderRadius.circular(radius ?? 0),
                       border: hasBorder
                           ? Border.all(
                               color: borderColor ?? AppColors.grey,
-                              width: radiusWidth ?? 1.0)
-                          : null),
-                  padding: imagePadding,
-                  clipBehavior: Clip.hardEdge,
-                  child: Container(
-                    clipBehavior: Clip.hardEdge,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(radius ?? 0),
+                              width: radiusWidth ?? 1.0,
+                            )
+                          : null,
                     ),
-                    padding: padding,
-                    // color: imageType == ImageType.network
-                    //     ?
-                    //     // AppColors.greyLightBorder
-                    //     // AppColors.white
-                    //     null
-                    //     : null,
+                    padding: imagePadding,
+                    clipBehavior: Clip.hardEdge,
+                    child: Container(
+                      clipBehavior: Clip.hardEdge,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(radius ?? 0),
+                      ),
+                      padding: padding,
 
-
-
-
-
-
-
-                    child:
-    // imageType == ImageType.thumbnail
-                    //     ? VTImageView(
-                    //         videoUrl: url,
-                    //         height: size ?? height,
-                    //         width: size ?? width,
-                    //         fit: fit,
-                    //         color: tintColor,
-                    //         errorBuilder: (context, error, stack) {
-                    //           return Container(
-                    //             width: 200.0,
-                    //             height: 200.0,
-                    //             color: Colors.blue,
-                    //             child: Center(
-                    //               child: Text("Image Loading Error"),
-                    //             ),
-                    //           );
-                    //         },
-                    //         assetPlaceHolder: '',
-                    //       )
-
-
-                    Image(
+                      // color: imageType == ImageType.network
+                      //     ?
+                      //     // AppColors.greyLightBorder
+                      //     // AppColors.white
+                      //     null
+                      //     : null,
+                      child:
+                          // imageType == ImageType.thumbnail
+                          //     ? VTImageView(
+                          //         videoUrl: url,
+                          //         height: size ?? height,
+                          //         width: size ?? width,
+                          //         fit: fit,
+                          //         color: tintColor,
+                          //         errorBuilder: (context, error, stack) {
+                          //           return Container(
+                          //             width: 200.0,
+                          //             height: 200.0,
+                          //             color: Colors.blue,
+                          //             child: Center(
+                          //               child: Text("Image Loading Error"),
+                          //             ),
+                          //           );
+                          //         },
+                          //         assetPlaceHolder: '',
+                          //       )
+                          Image(
                             image: image(),
                             height: size ?? height,
                             width: size ?? width,
@@ -202,21 +200,20 @@ class ImageViewContent extends StatelessWidget {
                             errorBuilder: (context, error, stackTrace) =>
                                 const SizedBox(),
                           ),
+                    ),
                   ),
                 ),
-              ),
-              Positioned.fill(
-                  child: TapWidget(
-                onTap: onTap,
-              ))
-            ],
+                Positioned.fill(child: TapWidget(onTap: onTap)),
+              ],
+            ),
           ),
           Visibility(
-              visible: error.isNotNullEmpty,
-              child: TextView(
-                text: error ?? '',
-                style: const TextStyle(color: Colors.red, fontSize: 14),
-              ))
+            visible: error.isNotNullEmpty,
+            child: TextView(
+              text: error ?? '',
+              style: const TextStyle(color: Colors.red, fontSize: 14),
+            ),
+          ),
         ],
       ),
     );
