@@ -6,11 +6,7 @@ class StoryFile {
   final String type; // 'image', 'audio', or 'video'
   final String? thumbnail;
 
-  StoryFile({
-    required this.file,
-    required this.type,
-    this.thumbnail,
-  });
+  StoryFile({required this.file, required this.type, this.thumbnail});
 
   factory StoryFile.fromJson(Map<String, dynamic> json) {
     return StoryFile(
@@ -35,19 +31,13 @@ class StoryView {
   final DateTime viewedAt;
   final UserData? user;
 
-  StoryView({
-    required this.userId,
-    required this.viewedAt,
-    this.user,
-  });
+  StoryView({required this.userId, required this.viewedAt, this.user});
 
   factory StoryView.fromJson(Map<String, dynamic> json) {
     return StoryView(
       userId: json['userId'] is String ? json['userId'] : json['userId']['_id'],
       viewedAt: DateTime.parse(json['viewedAt']),
-      user: json['userId'] is Map
-          ? UserData.fromJson(json['userId'])
-          : null,
+      user: json['userId'] is Map ? UserData.fromJson(json['userId']) : null,
     );
   }
 }
@@ -66,12 +56,12 @@ class Story {
   final bool isActive;
   final DateTime createdAt;
   final DateTime updatedAt;
-  
+
   // Computed fields from backend
   final bool hasViewed;
   final bool isLiked;
   final int likeCount;
-  
+
   // User data (populated in some endpoints)
   final UserData? user;
 
@@ -97,37 +87,37 @@ class Story {
   factory Story.fromJson(Map<String, dynamic> json) {
     return Story(
       id: json['_id'] ?? json['id'] ?? '',
-      userId: json['userId'] is String 
-          ? json['userId'] 
+      userId: json['userId'] is String
+          ? json['userId']
           : json['userId']?['_id'] ?? '',
       type: json['type'] ?? 'story',
-      files: (json['files'] as List?)
-          ?.map((f) => StoryFile.fromJson(f))
-          .toList() ?? [],
+      files:
+          (json['files'] as List?)
+              ?.map((f) => StoryFile.fromJson(f))
+              .toList() ??
+          [],
       caption: json['caption'] ?? '',
-      likes: (json['likes'] as List?)
-          ?.map((l) => l.toString())
-          .toList() ?? [],
-      views: (json['views'] as List?)
-          ?.map((v) => StoryView.fromJson(v))
-          .toList() ?? [],
+      likes: (json['likes'] as List?)?.map((l) => l.toString()).toList() ?? [],
+      views:
+          (json['views'] as List?)
+              ?.map((v) => StoryView.fromJson(v))
+              .toList() ??
+          [],
       viewCount: json['viewCount'] ?? 0,
-      expiresAt: json['expiresAt'] != null 
-          ? DateTime.parse(json['expiresAt']) 
+      expiresAt: json['expiresAt'] != null
+          ? DateTime.parse(json['expiresAt'])
           : DateTime.now().add(Duration(hours: 24)),
       isActive: json['isActive'] ?? true,
-      createdAt: json['createdAt'] != null 
-          ? DateTime.parse(json['createdAt']) 
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'])
           : DateTime.now(),
-      updatedAt: json['updatedAt'] != null 
-          ? DateTime.parse(json['updatedAt']) 
+      updatedAt: json['updatedAt'] != null
+          ? DateTime.parse(json['updatedAt'])
           : DateTime.now(),
       hasViewed: json['hasViewed'] ?? false,
       isLiked: json['isLiked'] ?? false,
       likeCount: json['likeCount'] ?? json['likes']?.length ?? 0,
-      user: json['userId'] is Map 
-          ? UserData.fromJson(json['userId']) 
-          : null,
+      user: json['userId'] is Map ? UserData.fromJson(json['userId']) : null,
     );
   }
 
@@ -205,17 +195,12 @@ class UserStoryGroup {
   final UserData user;
   final List<Story> stories;
 
-  UserStoryGroup({
-    required this.user,
-    required this.stories,
-  });
+  UserStoryGroup({required this.user, required this.stories});
 
   factory UserStoryGroup.fromJson(Map<String, dynamic> json) {
     return UserStoryGroup(
       user: UserData.fromJson(json['user']),
-      stories: (json['stories'] as List)
-          .map((s) => Story.fromJson(s))
-          .toList(),
+      stories: (json['stories'] as List).map((s) => Story.fromJson(s)).toList(),
     );
   }
 
@@ -227,9 +212,7 @@ class UserStoryGroup {
   /// Get the most recent story
   Story? get latestStory {
     if (stories.isEmpty) return null;
-    return stories.reduce((a, b) => 
-      a.createdAt.isAfter(b.createdAt) ? a : b
-    );
+    return stories.reduce((a, b) => a.createdAt.isAfter(b.createdAt) ? a : b);
   }
 }
 
