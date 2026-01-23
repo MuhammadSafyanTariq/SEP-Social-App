@@ -20,13 +20,19 @@ class MainMenuScreen extends StatelessWidget {
 
     if (!status.canStart) {
       // Show insufficient tokens dialog
-      InsufficientTokensDialog.show(
+      await InsufficientTokensDialog.show(
         context: context,
         tokensRequired: status.tokensRequired,
         onBuyTokens: () {
+          Navigator.of(context).pop(); // Close dialog first
           context.pushNavigator(PackagesScreen());
         },
       );
+      // Exit game screen after dialog is closed
+      game.pauseEngine();
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
       return;
     }
 
@@ -86,6 +92,8 @@ class MainMenuScreen extends StatelessWidget {
                 size: 25,
               ),
               onPressed: () {
+                // Pause game and exit
+                game.pauseEngine();
                 context.pop();
               },
             ),

@@ -39,6 +39,8 @@ _$PostDataImpl _$$PostDataImplFromJson(Map<String, dynamic> json) =>
       videoCount: (json['videoCount'] as num?)?.toInt(),
       commentCount: (json['commentCount'] as num?)?.toInt(),
       isLikedByUser: json['isLikedByUser'] as bool?,
+      isSaved: json['isSaved'] as bool?,
+      savedAt: json['savedAt'] as String?,
       likes: json['likes'] as List<dynamic>? ?? const [],
       comments: json['comments'] as List<dynamic>? ?? const [],
     );
@@ -64,6 +66,8 @@ Map<String, dynamic> _$$PostDataImplToJson(_$PostDataImpl instance) =>
       'videoCount': instance.videoCount,
       'commentCount': instance.commentCount,
       'isLikedByUser': instance.isLikedByUser,
+      'isSaved': instance.isSaved,
+      'savedAt': instance.savedAt,
       'likes': instance.likes,
       'comments': instance.comments,
     };

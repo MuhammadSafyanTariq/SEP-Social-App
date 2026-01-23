@@ -37,13 +37,19 @@ class _TitleOverlayState extends State<TitleOverlay> {
     if (!status.canStart) {
       // Show insufficient tokens dialog
       if (!mounted) return;
-      InsufficientTokensDialog.show(
+      await InsufficientTokensDialog.show(
         context: context,
         tokensRequired: status.tokensRequired,
         onBuyTokens: () {
+          Navigator.of(context).pop(); // Close dialog first
           context.pushNavigator(PackagesScreen());
         },
       );
+      // Exit game screen after dialog is closed
+      if (mounted) {
+        widget.game.audioManager.stopAllSounds();
+        widget.game.quitGame();
+      }
       return;
     }
 
@@ -197,6 +203,20 @@ class _TitleOverlayState extends State<TitleOverlay> {
                                 : Colors.grey,
                             size: 30,
                           ),
+                        ),
+                        IconButton(
+                          onPressed: () {
+                            widget.game.audioManager.playSound('click');
+                            // Stop all audio before quitting
+                            widget.game.audioManager.stopAllSounds();
+                            widget.game.quitGame();
+                          },
+                          icon: Icon(
+                            Icons.exit_to_app_rounded,
+                            color: Colors.white,
+                            size: 30,
+                          ),
+                          tooltip: 'Exit Game',
                         ),
                       ],
                     ),

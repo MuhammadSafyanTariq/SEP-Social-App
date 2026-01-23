@@ -36,6 +36,8 @@ class PostData with _$PostData {
     int? videoCount,
     int? commentCount,
     bool? isLikedByUser,
+    bool? isSaved,
+    String? savedAt,
 
     // New fields for rich API response
     @Default([]) List<dynamic>? likes,

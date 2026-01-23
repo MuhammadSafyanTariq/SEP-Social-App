@@ -39,6 +39,9 @@ class _FruitNinjaScreenState extends State<FruitNinjaScreen> {
   }
 
   void _handleQuit() {
+    // Stop all music before exiting
+    BGM.stop();
+    
     if (mounted) {
       Navigator.of(context).pop();
     }
@@ -51,13 +54,19 @@ class _FruitNinjaScreenState extends State<FruitNinjaScreen> {
     if (!status.canStart) {
       // Show insufficient tokens dialog
       if (!mounted) return;
-      InsufficientTokensDialog.show(
+      await InsufficientTokensDialog.show(
         context: context,
         tokensRequired: status.tokensRequired,
         onBuyTokens: () {
+          Navigator.of(context).pop(); // Close dialog first
           context.pushNavigator(PackagesScreen());
         },
       );
+      // Exit game screen after dialog is closed
+      if (mounted) {
+        BGM.stop();
+        Navigator.of(context).pop();
+      }
       return;
     }
 
@@ -89,6 +98,9 @@ class _FruitNinjaScreenState extends State<FruitNinjaScreen> {
 
   @override
   void dispose() {
+    // Stop all music when screen is disposed
+    BGM.stop();
+    
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
@@ -100,9 +112,16 @@ class _FruitNinjaScreenState extends State<FruitNinjaScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: FutureBuilder<FruitGame>(
+    return WillPopScope(
+      onWillPop: () async {
+        BGM.stop();
+        return true;
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: Stack(
+          children: [
+            FutureBuilder<FruitGame>(
         future: _gameFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -142,6 +161,26 @@ class _FruitNinjaScreenState extends State<FruitNinjaScreen> {
             child: GameWidget(game: game),
           );
         },
+      ),
+            // Floating exit button
+            SafeArea(
+              child: Padding(
+                padding: EdgeInsets.all(8.0),
+                child: IconButton(
+                  icon: Icon(Icons.arrow_back, color: Colors.white),
+                  onPressed: () {
+                    BGM.stop();
+                    Navigator.of(context).pop();
+                  },
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.black54,
+                    padding: EdgeInsets.all(8),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

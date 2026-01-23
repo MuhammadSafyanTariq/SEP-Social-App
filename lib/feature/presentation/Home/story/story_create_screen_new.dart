@@ -44,11 +44,11 @@ class _StoryCreateScreenNewState extends State<StoryCreateScreenNew> {
     super.dispose();
   }
 
-  Future<void> _pickMedia(StoryMediaType type) async {
+  Future<void> _pickMedia(StoryMediaType type, {bool fromCamera = false}) async {
     try {
       if (type == StoryMediaType.image) {
         final XFile? image = await _picker.pickImage(
-          source: ImageSource.gallery,
+          source: fromCamera ? ImageSource.camera : ImageSource.gallery,
           maxWidth: 1080,
           maxHeight: 1920,
           imageQuality: 85,
@@ -64,7 +64,7 @@ class _StoryCreateScreenNewState extends State<StoryCreateScreenNew> {
         }
       } else if (type == StoryMediaType.video) {
         final XFile? video = await _picker.pickVideo(
-          source: ImageSource.gallery,
+          source: fromCamera ? ImageSource.camera : ImageSource.gallery,
           maxDuration: Duration(seconds: 60),
         );
 
@@ -293,6 +293,63 @@ class _StoryCreateScreenNewState extends State<StoryCreateScreenNew> {
     }
   }
 
+  void _showCameraOptionsDialog() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: Colors.grey[900],
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[700],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            SizedBox(height: 20),
+            Text(
+              'Camera Options',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            SizedBox(height: 24),
+            _buildMediaTypeOption(
+              icon: Icons.photo_camera,
+              title: 'Take Photo',
+              subtitle: 'Capture a photo with camera',
+              onTap: () {
+                Navigator.pop(context);
+                _pickMedia(StoryMediaType.image, fromCamera: true);
+              },
+            ),
+            SizedBox(height: 12),
+            _buildMediaTypeOption(
+              icon: Icons.videocam,
+              title: 'Record Video',
+              subtitle: 'Record a video (max 60s)',
+              onTap: () {
+                Navigator.pop(context);
+                _pickMedia(StoryMediaType.video, fromCamera: true);
+              },
+            ),
+            SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showMediaTypeDialog() {
     showModalBottomSheet(
       context: context,
@@ -324,6 +381,16 @@ class _StoryCreateScreenNewState extends State<StoryCreateScreenNew> {
               ),
             ),
             SizedBox(height: 24),
+            _buildMediaTypeOption(
+              icon: Icons.camera_alt,
+              title: 'Camera',
+              subtitle: 'Take a photo or record a video',
+              onTap: () {
+                Navigator.pop(context);
+                _showCameraOptionsDialog();
+              },
+            ),
+            SizedBox(height: 12),
             _buildMediaTypeOption(
               icon: Icons.image_outlined,
               title: 'Image Story',

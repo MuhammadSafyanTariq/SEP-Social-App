@@ -237,6 +237,33 @@ class _CreatePostState extends State<CreatePost> {
     }
   }
 
+  Future<void> _openCamera() async {
+    if (_mediaItems.length >= 6) {
+      AppUtils.toastError("You can only upload up to 6 images or videos.");
+      return;
+    }
+
+    if (_selectedMedia != null) {
+      setState(() {
+        _selectedMedia = null;
+      });
+    }
+
+    final XFile? photo = await _picker.pickImage(source: ImageSource.camera);
+
+    if (photo != null) {
+      final fileData = File(photo.path);
+      setState(() {
+        _mediaItems.add(
+          MediaItem(
+            file: fileData,
+            isVideo: false,
+          ),
+        );
+      });
+    }
+  }
+
   void _pickVideo() async {
     final XFile? media = await _picker.pickVideo(source: ImageSource.gallery);
 
@@ -730,26 +757,37 @@ class _CreatePostState extends State<CreatePost> {
         SizedBox(height: 12),
         Container(
           width: double.infinity,
-          height: 160,
+          height: 200,
           decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey[300]!, width: 1.5),
             borderRadius: BorderRadius.circular(20),
-            color: Colors.grey[50],
+            color: Colors.grey[900], // Dark grey/black container
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                Icons.cloud_upload_outlined,
-                size: 40,
-                color: Colors.grey[500],
+              // Camera Icon with Green Border
+              GestureDetector(
+                onTap: _openCamera,
+                child: Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: AppColors.btnColor, // Green border
+                      width: 3,
+                    ),
+                    color: Colors.transparent,
+                  ),
+                  child: Icon(
+                    Icons.camera_alt,
+                    size: 40,
+                    color: Colors.white,
+                  ),
+                ),
               ),
-              SizedBox(height: 8),
-              TextView(
-                text: "Tap to upload from gallery or camera",
-                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-              ),
-              SizedBox(height: 12),
+              SizedBox(height: 20),
+              // Images and Videos Buttons
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -758,7 +796,7 @@ class _CreatePostState extends State<CreatePost> {
                     label: "Images",
                     onTap: chooseImage,
                   ),
-                  SizedBox(width: 20),
+                  SizedBox(width: 16),
                   _buildMediaButton(
                     icon: Icons.videocam,
                     label: "Videos",
@@ -781,19 +819,24 @@ class _CreatePostState extends State<CreatePost> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey[400]!),
+          color: Colors.white,
+          border: Border.all(color: Colors.grey[800]!, width: 1),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 16, color: Colors.grey[700]),
-            SizedBox(width: 6),
+            Icon(icon, size: 18, color: Colors.grey[800]),
+            SizedBox(width: 8),
             TextView(
               text: label,
-              style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey[800],
+              ),
             ),
           ],
         ),

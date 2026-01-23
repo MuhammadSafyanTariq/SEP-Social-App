@@ -43,7 +43,9 @@ mixin _$PostData {
   int? get likeCount => throw _privateConstructorUsedError;
   int? get videoCount => throw _privateConstructorUsedError;
   int? get commentCount => throw _privateConstructorUsedError;
-  bool? get isLikedByUser =>
+  bool? get isLikedByUser => throw _privateConstructorUsedError;
+  bool? get isSaved => throw _privateConstructorUsedError;
+  String? get savedAt =>
       throw _privateConstructorUsedError; // New fields for rich API response
   List<dynamic>? get likes => throw _privateConstructorUsedError;
   List<dynamic>? get comments => throw _privateConstructorUsedError;
@@ -83,6 +85,8 @@ abstract class $PostDataCopyWith<$Res> {
     int? videoCount,
     int? commentCount,
     bool? isLikedByUser,
+    bool? isSaved,
+    String? savedAt,
     List<dynamic>? likes,
     List<dynamic>? comments,
   });
@@ -124,6 +128,8 @@ class _$PostDataCopyWithImpl<$Res, $Val extends PostData>
     Object? videoCount = freezed,
     Object? commentCount = freezed,
     Object? isLikedByUser = freezed,
+    Object? isSaved = freezed,
+    Object? savedAt = freezed,
     Object? likes = freezed,
     Object? comments = freezed,
   }) {
@@ -205,6 +211,14 @@ class _$PostDataCopyWithImpl<$Res, $Val extends PostData>
                 ? _value.isLikedByUser
                 : isLikedByUser // ignore: cast_nullable_to_non_nullable
                       as bool?,
+            isSaved: freezed == isSaved
+                ? _value.isSaved
+                : isSaved // ignore: cast_nullable_to_non_nullable
+                      as bool?,
+            savedAt: freezed == savedAt
+                ? _value.savedAt
+                : savedAt // ignore: cast_nullable_to_non_nullable
+                      as String?,
             likes: freezed == likes
                 ? _value.likes
                 : likes // ignore: cast_nullable_to_non_nullable
@@ -262,6 +276,8 @@ abstract class _$$PostDataImplCopyWith<$Res>
     int? videoCount,
     int? commentCount,
     bool? isLikedByUser,
+    bool? isSaved,
+    String? savedAt,
     List<dynamic>? likes,
     List<dynamic>? comments,
   });
@@ -303,6 +319,8 @@ class __$$PostDataImplCopyWithImpl<$Res>
     Object? videoCount = freezed,
     Object? commentCount = freezed,
     Object? isLikedByUser = freezed,
+    Object? isSaved = freezed,
+    Object? savedAt = freezed,
     Object? likes = freezed,
     Object? comments = freezed,
   }) {
@@ -384,6 +402,14 @@ class __$$PostDataImplCopyWithImpl<$Res>
             ? _value.isLikedByUser
             : isLikedByUser // ignore: cast_nullable_to_non_nullable
                   as bool?,
+        isSaved: freezed == isSaved
+            ? _value.isSaved
+            : isSaved // ignore: cast_nullable_to_non_nullable
+                  as bool?,
+        savedAt: freezed == savedAt
+            ? _value.savedAt
+            : savedAt // ignore: cast_nullable_to_non_nullable
+                  as String?,
         likes: freezed == likes
             ? _value._likes
             : likes // ignore: cast_nullable_to_non_nullable
@@ -420,6 +446,8 @@ class _$PostDataImpl implements _PostData {
     this.videoCount,
     this.commentCount,
     this.isLikedByUser,
+    this.isSaved,
+    this.savedAt,
     final List<dynamic>? likes = const [],
     final List<dynamic>? comments = const [],
   }) : _files = files,
@@ -502,6 +530,10 @@ class _$PostDataImpl implements _PostData {
   final int? commentCount;
   @override
   final bool? isLikedByUser;
+  @override
+  final bool? isSaved;
+  @override
+  final String? savedAt;
   // New fields for rich API response
   final List<dynamic>? _likes;
   // New fields for rich API response
@@ -528,7 +560,7 @@ class _$PostDataImpl implements _PostData {
 
   @override
   String toString() {
-    return 'PostData(id: $id, userId: $userId, categoryId: $categoryId, content: $content, location: $location, country: $country, files: $files, fileType: $fileType, duration: $duration, options: $options, votes: $votes, createdAt: $createdAt, updatedAt: $updatedAt, v: $v, user: $user, likeCount: $likeCount, videoCount: $videoCount, commentCount: $commentCount, isLikedByUser: $isLikedByUser, likes: $likes, comments: $comments)';
+    return 'PostData(id: $id, userId: $userId, categoryId: $categoryId, content: $content, location: $location, country: $country, files: $files, fileType: $fileType, duration: $duration, options: $options, votes: $votes, createdAt: $createdAt, updatedAt: $updatedAt, v: $v, user: $user, likeCount: $likeCount, videoCount: $videoCount, commentCount: $commentCount, isLikedByUser: $isLikedByUser, isSaved: $isSaved, savedAt: $savedAt, likes: $likes, comments: $comments)';
   }
 
   @override
@@ -565,6 +597,8 @@ class _$PostDataImpl implements _PostData {
                 other.commentCount == commentCount) &&
             (identical(other.isLikedByUser, isLikedByUser) ||
                 other.isLikedByUser == isLikedByUser) &&
+            (identical(other.isSaved, isSaved) || other.isSaved == isSaved) &&
+            (identical(other.savedAt, savedAt) || other.savedAt == savedAt) &&
             const DeepCollectionEquality().equals(other._likes, _likes) &&
             const DeepCollectionEquality().equals(other._comments, _comments));
   }
@@ -592,6 +626,8 @@ class _$PostDataImpl implements _PostData {
     videoCount,
     commentCount,
     isLikedByUser,
+    isSaved,
+    savedAt,
     const DeepCollectionEquality().hash(_likes),
     const DeepCollectionEquality().hash(_comments),
   ]);
@@ -631,6 +667,8 @@ abstract class _PostData implements PostData {
     final int? videoCount,
     final int? commentCount,
     final bool? isLikedByUser,
+    final bool? isSaved,
+    final String? savedAt,
     final List<dynamic>? likes,
     final List<dynamic>? comments,
   }) = _$PostDataImpl;
@@ -679,7 +717,11 @@ abstract class _PostData implements PostData {
   @override
   int? get commentCount;
   @override
-  bool? get isLikedByUser; // New fields for rich API response
+  bool? get isLikedByUser;
+  @override
+  bool? get isSaved;
+  @override
+  String? get savedAt; // New fields for rich API response
   @override
   List<dynamic>? get likes;
   @override

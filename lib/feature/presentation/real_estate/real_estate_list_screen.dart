@@ -701,7 +701,7 @@ class _RealEstateListScreenState extends State<RealEstateListScreen> {
 
             8.height,
 
-            // View Details Button
+            // View Details Button - Styled like Buy Now button
             SizedBox(
               width: double.infinity,
               height: 40.sdp,
@@ -709,7 +709,7 @@ class _RealEstateListScreenState extends State<RealEstateListScreen> {
                 onPressed: () {
                   final propertyId = _extractProductId(listing);
                   AppUtils.log(
-                    "View Details button - Property ID: $propertyId",
+"View Details button - Property ID: $propertyId",
                   );
 
                   if (propertyId.isEmpty) {
@@ -729,17 +729,23 @@ class _RealEstateListScreenState extends State<RealEstateListScreen> {
                   );
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.greenlight,
+                  backgroundColor: Colors.black,
                   foregroundColor: Colors.white,
                   elevation: 0,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20.sdp),
+                    side: BorderSide(color: AppColors.btnColor, width: 1),
                   ),
+                  padding: EdgeInsets.symmetric(horizontal: 16.sdp),
                 ),
-                icon: Icon(Icons.visibility, size: 18.sdp),
+                icon: Icon(Icons.visibility, size: 18.sdp, color: Colors.white),
                 label: Text(
                   'View Details',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ),

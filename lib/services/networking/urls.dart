@@ -239,6 +239,12 @@ class Urls {
   static String likeStory(String storyId) => '/api/story/$storyId/like';
   static String deleteStory(String storyId) => '/api/story/$storyId';
 
+  // Saved Posts
+  static const String savedPost = '/api/saved-post';
+  static const String getSavedPosts = '/api/saved-post';
+  static String unsavePost(String postId) => '/api/saved-post/$postId';
+  static String checkIfPostIsSaved(String postId) => '/api/saved-post/check/$postId';
+
   // Helper method to convert relative URLs to full URLs
   static String getFullImageUrl(String url) {
     if (url.isEmpty) return '';

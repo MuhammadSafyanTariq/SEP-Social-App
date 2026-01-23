@@ -13,13 +13,43 @@ class FlameGameScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GameWidget(
-      game: game,
-      initialActiveOverlays: const [MainMenuScreen.id],
-      overlayBuilderMap: {
-        MainMenuScreen.id: (context, _) => MainMenuScreen(game: game),
-        GameOverScreen.id: (context, _) => GameOverScreen(game: game),
+    return WillPopScope(
+      onWillPop: () async {
+        game.pauseEngine();
+        return true;
       },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: Stack(
+          children: [
+            GameWidget(
+              game: game,
+              initialActiveOverlays: const [MainMenuScreen.id],
+              overlayBuilderMap: {
+                MainMenuScreen.id: (context, _) => MainMenuScreen(game: game),
+                GameOverScreen.id: (context, _) => GameOverScreen(game: game),
+              },
+            ),
+            // Floating exit button (only show when not in main menu)
+            SafeArea(
+              child: Padding(
+                padding: EdgeInsets.all(8.0),
+                child: IconButton(
+                  icon: Icon(Icons.arrow_back, color: Colors.white),
+                  onPressed: () {
+                    game.pauseEngine();
+                    Navigator.of(context).pop();
+                  },
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.black54,
+                    padding: EdgeInsets.all(8),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

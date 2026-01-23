@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Splash screen green color matching Flutter app -->
+    <color name="splash_green">#0BB455</color>
+</resources>

@@ -525,8 +525,13 @@ class _HomeScreenState extends State<Contentscreen> {
         header: header,
         question: item.content ?? '',
         options: item.options,
-        onPollAction: (String optionId) {
-          profileCtrl.givePollToHomePost(item, optionId).applyLoader;
+        onPollAction: (String optionId) async {
+          try {
+            await profileCtrl.givePollToHomePost(item, optionId).applyLoader;
+          } catch (e) {
+            AppUtils.log("Error voting on poll: $e");
+            // Don't let the error crash the UI
+          }
         },
       );
     } else if (item.files.isNotEmpty && item.files.first.type == 'video') {

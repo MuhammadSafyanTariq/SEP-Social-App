@@ -299,17 +299,18 @@ class InsufficientTokensDialog extends StatelessWidget {
   }
 
   /// Show the insufficient tokens dialog
-  static void show({
+  static Future<void> show({
     required BuildContext context,
     required int tokensRequired,
     required VoidCallback onBuyTokens,
   }) {
-    showDialog(
+    return showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (context) => InsufficientTokensDialog(
         tokensRequired: tokensRequired,
         onBuyTokens: onBuyTokens,
       ),
-    );
+    ).then((_) {});
   }
 }

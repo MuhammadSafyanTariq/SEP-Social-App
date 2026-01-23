@@ -310,27 +310,30 @@ class _SportsProductState extends State<SportsProduct>
           children: [
             // Tab Bar
             Container(
-              margin: EdgeInsets.all(16.sdp),
+              margin: EdgeInsets.symmetric(horizontal: 16.sdp, vertical: 8.sdp),
+              padding: EdgeInsets.all(4.sdp),
               decoration: BoxDecoration(
-                color: AppColors.grey.withOpacity(0.1),
+                color: Colors.white,
                 borderRadius: BorderRadius.circular(25.sdp),
+                border: Border.all(color: AppColors.btnColor, width: 1),
               ),
               child: TabBar(
                 controller: _tabController,
                 isScrollable: true,
                 tabAlignment: TabAlignment.center,
                 indicator: BoxDecoration(
-                  borderRadius: BorderRadius.circular(25.sdp),
-                  color: AppColors.btnColor,
+                  borderRadius: BorderRadius.circular(20.sdp),
+                  color: Colors.black,
+                  border: Border.all(color: AppColors.btnColor, width: 1),
                 ),
                 labelColor: Colors.white,
-                unselectedLabelColor: AppColors.grey,
+                unselectedLabelColor: Colors.black,
                 labelStyle: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                 ),
                 unselectedLabelStyle: TextStyle(
-                  fontSize: 11,
+                  fontSize: 14,
                   fontWeight: FontWeight.w500,
                 ),
                 indicatorSize: TabBarIndicatorSize.tab,
@@ -918,7 +921,7 @@ class ProductCard extends StatelessWidget {
                 ],
               )
             else
-              // Buy Now / Contact Button - More Rounded
+              // Buy Now / Contact Button - Black background with green border
               SizedBox(
                 width: double.infinity,
                 height: 40.sdp,
@@ -944,13 +947,12 @@ class ProductCard extends StatelessWidget {
                         }
                       },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.greenlight,
+                    backgroundColor: Colors.black,
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(
-                        20.sdp,
-                      ), // More rounded
+                      borderRadius: BorderRadius.circular(20.sdp),
+                      side: BorderSide(color: AppColors.btnColor, width: 1),
                     ),
                     padding: EdgeInsets.symmetric(horizontal: 16.sdp),
                   ),

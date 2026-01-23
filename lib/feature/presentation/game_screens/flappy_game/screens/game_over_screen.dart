@@ -59,7 +59,11 @@ class GameOverScreen extends StatelessWidget {
           ),
           10.height,
           ElevatedButton(
-            onPressed: () => context.pop(),
+            onPressed: () {
+              // Pause game and exit
+              game.pauseEngine();
+              context.pop();
+            },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             child: const Text('Exit Game', style: TextStyle(fontSize: 20)),
           ),

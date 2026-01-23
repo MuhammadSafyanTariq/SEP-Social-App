@@ -244,13 +244,25 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 )
               : _currentIndex == 1
-              ? const Text(
-                  "SEP Marketplace",
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black,
-                  ),
+              ? Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Image.asset(
+                      'assets/images/homeLogo.png',
+                      height: 60,
+                      fit: BoxFit.contain,
+                    ),
+                    SizedBox(width: 12),
+                    const Text(
+                      "Marketplace",
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ],
                 )
               : _currentIndex == 2
               ? const Text(
@@ -573,10 +585,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     backgroundColor: Colors.transparent,
                     elevation: 0,
                     currentIndex: _currentIndex,
-                    selectedItemColor: AppColors.btnColor,
+                    selectedItemColor: Colors.black,
                     unselectedItemColor: Colors.grey.shade400,
                     selectedLabelStyle: TextStyle(
-                      color: AppColors.btnColor,
+                      color: Colors.black,
                       fontSize: 11,
                       fontWeight: FontWeight.w500,
                     ),
@@ -598,7 +610,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             height: 22,
                             width: 22,
                             color: _currentIndex == 0
-                                ? AppColors.btnColor
+                                ? Colors.black
                                 : Colors.grey.shade400,
                           ),
                         ),
@@ -613,7 +625,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             height: 22,
                             width: 22,
                             color: _currentIndex == 1
-                                ? AppColors.btnColor
+                                ? Colors.black
                                 : Colors.grey.shade400,
                           ),
                         ),
@@ -633,7 +645,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             height: 22,
                             width: 22,
                             color: _currentIndex == 3
-                                ? AppColors.btnColor
+                                ? Colors.black
                                 : Colors.grey.shade400,
                           ),
                         ),
@@ -648,7 +660,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             height: 22,
                             width: 22,
                             color: _currentIndex == 4
-                                ? AppColors.btnColor
+                                ? Colors.black
                                 : Colors.grey.shade400,
                           ),
                         ),

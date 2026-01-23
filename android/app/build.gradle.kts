@@ -20,7 +20,7 @@ android {
     namespace = "com.app.sep"
 //    compileSdk = flutter.compileSdkVersion
     compileSdk = 36
-//    ndkVersion = flutter.ndkVersion
+    // Use the installed NDK version
     ndkVersion = "27.0.12077973"
 
     compileOptions {
@@ -30,11 +30,17 @@ android {
     }
 
     signingConfigs {
-        create("release") {
-            keyAlias = keystoreProperties["keyAlias"] as String
-            keyPassword = keystoreProperties["keyPassword"] as String
-            storeFile = keystoreProperties["storeFile"]?.let { file(it as String) }
-            storePassword = keystoreProperties["storePassword"] as String
+        if (keystorePropertiesFile.exists() && 
+            keystoreProperties.containsKey("keyAlias") && 
+            keystoreProperties.containsKey("keyPassword") &&
+            keystoreProperties.containsKey("storeFile") &&
+            keystoreProperties.containsKey("storePassword")) {
+            create("release") {
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+                storeFile = keystoreProperties["storeFile"]?.let { file(it as String) }
+                storePassword = keystoreProperties["storePassword"] as String
+            }
         }
     }
 
@@ -59,7 +65,13 @@ android {
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("release")
+            if (keystorePropertiesFile.exists() && 
+                keystoreProperties.containsKey("keyAlias") && 
+                keystoreProperties.containsKey("keyPassword") &&
+                keystoreProperties.containsKey("storeFile") &&
+                keystoreProperties.containsKey("storePassword")) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             isMinifyEnabled = false
             isShrinkResources = false
 

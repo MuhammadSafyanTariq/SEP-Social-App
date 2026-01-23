@@ -1,16 +1,17 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
-import 'package:sep/components/coreComponents/EditText.dart';
 import 'package:sep/components/coreComponents/ImageView.dart';
 import 'package:sep/components/styles/appImages.dart';
 import 'package:sep/components/styles/textStyles.dart';
 import 'package:sep/feature/data/models/dataModels/post_data.dart';
 import 'package:sep/feature/presentation/Home/homeScreenComponents/post_card_header.dart';
 import 'package:sep/services/storage/preferences.dart';
+import 'package:sep/services/saved_post_service.dart';
 import 'package:sep/utils/extensions/contextExtensions.dart';
 import 'package:sep/utils/extensions/size.dart';
 import 'package:sep/utils/extensions/widget.dart';
+import 'package:sep/utils/extensions/textStyle.dart';
 
 import '../../../../components/coreComponents/TextView.dart';
 import '../../../../components/styles/appColors.dart';
@@ -18,6 +19,7 @@ import '../../../../utils/appUtils.dart';
 import '../../../data/models/dataModels/profile_data/profile_data_model.dart';
 import '../../widgets/fav_button.dart';
 import '../comment.dart';
+import '../../controller/chat_ctrl.dart';
 
 ProfileDataModel userProfile(PostData item) {
   if (item.userId == Preferences.uid) {
@@ -28,8 +30,8 @@ ProfileDataModel userProfile(PostData item) {
     );
   }
 
-  if (item.user != null && item.user!.isNotEmpty) {
-    final u = item.user!.first;
+  if (item.user.isNotEmpty) {
+    final u = item.user.first;
     return ProfileDataModel(id: u.id ?? '', name: u.name ?? '', image: u.image);
   }
 
@@ -56,6 +58,142 @@ PostCardHeader postCardHeader(
     },
     onRemovePostAction: onRemovePostAction,
   );
+}
+
+void _showShareToFriendsDialog(BuildContext context, PostData postData) {
+  final chatCtrl = ChatCtrl.find;
+
+  showDialog(
+    context: context,
+    builder: (BuildContext dialogContext) {
+      return Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.7,
+          ),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  TextView(text: 'Share to Chat', style: 18.txtSBoldprimary),
+                  IconButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    icon: Icon(Icons.close),
+                  ),
+                ],
+              ),
+              Divider(),
+              Expanded(
+                child: chatCtrl.recentChat.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.chat_bubble_outline,
+                              size: 64,
+                              color: AppColors.grey,
+                            ),
+                            SizedBox(height: 16),
+                            TextView(
+                              text: 'No chats available',
+                              style: 16.txtMediumPrimary,
+                            ),
+                          ],
+                        ),
+                      )
+                    : ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: chatCtrl.recentChat.length,
+                        itemBuilder: (context, index) {
+                          final chat = chatCtrl.recentChat[index];
+                          final otherUser = chat.userDetails?.firstWhere(
+                            (user) => user.id != Preferences.uid,
+                            orElse: () => chat.userDetails!.first,
+                          );
+
+                          return ListTile(
+                            leading: CircleAvatar(
+                              backgroundImage:
+                                  otherUser?.image != null &&
+                                      otherUser!.image!.isNotEmpty
+                                  ? NetworkImage(
+                                      AppUtils.configImageUrl(otherUser.image!),
+                                    )
+                                  : null,
+                              child:
+                                  otherUser?.image == null ||
+                                      otherUser!.image!.isEmpty
+                                  ? Icon(Icons.person)
+                                  : null,
+                            ),
+                            title: TextView(
+                              text: otherUser?.name ?? 'Unknown',
+                              style: 16.txtMediumPrimary,
+                            ),
+                            onTap: () {
+                              Navigator.of(dialogContext).pop();
+                              _sharePostToChat(
+                                context,
+                                chat.id,
+                                otherUser,
+                                postData,
+                              );
+                            },
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+void _sharePostToChat(
+  BuildContext context,
+  String? chatId,
+  dynamic otherUser,
+  PostData postData,
+) {
+  AppUtils.log('🎯 _sharePostToChat called');
+  AppUtils.log('   chatId: $chatId');
+  AppUtils.log('   otherUserId: ${otherUser?.id}');
+  AppUtils.log('   postData.id: ${postData.id}');
+  AppUtils.log('   postData.userId: ${postData.userId}');
+
+  if (chatId == null) {
+    AppUtils.toastError('Unable to share to this chat');
+    return;
+  }
+
+  if (postData.id == null || postData.userId == null) {
+    AppUtils.toastError('Post data incomplete');
+    return;
+  }
+
+  final chatCtrl = ChatCtrl.find;
+
+  AppUtils.log('✅ Chat controller found, joining chat...');
+
+  // Join the chat first
+  chatCtrl.joinSingleChat(otherUser?.id, chatId);
+
+  // Show immediate feedback
+  AppUtils.toast('Sharing post...');
+
+  // Wait a moment for the chat to initialize then send the post
+  Future.delayed(Duration(milliseconds: 800), () {
+    AppUtils.log('⏰ Delayed callback executing, about to send post...');
+    // Send only post ID (post data already contains userId)
+    chatCtrl.sendPostMessage(postData.id!);
+  });
 }
 
 Widget postFooter({
@@ -151,31 +289,61 @@ Widget postFooter({
                 ),
               ),
             ),
-            Spacer(),
-            Visibility(
-              visible: item.files.any(
-                (file) =>
-                    file.type == 'video' ||
-                    (file.type != null &&
-                        (file.file.toString().endsWith(".mp4") ||
-                            file.file.toString().endsWith(".MOV") ||
-                            file.file.toString().endsWith(".avi"))),
-              ),
-              child: Row(
-                children: [
-                  ImageView(url: AppImages.eyeImg, size: 20),
-                  5.width,
-                  TextView(
-                    text: '${item.videoCount ?? 0}',
-                    style: 12.txtRegularprimary,
-                  ),
-                  5.width,
-                  TextView(text: "Views", style: 12.txtRegularGrey),
-                ],
+            Padding(
+              padding: 15.left,
+              child: InkWell(
+                onTap: () {
+                  _showShareToFriendsDialog(context, item);
+                },
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.share_outlined,
+                      size: 20,
+                      color: AppColors.primaryColor,
+                    ),
+                    5.width,
+                    TextView(text: "Share", style: 12.txtRegularprimary),
+                  ],
+                ),
               ),
             ),
-
+            Padding(
+              padding: 15.left,
+              child: SavePostButton(
+                postId: item.id ?? '',
+                initialSavedState: item.isSaved ?? false,
+              ),
+            ),
+            Spacer(),
             10.width,
+          ],
+        ),
+      ),
+    ),
+    // Views section moved to next line
+    Visibility(
+      visible: item.files.any(
+        (file) =>
+            file.type == 'video' ||
+            (file.type != null &&
+                (file.file.toString().endsWith(".mp4") ||
+                    file.file.toString().endsWith(".MOV") ||
+                    file.file.toString().endsWith(".avi"))),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.only(left: 22, bottom: 10),
+        child: Row(
+          children: [
+            ImageView(url: AppImages.eyeImg, size: 20),
+            5.width,
+            TextView(
+              text: '${item.videoCount ?? 0}',
+              style: 12.txtRegularprimary,
+            ),
+            5.width,
+            TextView(text: "Views", style: 12.txtRegularGrey),
           ],
         ),
       ),
@@ -184,15 +352,19 @@ Widget postFooter({
 );
 
 String formatTimeAgo(String createdAt) {
-  DateTime? postTime;
+  DateTime postTime;
   try {
-    postTime = DateTime.tryParse(createdAt);
+    postTime = DateTime.tryParse(createdAt) ?? DateTime.now();
+    // If parsing failed or returned null, use current time
+    if (createdAt.isEmpty || createdAt.trim().isEmpty) {
+      postTime = DateTime.now();
+    }
   } catch (e) {
     AppUtils.log('Date Format issuee....... $createdAt');
     postTime = DateTime.now();
   }
 
-  Duration difference = DateTime.now().difference(postTime!);
+  Duration difference = DateTime.now().difference(postTime);
 
   if (difference.inSeconds < 60) return '${difference.inSeconds} seconds ago';
   if (difference.inMinutes < 60) return '${difference.inMinutes} minutes ago';
@@ -203,4 +375,114 @@ String formatTimeAgo(String createdAt) {
   if (difference.inDays < 365)
     return '${(difference.inDays / 30).floor()} months ago';
   return '${(difference.inDays / 365).floor()} years ago';
+}
+
+// Save Post Button Widget
+class SavePostButton extends StatefulWidget {
+  final String postId;
+  final bool initialSavedState;
+
+  const SavePostButton({
+    Key? key,
+    required this.postId,
+    required this.initialSavedState,
+  }) : super(key: key);
+
+  @override
+  _SavePostButtonState createState() => _SavePostButtonState();
+}
+
+class _SavePostButtonState extends State<SavePostButton> {
+  bool _isSaved = false;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _isSaved = widget.initialSavedState;
+    // Optionally check saved status from backend
+    _checkSavedStatus();
+  }
+
+  Future<void> _checkSavedStatus() async {
+    if (widget.postId.isEmpty) return;
+
+    try {
+      final isSaved = await SavedPostService.checkIfPostIsSaved(
+        postId: widget.postId,
+      );
+      if (mounted) {
+        setState(() {
+          _isSaved = isSaved;
+        });
+      }
+    } catch (e) {
+      AppUtils.log('Error checking saved status: $e');
+    }
+  }
+
+  Future<void> _toggleSave() async {
+    if (_isLoading || widget.postId.isEmpty) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      if (_isSaved) {
+        await SavedPostService.unsavePost(postId: widget.postId);
+        if (mounted) {
+          setState(() {
+            _isSaved = false;
+          });
+        }
+      } else {
+        await SavedPostService.savePost(postId: widget.postId);
+        if (mounted) {
+          setState(() {
+            _isSaved = true;
+          });
+        }
+      }
+    } catch (e) {
+      AppUtils.log('Error toggling save: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: _toggleSave,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          _isLoading
+              ? SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppColors.primaryColor,
+                  ),
+                )
+              : Icon(
+                  _isSaved ? Icons.bookmark : Icons.bookmark_border,
+                  size: 20,
+                  color: _isSaved ? AppColors.btnColor : AppColors.primaryColor,
+                ),
+          5.width,
+          TextView(
+            text: _isSaved ? "Saved" : "Save",
+            style: 12.txtRegularprimary,
+          ),
+        ],
+      ),
+    );
+  }
 }

@@ -90,6 +90,25 @@ class BGM {
     isPaused = false;
     _update();
   }
+
+  static void stop() {
+    isPaused = false;
+    homePlayer?.stop();
+    playingPlayer?.stop();
+    sfxPlayer?.stop();
+    current = null;
+  }
+
+  static void dispose() {
+    homePlayer?.dispose();
+    playingPlayer?.dispose();
+    sfxPlayer?.dispose();
+    homePlayer = null;
+    playingPlayer = null;
+    sfxPlayer = null;
+    current = null;
+    isInitialized = false;
+  }
 }
 
 class BGMHandler extends WidgetsBindingObserver {

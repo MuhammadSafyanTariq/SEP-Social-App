@@ -10,8 +10,6 @@ import 'package:sep/utils/appUtils.dart';
 import 'package:sep/utils/extensions/contextExtensions.dart';
 import 'package:sep/utils/extensions/extensions.dart';
 import 'package:sep/utils/extensions/size.dart';
-import 'package:sep/utils/extensions/textStyle.dart';
-import 'package:sep/components/styles/textStyles.dart';
 import 'package:sep/feature/presentation/Home/homeScreenComponents/post_card_header.dart';
 import 'package:sep/feature/presentation/Home/homeScreenComponents/read_more_text.dart';
 import '../../../../components/coreComponents/ImageView.dart';
@@ -98,6 +96,16 @@ class _PollCardState extends State<PollCard> {
     // AppUtils.log('local date :: ${localTime}');
   }
 
+  @override
+  void didUpdateWidget(PollCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Reload selected option when widget data updates (e.g., after voting)
+    if (oldWidget.data.id != widget.data.id ||
+        oldWidget.data.votes.length != widget.data.votes.length) {
+      loadSelectedOption();
+    }
+  }
+
   void updateTimer() {
     if (mounted && duration > Duration.zero) {
       duration -= const Duration(seconds: 1);
@@ -111,6 +119,19 @@ class _PollCardState extends State<PollCard> {
 
   void handleOptionSelected(String optionId) async {
     AppUtils.log(optionId);
+    
+    // Check if user already voted for this option
+    final alreadyVotedForThisOption = widget.data.votes.any(
+      (vote) => vote.userId == Preferences.uid && vote.optionId == optionId,
+    );
+    
+    if (alreadyVotedForThisOption) {
+      // User already voted for this option, don't allow deselection
+      AppUtils.log("Already voted for this option - ignoring click");
+      AppUtils.toast("You've already voted for this option");
+      return;
+    }
+    
     if (selectedOptionId == optionId) {
       // Deselecting the same option - don't call action
       selectedOptionId = null;
@@ -125,7 +146,20 @@ class _PollCardState extends State<PollCard> {
   }
 
   Future<void> loadSelectedOption() async {
-    hasSelected = selectedOptionId != null;
+    // Load the selected option from the vote data returned by backend
+    final voteList = widget.data.votes;
+    final userVote = voteList.firstWhere(
+      (vote) => vote.userId == Preferences.uid,
+      orElse: () => const Vote(),
+    );
+    
+    if (userVote.optionId != null && userVote.optionId!.isNotEmpty) {
+      selectedOptionId = userVote.optionId;
+      hasSelected = true;
+    } else {
+      selectedOptionId = null;
+      hasSelected = false;
+    }
   }
 
   @override
@@ -649,6 +683,11 @@ class PollOptionCard extends StatelessWidget {
                 AppUtils.toastError("Poll option missing ID - contact support");
                 return;
               }
+              // Prevent voting again if already voted for this option
+              if (isSelected) {
+                AppUtils.toast("You've already voted for this option");
+                return;
+              }
               onPollAction?.call(data.id!);
             }
           : null,
@@ -730,7 +769,7 @@ class PollOptionCard extends StatelessWidget {
                     ),
                     child: Center(
                       child: Text(
-                        'Vote',
+                        isSelected ? 'Voted' : 'Vote',
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 14,
