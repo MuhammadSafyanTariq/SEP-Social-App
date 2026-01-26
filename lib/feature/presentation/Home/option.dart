@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:sep/components/styles/textStyles.dart';
 import 'package:sep/feature/presentation/controller/auth_Controller/profileCtrl.dart';
 import 'package:sep/feature/presentation/controller/chat_ctrl.dart';
+import 'package:sep/services/deep_link_service.dart';
 import 'package:sep/utils/appUtils.dart';
 import 'package:sep/utils/extensions/contextExtensions.dart';
 import 'package:sep/utils/extensions/extensions.dart';
 import 'package:sep/utils/extensions/textStyle.dart';
 import 'package:sep/utils/extensions/widget.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../../components/coreComponents/AppButton.dart';
 import '../../../components/coreComponents/ImageView.dart';
 import '../../../components/coreComponents/TextView.dart';
@@ -80,7 +82,7 @@ class Options extends StatelessWidget {
           ),
           child: Container(
             constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(context).size.height * 0.7,
+              maxHeight: MediaQuery.of(context).size.height * 0.75,
             ),
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -89,7 +91,7 @@ class Options extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    TextView(text: 'Share to Chat', style: 18.txtSBoldprimary),
+                    TextView(text: 'Share Post', style: 18.txtSBoldprimary),
                     IconButton(
                       onPressed: () => Navigator.of(dialogContext).pop(),
                       icon: Icon(Icons.close),
@@ -97,6 +99,82 @@ class Options extends StatelessWidget {
                   ],
                 ),
                 Divider(),
+                
+                // External Share Options
+                Container(
+                  margin: EdgeInsets.only(bottom: 16),
+                  padding: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.greenlight.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppColors.greenlight.withOpacity(0.3),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextView(
+                        text: 'Share Outside App',
+                        style: 14.txtSBoldprimary,
+                      ),
+                      SizedBox(height: 8),
+                      InkWell(
+                        onTap: () {
+                          Navigator.of(dialogContext).pop();
+                          _sharePostExternally(context);
+                        },
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.share,
+                                color: AppColors.greenlight,
+                                size: 24,
+                              ),
+                              SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    TextView(
+                                      text: 'Share via...',
+                                      style: 14.txtMediumprimary,
+                                    ),
+                                    TextView(
+                                      text: 'WhatsApp, Instagram, SMS, etc.',
+                                      style: 12.txtRegularGrey,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Icon(
+                                Icons.arrow_forward_ios,
+                                size: 16,
+                                color: AppColors.grey,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                // Share to Chat Section
+                TextView(
+                  text: 'Share to Chat',
+                  style: 14.txtSBoldprimary,
+                ),
+                SizedBox(height: 8),
                 Expanded(
                   child: chatCtrl.recentChat.isEmpty
                       ? Center(
@@ -161,6 +239,51 @@ class Options extends StatelessWidget {
         );
       },
     );
+  }
+
+  /// Share post externally via third-party apps
+  void _sharePostExternally(BuildContext context) async {
+    try {
+      if (postData.id == null) {
+        AppUtils.toastError('Unable to share this post');
+        return;
+      }
+
+      AppUtils.log('🔗 Sharing post externally: ${postData.id}');
+      
+      // Get post caption (limit to 200 chars)
+      String caption = postData.content ?? '';
+      if (caption.length > 200) {
+        caption = caption.substring(0, 200) + '...';
+      }
+
+      // Generate share message
+      String shareText = DeepLinkService.generatePostShareText(
+        postData.id!,
+        caption: caption.isNotEmpty ? caption : null,
+      );
+
+      // Add app install instructions
+      shareText += '\n\nDownload SEP Media to see more amazing content!';
+
+      AppUtils.log('📤 Share text: $shareText');
+
+      // Use share_plus to share
+      final result = await Share.share(
+        shareText,
+        subject: 'Check out this post on SEP Media!',
+      );
+
+      if (result.status == ShareResultStatus.success) {
+        AppUtils.toast('Post shared successfully!');
+        AppUtils.log('✅ Share completed successfully');
+      } else if (result.status == ShareResultStatus.dismissed) {
+        AppUtils.log('ℹ️ Share dismissed by user');
+      }
+    } catch (e) {
+      AppUtils.log('❌ Error sharing post: $e');
+      AppUtils.toastError('Failed to share post');
+    }
   }
 
   void _sharePostToChat(

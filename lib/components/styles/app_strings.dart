@@ -313,7 +313,7 @@ class AppStrings {
   static const String otp = 'otp';
 
   static const String french = 'French';
-  static const String welcomee = 'We welcome you to\nSEP Media';
+  static const String welcomee = 'Welcome to SEP Media';
   static const String Signinn = 'Sign In';
 
   static const String buildProfission = 'Build a Professional\nResume for Free';

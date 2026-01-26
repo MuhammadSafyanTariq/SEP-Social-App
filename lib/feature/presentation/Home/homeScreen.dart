@@ -3,11 +3,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:sep/feature/presentation/Home/reels_screen.dart';
 import 'package:sep/feature/presentation/chatScreens/chatScreen.dart';
 import 'package:sep/services/networking/urls.dart';
 import 'package:sep/feature/presentation/Home/homeScreenComponents/auto_play_video_player.dart';
+import 'package:sep/services/deep_link_service.dart';
 
 import 'package:sep/feature/presentation/controller/auth_Controller/profileCtrl.dart';
 import 'package:sep/feature/presentation/SportsProducts/sportsProduct.dart';
@@ -78,6 +78,10 @@ class _HomeScreenState extends State<HomeScreen> {
       profileCtrl.getProfileDetails();
       ChatCtrl.find.connectSocket();
       final stripeId = profileCtrl.profileData.value.stripeCustomerId;
+
+      // If app was opened from a deep link during splash/login,
+      // open the pending post now (Home is ready).
+      DeepLinkService.instance.tryOpenPendingPost();
       if (stripeId == null || stripeId.isEmpty) {
         stripeCreateAccount();
       }

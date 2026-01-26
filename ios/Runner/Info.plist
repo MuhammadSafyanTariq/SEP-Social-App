@@ -65,6 +65,16 @@
 				<string>com.googleusercontent.apps.668047341805-mkgmfm2inuqdvsuir7cmal9su9sdlos8</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.sepmedia.deeplink</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>sepmedia</string>
+			</array>
+		</dict>
 	</array>
 	<key>UIFileSharingEnabled</key>
 	<true/>

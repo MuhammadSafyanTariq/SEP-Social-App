@@ -283,5 +283,6 @@ Map<String,String> frTr = {
   AppStrings.next: "Suivant",
   AppStrings.otp: "Vérification OTP",
   AppStrings.french: "Français",
+  AppStrings.welcomee: "Bienvenue sur SEP Media",
   AppStrings.zipCode: "Code postal",
 };

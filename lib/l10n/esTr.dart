@@ -16,6 +16,7 @@ Map<String, String> esTr = {
   AppStrings.skip: "Saltar",
   AppStrings.login: "Iniciar sesión",
   AppStrings.loginDescription: "¡Bienvenido a SEP Media!",
+  AppStrings.welcomee: "Bienvenido a SEP Media",
   AppStrings.email: "Correo electrónico",
   AppStrings.enterMail: "Ingresa tu correo electrónico",
   AppStrings.enterPassword: "Ingresa tu contraseña",

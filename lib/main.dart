@@ -8,6 +8,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:pull_to_refresh/pull_to_refresh.dart';
 import 'package:sep/services/networking/urls.dart';
+import 'package:sep/services/deep_link_service.dart';
 import 'package:sep/translations.dart';
 import 'package:sep/utils/extensions/loaderUtils.dart';
 import 'feature/presentation/controller/auth_Controller/auth_ctrl.dart';
@@ -43,6 +44,9 @@ void main() async {
   Get.put(AuthCtrl());
   Get.put(LanguageController());
   Get.put(GetStripeCtrl());
+  
+  // Initialize Deep Link Service
+  await DeepLinkService.instance.initialize(navigatorKey: navState);
 
   final engine = createAgoraRtcEngine();
   await engine.initialize(RtcEngineContext(appId: agoraAppId));

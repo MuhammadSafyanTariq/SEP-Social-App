@@ -220,7 +220,7 @@ class _PackagesScreenState extends State<PackagesScreen> {
           // Main content
           Expanded(
             child: SingleChildScrollView(
-              padding: EdgeInsets.all(20.sdp),
+              padding: EdgeInsets.symmetric(horizontal: 20.sdp, vertical: 16.sdp),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -239,7 +239,141 @@ class _PackagesScreenState extends State<PackagesScreen> {
                     style: TextStyle(fontSize: 16, color: Colors.grey[600]),
                   ),
 
-                  SizedBox(height: 24.sdp),
+                  SizedBox(height: 20.sdp),
+
+                  // Custom Amount Section
+                  Container(
+                    padding: EdgeInsets.all(16.sdp),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20.sdp),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.edit_outlined,
+                              color: AppColors.greenlight,
+                              size: 24,
+                            ),
+                            SizedBox(width: 8.sdp),
+                            TextView(
+                              text: 'Custom Amount',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 8.sdp),
+                        TextView(
+                          text: 'Enter your preferred amount',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        SizedBox(height: 12.sdp),
+                        TextField(
+                          controller: customAmountController,
+                          keyboardType: TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          onChanged: _onCustomAmountChanged,
+                          decoration: InputDecoration(
+                            prefixIcon: Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 16.sdp,
+                                vertical: 12.sdp,
+                              ),
+                              child: TextView(
+                                text: '\$',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.greenlight,
+                                ),
+                              ),
+                            ),
+                            hintText: 'Enter amount (e.g., 25.00)',
+                            hintStyle: TextStyle(
+                              color: Colors.grey[400],
+                              fontSize: 14,
+                            ),
+                            filled: true,
+                            fillColor: Colors.grey[50],
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(15.sdp),
+                              borderSide: BorderSide(color: Colors.grey[300]!),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(15.sdp),
+                              borderSide: BorderSide(color: Colors.grey[300]!),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(15.sdp),
+                              borderSide: BorderSide(
+                                color: AppColors.greenlight,
+                                width: 2,
+                              ),
+                            ),
+                          ),
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        // Show estimated tokens for custom amount
+                        if (customAmountController.text.isNotEmpty) ...[
+                          SizedBox(height: 12.sdp),
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 12.sdp,
+                              vertical: 8.sdp,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.greenlight.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(10.sdp),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Image.asset(
+                                  'assets/icons/token.png',
+                                  width: 18,
+                                  height: 18,
+                                ),
+                                SizedBox(width: 8.sdp),
+                                TextView(
+                                  text:
+                                      '≈ ${_calculateTokensFromAmount(double.tryParse(customAmountController.text) ?? 0)} tokens',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.greenlight,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+
+                  SizedBox(height: 20.sdp),
 
                   // Packages Grid
                   GridView.builder(
@@ -389,144 +523,10 @@ class _PackagesScreenState extends State<PackagesScreen> {
                     },
                   ),
 
-                  SizedBox(height: 32.sdp),
-
-                  // Custom Amount Section
-                  Container(
-                    padding: EdgeInsets.all(20.sdp),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20.sdp),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 10,
-                          offset: Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.edit_outlined,
-                              color: AppColors.greenlight,
-                              size: 24,
-                            ),
-                            SizedBox(width: 8.sdp),
-                            TextView(
-                              text: 'Custom Amount',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black87,
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 12.sdp),
-                        TextView(
-                          text: 'Enter your preferred amount',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        SizedBox(height: 16.sdp),
-                        TextField(
-                          controller: customAmountController,
-                          keyboardType: TextInputType.numberWithOptions(
-                            decimal: true,
-                          ),
-                          onChanged: _onCustomAmountChanged,
-                          decoration: InputDecoration(
-                            prefixIcon: Padding(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 16.sdp,
-                                vertical: 12.sdp,
-                              ),
-                              child: TextView(
-                                text: '\$',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.greenlight,
-                                ),
-                              ),
-                            ),
-                            hintText: 'Enter amount (e.g., 25.00)',
-                            hintStyle: TextStyle(
-                              color: Colors.grey[400],
-                              fontSize: 14,
-                            ),
-                            filled: true,
-                            fillColor: Colors.grey[50],
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(15.sdp),
-                              borderSide: BorderSide(color: Colors.grey[300]!),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(15.sdp),
-                              borderSide: BorderSide(color: Colors.grey[300]!),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(15.sdp),
-                              borderSide: BorderSide(
-                                color: AppColors.greenlight,
-                                width: 2,
-                              ),
-                            ),
-                          ),
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
-                          ),
-                        ),
-                        // Show estimated tokens for custom amount
-                        if (customAmountController.text.isNotEmpty) ...[
-                          SizedBox(height: 12.sdp),
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 12.sdp,
-                              vertical: 8.sdp,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.greenlight.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(10.sdp),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Image.asset(
-                                  'assets/icons/token.png',
-                                  width: 18,
-                                  height: 18,
-                                ),
-                                SizedBox(width: 8.sdp),
-                                TextView(
-                                  text:
-                                      '≈ ${_calculateTokensFromAmount(double.tryParse(customAmountController.text) ?? 0)} tokens',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.greenlight,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-
                   // Purchase Button Section
                   if (selectedPackage != null ||
                       customAmountController.text.isNotEmpty) ...[
-                    SizedBox(height: 32.sdp),
+                    SizedBox(height: 20.sdp),
 
                     // Purchase Button
                     AppButton(
@@ -544,7 +544,7 @@ class _PackagesScreenState extends State<PackagesScreen> {
                       onTap: _payNow,
                     ),
 
-                    SizedBox(height: 16.sdp),
+                    SizedBox(height: 12.sdp),
 
                     // Note about token purchase
                     Container(

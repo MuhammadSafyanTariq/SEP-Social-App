@@ -286,6 +286,7 @@ Map<String, String> enTr = {
 
   AppStrings.otp: "OTP Verification",
   AppStrings.french: "French",
+  AppStrings.welcomee: "Welcome to SEP Media",
   AppStrings.byContinueTermsCondition: "By continuing, you agree to our ",
 
   // Privacy Settings - Who Can See My Profile

@@ -120,4 +120,5 @@ Map<String, String> bnTr = {
   AppStrings.noWinnersData: "এই মাসের জন্য কোন বিজয়ীর তথ্য নেই",
   AppStrings.winner: "বিজয়ী",
   AppStrings.previousMonthWinners: "গত মাসের বিজয়ীরা",
+  AppStrings.welcomee: "SEP Media-তে স্বাগতম",
 };

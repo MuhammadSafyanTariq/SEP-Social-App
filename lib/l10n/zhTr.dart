@@ -155,4 +155,5 @@ Map<String, String> zhTr = {
   AppStrings.female: "女",
   AppStrings.other: "其他",
   AppStrings.selectGender: "选择您的性别",
+  AppStrings.welcomee: "欢迎来到 SEP Media",
 };
