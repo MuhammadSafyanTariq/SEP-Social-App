@@ -2,14 +2,24 @@ import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 
+import 'package:sep/feature/presentation/controller/auth_Controller/profileCtrl.dart';
+import 'package:sep/utils/extensions/extensions.dart';
+import 'package:sep/utils/appUtils.dart';
+
 class FullScreenVideoPlayer extends StatefulWidget {
   final List<String> videoUrls;
   final int initialIndex;
+  /// When set, shows a delete option (for own profile videos).
+  final String? deletablePostId;
+  /// Called after the post is successfully deleted.
+  final VoidCallback? onPostDeleted;
 
   const FullScreenVideoPlayer({
     Key? key,
     required this.videoUrls,
     this.initialIndex = 0,
+    this.deletablePostId,
+    this.onPostDeleted,
   }) : super(key: key);
 
   @override
@@ -42,6 +52,18 @@ class _FullScreenVideoPlayerState extends State<FullScreenVideoPlayer> {
                   autoPlay: true,
                   looping: false,
                   aspectRatio: _controller!.value.aspectRatio,
+                  allowPlaybackSpeedChanging: true,
+                  allowFullScreen: true,
+                  allowMuting: true,
+                  additionalOptions: widget.deletablePostId != null
+                      ? (_) => [
+                            OptionItem(
+                              onTap: (_) => _confirmAndDelete(),
+                              iconData: Icons.delete_outline,
+                              title: 'Delete Video',
+                            ),
+                          ]
+                      : null,
                 );
               });
             }
@@ -80,6 +102,50 @@ class _FullScreenVideoPlayerState extends State<FullScreenVideoPlayer> {
               icon: Icon(Icons.close, color: Colors.white, size: 30),
               onPressed: () => Navigator.pop(context),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmAndDelete() {
+    if (!mounted) return;
+    final navContext = context;
+    showDialog(
+      context: navContext,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        title: Text(
+          'Delete Video?',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: Text(
+          'Are you sure you want to delete this video? This action cannot be undone.',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text('Cancel', style: TextStyle(color: Colors.white70)),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              try {
+                await ProfileCtrl.find
+                    .removePost(widget.deletablePostId!)
+                    .applyLoader;
+                AppUtils.log('Video deleted successfully');
+                widget.onPostDeleted?.call();
+                if (mounted) Navigator.pop(navContext);
+              } catch (_) {
+                AppUtils.log('Failed to delete video');
+              }
+            },
+            child: Text('Delete', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),

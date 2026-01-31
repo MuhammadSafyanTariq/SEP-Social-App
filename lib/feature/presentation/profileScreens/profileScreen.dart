@@ -929,6 +929,72 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
+  void _showVideoDeleteOptions(PostData post) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.black87,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+      ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 16),
+          child: ListTile(
+            leading: Icon(Icons.delete_outline, color: Colors.red),
+            title: Text(
+              'Delete Video',
+              style: TextStyle(color: Colors.white, fontSize: 16),
+            ),
+            onTap: () {
+              Navigator.pop(context);
+              _confirmDeleteVideo(post);
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeleteVideo(PostData post) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        title: Text(
+          'Delete Video?',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: Text(
+          'Are you sure you want to delete this video? This action cannot be undone.',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text('Cancel', style: TextStyle(color: Colors.white70)),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              try {
+                await profileCtrl.removePost(post.id!).applyLoader;
+                profileCtrl.profileVideoPostList
+                    .removeWhere((p) => p.id == post.id);
+                profileCtrl.profileVideoPostList.refresh();
+              } catch (_) {
+                AppUtils.log('Failed to delete video');
+              }
+            },
+            child: Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildVideoGridItem(PostData post, int index) {
     final firstFile = post.files.isNotEmpty ? post.files.first : null;
     final videoUrl = firstFile?.file?.isNotEmpty == true
@@ -936,6 +1002,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         : null;
 
     return GestureDetector(
+      onLongPress: () => _showVideoDeleteOptions(post),
       onTap: () {
         // Get all video URLs from the video posts list
         final allVideoUrls = profileCtrl.profileVideoPostList
@@ -956,6 +1023,12 @@ class _ProfileScreenState extends State<ProfileScreen>
             FullScreenVideoPlayer(
               videoUrls: allVideoUrls,
               initialIndex: clickedIndex >= 0 ? clickedIndex : 0,
+              deletablePostId: post.id,
+              onPostDeleted: () {
+                profileCtrl.profileVideoPostList
+                    .removeWhere((p) => p.id == post.id);
+                profileCtrl.profileVideoPostList.refresh();
+              },
             ),
           );
         }
