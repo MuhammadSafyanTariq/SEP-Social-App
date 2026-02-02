@@ -664,6 +664,10 @@ class _EditProfileState extends State<EditProfile> {
                 size: 100,
                 imageData: profileImageData.value,
                 onImageTap: () => _showImagePicker(context),
+                onChange: (ImageDataModel updatedImageData) {
+                  profileImageData.value = updatedImageData;
+                  profileImageData.refresh();
+                },
               ),
             ),
           ),

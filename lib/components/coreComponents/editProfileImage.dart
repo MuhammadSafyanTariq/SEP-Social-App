@@ -84,6 +84,7 @@ class EditProfileImage extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Stack(
+            clipBehavior: Clip.none,
             children: [
               hasGradient
                   ? InkWell(
@@ -95,7 +96,10 @@ class EditProfileImage extends StatelessWidget {
                         child: imageView(),
                       ),
                     )
-                  : imageView(),
+                  : GestureDetector(
+                      onTap: onImageTap,
+                      child: imageView(),
+                    ),
               Positioned(
                 right: isEditable ? 35 : null,
                 bottom: isEditable ? 0 : null,
@@ -156,8 +160,15 @@ class ImageEditButton extends StatelessWidget {
         width: size,
         height: size,
         decoration: BoxDecoration(
-          color: AppColors.grey,
+          color: AppColors.greenlight,
           borderRadius: BorderRadius.circular(size / 2),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black26,
+              blurRadius: 4,
+              offset: Offset(0, 2),
+            ),
+          ],
         ),
         child: Center(
           child: const Icon(

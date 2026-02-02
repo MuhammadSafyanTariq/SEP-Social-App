@@ -44,7 +44,7 @@ void main() async {
   Get.put(AuthCtrl());
   Get.put(LanguageController());
   Get.put(GetStripeCtrl());
-  
+
   // Initialize Deep Link Service
   await DeepLinkService.instance.initialize(navigatorKey: navState);
 

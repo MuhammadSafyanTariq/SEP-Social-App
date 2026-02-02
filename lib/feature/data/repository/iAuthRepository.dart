@@ -1016,7 +1016,8 @@ class IAuthRepository implements AuthRepository {
     Uint8List? memoryFile,
   }) async {
     // try {
-    final token = GlobalState.signupFromData?.data?.token.bearer;
+    // Use Preferences.authToken first (for logged-in users), fallback to signup token
+    final token = Preferences.authToken?.bearer ?? GlobalState.signupFromData?.data?.token.bearer;
     // try {
     final multipartFile = {'files': imageFile?.path ?? memoryFile};
     AppUtils.log("Uploading photo: $multipartFile");
