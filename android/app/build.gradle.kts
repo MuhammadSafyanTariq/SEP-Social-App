@@ -40,6 +40,8 @@ android {
                 keyPassword = keystoreProperties["keyPassword"] as String
                 storeFile = keystoreProperties["storeFile"]?.let { file(it as String) }
                 storePassword = keystoreProperties["storePassword"] as String
+                enableV1Signing = true
+                enableV2Signing = true
             }
         }
     }
@@ -71,6 +73,9 @@ android {
                 keystoreProperties.containsKey("storeFile") &&
                 keystoreProperties.containsKey("storePassword")) {
                 signingConfig = signingConfigs.getByName("release")
+            } else {
+                // Fallback to debug signing so release APK is always valid and installable
+                signingConfig = signingConfigs.getByName("debug")
             }
             isMinifyEnabled = false
             isShrinkResources = false
