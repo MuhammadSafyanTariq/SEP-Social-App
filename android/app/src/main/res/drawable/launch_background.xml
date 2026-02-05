@@ -1,6 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Splash screen matching the Flutter Splash screen -->
+<!-- Native splash screen: green background with centered SEP logo -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Solid green background to match splash screen -->
-    <item android:drawable="@color/splash_green" />
+    <!-- Green background -->
+    <item>
+        <color android:color="@color/splash_green" />
+    </item>
+    <!-- Centered splash logo (250dp to match lib/feature/presentation/screens/splash.dart) -->
+    <item
+        android:width="250dp"
+        android:height="250dp"
+        android:gravity="center"
+        android:drawable="@drawable/splash_logo_drawable" />
 </layer-list>

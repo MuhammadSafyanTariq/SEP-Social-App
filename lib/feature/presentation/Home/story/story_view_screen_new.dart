@@ -6,6 +6,7 @@ import 'package:sep/feature/presentation/controller/story/story_controller.dart'
 import 'package:sep/components/styles/appColors.dart';
 import 'package:sep/services/networking/urls.dart';
 import 'package:sep/utils/appUtils.dart';
+import 'package:sep/feature/presentation/Home/homeScreenComponents/read_more_text.dart';
 import 'package:video_player/video_player.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'dart:async';
@@ -574,9 +575,10 @@ class _StoryViewScreenNewState extends State<StoryViewScreenNew> {
                     color: Colors.black54,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Text(
-                    caption,
-                    style: TextStyle(color: Colors.white, fontSize: 14),
+                  child: ReadMoreText(
+                    text: caption,
+                    textStyle: TextStyle(color: Colors.white, fontSize: 14),
+                    maxLines: 3,
                   ),
                 ),
               SizedBox(height: 12),

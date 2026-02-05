@@ -9,6 +9,7 @@ import 'package:sep/feature/presentation/Home/comment.dart';
 import 'package:sep/utils/appUtils.dart';
 import 'package:sep/feature/presentation/Home/homeScreenComponents/read_more_text.dart';
 import 'package:sep/services/networking/urls.dart';
+import 'package:sep/utils/video_quality_helper.dart';
 
 class ReelsVideoScreen extends StatefulWidget {
   final List<PostData> initialPosts;
@@ -101,9 +102,11 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
     }
 
     final post = _posts[index];
-    final videoUrl =
-        post.files.isNotEmpty && post.files.first.file?.isNotEmpty == true
-        ? AppUtils.configImageUrl(post.files.first.file!)
+    final videoFile = post.files.isNotEmpty ? post.files.first : null;
+    final videoUrl = videoFile != null && videoFile.file?.isNotEmpty == true
+        ? AppUtils.configImageUrl(
+            VideoQualityHelper.getOptimalVideoUrl(videoFile, context: context),
+          )
         : null;
 
     if (videoUrl == null) return;

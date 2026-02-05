@@ -1,12 +1,15 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_chat_types/flutter_chat_types.dart' show PreviewData;
 import 'package:flutter_link_previewer/flutter_link_previewer.dart';
 import 'package:sep/components/styles/textStyles.dart';
 import 'package:get/get.dart';
 import 'package:sep/utils/extensions/size.dart';
+import 'package:sep/utils/appUtils.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ReadMoreText extends StatefulWidget {
   final String text;
@@ -30,11 +33,87 @@ class _ReadMoreTextState extends State<ReadMoreText> {
   Map<String, PreviewData> previewDataMap = {};
   bool isLoading = true;
 
+  // Check if entire text is a URL
+  bool _isEntireTextUrl(String text) {
+    final trimmed = text.trim();
+    final urlPattern = RegExp(
+      r'^https?:\/\/[^\s]+$',
+      caseSensitive: false,
+    );
+    return urlPattern.hasMatch(trimmed);
+  }
+
+  // Parse text and extract URLs, returning TextSpans with clickable links
+  List<TextSpan> _parseTextWithLinks(String text) {
+    final RegExp linkRegExp = RegExp(
+      r'(https?:\/\/[^\s]+)',
+      caseSensitive: false,
+    );
+    final List<TextSpan> spans = [];
+    final matches = linkRegExp.allMatches(text);
+
+    int start = 0;
+    for (final Match match in matches) {
+      // Add text before the link
+      if (match.start > start) {
+        spans.add(TextSpan(
+          text: text.substring(start, match.start),
+          style: widget.textStyle ?? 14.txtRegularBlack,
+        ));
+      }
+
+      // Add clickable link
+      final String url = match.group(0)!;
+      spans.add(
+        TextSpan(
+          text: url,
+          style: (widget.textStyle ?? 14.txtRegularBlack).copyWith(
+            color: Colors.blueAccent,
+            decoration: TextDecoration.underline,
+          ),
+          recognizer: TapGestureRecognizer()
+            ..onTap = () async {
+              try {
+                final Uri uri = Uri.parse(url);
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                }
+              } catch (e) {
+                // Handle error silently or show a toast
+                AppUtils.log('Error launching URL: $e');
+              }
+            },
+        ),
+      );
+
+      start = match.end;
+    }
+
+    // Add remaining text after the last link
+    if (start < text.length) {
+      spans.add(TextSpan(
+        text: text.substring(start),
+        style: widget.textStyle ?? 14.txtRegularBlack,
+      ));
+    }
+
+    // If no links found, return a single TextSpan with the entire text
+    if (spans.isEmpty) {
+      spans.add(TextSpan(
+        text: text,
+        style: widget.textStyle ?? 14.txtRegularBlack,
+      ));
+    }
+
+    return spans;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final isUrl = widget.text.isURL;
+    // Check if entire text is a URL (for link preview)
+    final isEntireTextUrl = _isEntireTextUrl(widget.text);
 
-    if (isUrl) {
+    if (isEntireTextUrl) {
       return Container(
         margin: 8.vertical,
         decoration: BoxDecoration(
@@ -58,11 +137,15 @@ class _ReadMoreTextState extends State<ReadMoreText> {
       );
     }
 
+    // Parse text with links for clickable URLs
+    final textSpans = _parseTextWithLinks(widget.text);
+
     return LayoutBuilder(
       builder: (context, constraints) {
+        // Check if text exceeds max lines
         final textPainter = TextPainter(
           text: TextSpan(
-            text: widget.text,
+            children: textSpans,
             style: widget.textStyle ?? 14.txtRegularBlack,
           ),
           maxLines: widget.maxLines,
@@ -74,9 +157,11 @@ class _ReadMoreTextState extends State<ReadMoreText> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              widget.text,
-              style: widget.textStyle ?? 14.txtRegularBlack,
+            Text.rich(
+              TextSpan(
+                children: textSpans,
+                style: widget.textStyle ?? 14.txtRegularBlack,
+              ),
               maxLines: isExpanded ? null : widget.maxLines,
               overflow: isExpanded
                   ? TextOverflow.visible

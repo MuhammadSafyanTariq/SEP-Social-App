@@ -28,6 +28,7 @@ import '../Home/homeScreenComponents/pollCard.dart';
 import '../Home/homeScreenComponents/celebrationCard.dart';
 import '../Home/homeScreenComponents/post_components.dart';
 import '../profileScreens/setting/fullScreenVideoPlayer.dart';
+import '../Home/reels_video_screen.dart';
 import '../controller/auth_Controller/profileCtrl.dart';
 import '../controller/story/story_controller.dart';
 import '../../data/models/dataModels/story_model.dart';
@@ -960,13 +961,8 @@ class _ProfileScreenState extends State<ProfileScreen>
       context: context,
       builder: (dialogContext) => AlertDialog(
         backgroundColor: Colors.grey[900],
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        title: Text(
-          'Delete Video?',
-          style: TextStyle(color: Colors.white),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: Text('Delete Video?', style: TextStyle(color: Colors.white)),
         content: Text(
           'Are you sure you want to delete this video? This action cannot be undone.',
           style: TextStyle(color: Colors.white70),
@@ -981,8 +977,9 @@ class _ProfileScreenState extends State<ProfileScreen>
               Navigator.pop(dialogContext);
               try {
                 await profileCtrl.removePost(post.id!).applyLoader;
-                profileCtrl.profileVideoPostList
-                    .removeWhere((p) => p.id == post.id);
+                profileCtrl.profileVideoPostList.removeWhere(
+                  (p) => p.id == post.id,
+                );
                 profileCtrl.profileVideoPostList.refresh();
               } catch (_) {
                 AppUtils.log('Failed to delete video');
@@ -1004,31 +1001,25 @@ class _ProfileScreenState extends State<ProfileScreen>
     return GestureDetector(
       onLongPress: () => _showVideoDeleteOptions(post),
       onTap: () {
-        // Get all video URLs from the video posts list
-        final allVideoUrls = profileCtrl.profileVideoPostList
+        // Get all video posts (filter to only include posts with valid video files)
+        final allVideoPosts = profileCtrl.profileVideoPostList
             .where(
               (p) =>
-                  p.files.isNotEmpty && p.files.first.file?.isNotEmpty == true,
+                  p.files.isNotEmpty &&
+                  p.files.first.file?.isNotEmpty == true &&
+                  p.files.first.type == 'video',
             )
-            .map((p) => AppUtils.configImageUrl(p.files.first.file!))
             .toList();
 
-        if (allVideoUrls.isNotEmpty) {
+        if (allVideoPosts.isNotEmpty) {
           // Find the index of the clicked video
-          final clickedIndex = videoUrl != null
-              ? allVideoUrls.indexOf(videoUrl)
-              : 0;
+          final clickedIndex = allVideoPosts.indexWhere((p) => p.id == post.id);
+          final initialIndex = clickedIndex >= 0 ? clickedIndex : 0;
 
           context.pushNavigator(
-            FullScreenVideoPlayer(
-              videoUrls: allVideoUrls,
-              initialIndex: clickedIndex >= 0 ? clickedIndex : 0,
-              deletablePostId: post.id,
-              onPostDeleted: () {
-                profileCtrl.profileVideoPostList
-                    .removeWhere((p) => p.id == post.id);
-                profileCtrl.profileVideoPostList.refresh();
-              },
+            ReelsVideoScreen(
+              initialPosts: allVideoPosts,
+              initialIndex: initialIndex,
             ),
           );
         }

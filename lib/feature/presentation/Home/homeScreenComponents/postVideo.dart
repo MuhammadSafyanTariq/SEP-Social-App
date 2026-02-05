@@ -12,6 +12,7 @@ import 'package:sep/utils/extensions/contextExtensions.dart';
 import 'package:sep/utils/extensions/extensions.dart';
 import 'package:sep/utils/extensions/size.dart';
 import 'package:sep/utils/extensions/widget.dart';
+import 'package:sep/utils/video_quality_helper.dart';
 
 class PostVideo extends StatelessWidget {
   final PostCardHeader header;
@@ -89,7 +90,13 @@ class PostVideo extends StatelessWidget {
                       }
                     },
                     child: AutoPlayVideoPlayer(
-                      videoUrl: videoUrl?.fileUrl ?? '',
+                      videoUrl: file != null
+                          ? VideoQualityHelper.getOptimalVideoUrl(
+                                  file!,
+                                  context: context,
+                                ).fileUrl ??
+                                ''
+                          : videoUrl?.fileUrl ?? '',
                       postId: postId ?? '',
                       aspectRatio: (file?.x != null && file?.y != null)
                           ? file!.x! / file!.y!

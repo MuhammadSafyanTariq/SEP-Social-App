@@ -16,8 +16,11 @@ import 'feature/presentation/controller/auth_Controller/get_stripe_ctrl.dart';
 import 'feature/presentation/controller/auth_Controller/networkCtrl.dart';
 import 'feature/presentation/controller/auth_Controller/profileCtrl.dart';
 import 'feature/presentation/controller/language_controller.dart';
-import 'feature/presentation/screens/splash.dart';
+import 'feature/presentation/screens/loginsignup/onBoarding/language.dart';
+import 'feature/presentation/Home/homeScreen.dart';
 import 'services/storage/preferences.dart';
+import 'services/firebaseServices.dart';
+import 'utils/extensions/contextExtensions.dart';
 
 final GlobalKey<NavigatorState> navState = GlobalKey<NavigatorState>();
 
@@ -130,10 +133,56 @@ class MyApp extends StatelessWidget {
               return supportedLocales.first;
             },
             fallbackLocale: const Locale('en', 'US'),
-            home: const Splash(),
+            home: const InitialScreen(),
           );
         }),
       ),
+    );
+  }
+}
+
+/// Initial screen that handles navigation without showing Flutter splash UI
+/// Only native splash screen will be visible
+class InitialScreen extends StatefulWidget {
+  const InitialScreen({super.key});
+
+  @override
+  State<InitialScreen> createState() => _InitialScreenState();
+}
+
+class _InitialScreenState extends State<InitialScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Defer navigation until after first frame so Navigator is ready (avoids _debugLocked assertion)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeAndNavigate();
+    });
+  }
+
+  void _initializeAndNavigate() {
+    // Initialize Firebase (same as Splash widget)
+    FirebaseServices.init(context).then((value) {
+      FirebaseServices.listener();
+    });
+
+    // Check login status and navigate (no delay - native splash already shown)
+    if (Preferences.authToken != null) {
+      if (mounted) {
+        context.pushAndClearNavigator(const HomeScreen());
+      }
+    } else {
+      if (mounted) {
+        context.pushAndClearNavigator(Language());
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Return empty/transparent container - native splash is already showing
+    return const Scaffold(
+      body: SizedBox.shrink(),
     );
   }
 }

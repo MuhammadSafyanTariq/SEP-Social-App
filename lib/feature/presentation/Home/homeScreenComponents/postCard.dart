@@ -11,6 +11,7 @@ import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import '../../../../components/styles/appColors.dart';
 import '../../../../utils/image_utils.dart';
 import '../../../data/models/dataModels/post_data.dart';
+import '../../../../utils/video_quality_helper.dart';
 import 'dart:ui' as ui;
 
 List<String> videoExtensions = [
@@ -140,7 +141,11 @@ class PostCard extends StatelessWidget {
 
   Widget buildMediaItem(FileElement file, BuildContext context) {
     if (isVideo(file)) {
-      final videoUrl = file.file ?? '';
+      // Use optimal video quality based on device capabilities
+      final videoUrl = VideoQualityHelper.getOptimalVideoUrl(
+        file,
+        context: context,
+      );
       final preciseAspectRatio = calculateAspectRatio(
         file.x,
         file.y,
@@ -171,7 +176,11 @@ class PostCard extends StatelessWidget {
   /// Build media item specifically for carousel to prevent overflow
   Widget buildMediaItemForCarousel(FileElement file, BuildContext context) {
     if (isVideo(file)) {
-      final videoUrl = file.file ?? '';
+      // Use optimal video quality based on device capabilities
+      final videoUrl = VideoQualityHelper.getOptimalVideoUrl(
+        file,
+        context: context,
+      );
       final preciseAspectRatio = calculateAspectRatio(
         file.x,
         file.y,

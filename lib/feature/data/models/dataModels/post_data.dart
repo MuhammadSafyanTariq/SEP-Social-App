@@ -93,6 +93,10 @@ class FileElement with _$FileElement {
     @JsonKey(name: "thumbnail") String? thumbnail,
     @JsonKey(name: "x") double? x,
     @JsonKey(name: "y") double? y,
+    // NEW: Multiple quality URLs for videos
+    // Format: {"1080p": "url1", "720p": "url2", "480p": "url3", "360p": "url4"}
+    @JsonKey(name: "qualities") Map<String, String>? qualities,
+    @JsonKey(name: "availableQualities") List<String>? availableQualities,
   }) = _FileElement;
 
   factory FileElement.fromJson(Map<String, dynamic> json) =>

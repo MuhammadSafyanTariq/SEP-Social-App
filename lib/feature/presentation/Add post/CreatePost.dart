@@ -254,12 +254,7 @@ class _CreatePostState extends State<CreatePost> {
     if (photo != null) {
       final fileData = File(photo.path);
       setState(() {
-        _mediaItems.add(
-          MediaItem(
-            file: fileData,
-            isVideo: false,
-          ),
-        );
+        _mediaItems.add(MediaItem(file: fileData, isVideo: false));
       });
     }
   }
@@ -385,21 +380,57 @@ class _CreatePostState extends State<CreatePost> {
 
       // try {
 
-      Future<(String, ui.Size)?> uploadFile(data, bool isImage) async {
+      Future<(String, ui.Size)?> uploadFile(
+        data,
+        bool isImage, {
+        int retryCount = 0,
+      }) async {
+        const maxRetries = 2;
         bool isUint8 = data is Uint8List;
-        final response = await authRepository.uploadPhoto(
-          imageFile: isUint8 ? null : data,
-          memoryFile: isUint8 ? data : null,
-        );
-        if (response.isSuccess) {
-          List<String> data = response.data ?? [];
-          if (data.isNotEmpty) {
-            String fileUrl = data.first;
-            final size = isImage
-                ? await getNetworkImageSize(fileUrl.fileUrl ?? '')
-                : ui.Size.zero;
-            return (fileUrl, size);
+
+        try {
+          final response = await authRepository.uploadPhoto(
+            imageFile: isUint8 ? null : data,
+            memoryFile: isUint8 ? data : null,
+          );
+
+          if (response.isSuccess) {
+            List<String> data = response.data ?? [];
+            if (data.isNotEmpty) {
+              String fileUrl = data.first;
+              final size = isImage
+                  ? await getNetworkImageSize(fileUrl.fileUrl ?? '')
+                  : ui.Size.zero;
+              return (fileUrl, size);
+            }
+          } else {
+            // If upload failed and we have retries left, try again
+            if (retryCount < maxRetries) {
+              AppUtils.log(
+                "Upload failed, retrying... (${retryCount + 1}/$maxRetries)",
+              );
+              await Future.delayed(Duration(seconds: 2)); // Wait before retry
+              return uploadFile(data, isImage, retryCount: retryCount + 1);
+            }
+            AppUtils.log(
+              "Upload failed after $maxRetries retries: ${response.getError}",
+            );
           }
+        } catch (e) {
+          // Handle network errors with retry
+          if ((e.toString().contains('Broken pipe') ||
+                  e.toString().contains('SocketException') ||
+                  e.toString().contains('Connection')) &&
+              retryCount < maxRetries) {
+            AppUtils.log(
+              "Network error during upload, retrying... (${retryCount + 1}/$maxRetries): $e",
+            );
+            await Future.delayed(Duration(seconds: 2)); // Wait before retry
+            return uploadFile(data, isImage, retryCount: retryCount + 1);
+          }
+          // Re-throw if no retries left or non-network error
+          AppUtils.log("Upload error: $e");
+          rethrow;
         }
         return null;
       }
@@ -407,15 +438,24 @@ class _CreatePostState extends State<CreatePost> {
       for (MediaItem mediaItem in _mediaItems) {
         if (!mediaItem.file.existsSync()) {
           AppUtils.log("File does not exist: ${mediaItem.file.path}");
-        } else {
+          AppUtils.toastError("File not found: ${mediaItem.file.path}");
+          continue;
+        }
+
+        try {
           (String, ui.Size)? thumbnailUrl;
           if (mediaItem.isVideo) {
             thumbnailUrl = await uploadFile(mediaItem.thumnailFile, true);
+            if (thumbnailUrl == null) {
+              AppUtils.log("Failed to upload thumbnail for video");
+            }
           }
+
           final fileUrlData = await uploadFile(
             mediaItem.file,
             !mediaItem.isVideo,
           );
+
           if (fileUrlData != null) {
             uploadedFiles.add({
               "file": fileUrlData.$1,
@@ -428,7 +468,28 @@ class _CreatePostState extends State<CreatePost> {
                     }
                   : {'x': fileUrlData.$2.width, 'y': fileUrlData.$2.height}),
             });
+          } else {
+            throw Exception(
+              "Failed to upload ${mediaItem.isVideo ? 'video' : 'image'} file",
+            );
           }
+        } catch (e) {
+          AppUtils.log("Error uploading file ${mediaItem.file.path}: $e");
+          // Check if it's a network error
+          if (e.toString().contains('Broken pipe') ||
+              e.toString().contains('SocketException') ||
+              e.toString().contains('Connection')) {
+            AppUtils.toastError(
+              "Network error: Please check your internet connection and try again.",
+            );
+          } else {
+            AppUtils.toastError("Failed to upload file. Please try again.");
+          }
+          // Reset upload state and return early
+          setState(() {
+            _isUploading = false;
+          });
+          return;
         }
       }
 
@@ -593,7 +654,24 @@ class _CreatePostState extends State<CreatePost> {
       context.pushAndClearNavigator(HomeScreen());
     } catch (e) {
       AppUtils.log("Error during post submission: $e");
-      AppUtils.toastError("Failed to create post. Please try again.");
+
+      // Provide more specific error messages
+      String errorMessage = "Failed to create post. Please try again.";
+      if (e.toString().contains('Broken pipe') ||
+          e.toString().contains('SocketException') ||
+          e.toString().contains('Connection')) {
+        errorMessage =
+            "Network error: Please check your internet connection and try again.";
+      } else if (e.toString().contains('timeout') ||
+          e.toString().contains('Timeout')) {
+        errorMessage =
+            "Upload timed out. Please try again with a better connection.";
+      } else if (e.toString().contains('Failed to upload')) {
+        errorMessage =
+            "File upload failed. Please check your files and try again.";
+      }
+
+      AppUtils.toastError(errorMessage);
     } finally {
       // Always reset loading state
       if (mounted) {
@@ -779,11 +857,7 @@ class _CreatePostState extends State<CreatePost> {
                     ),
                     color: Colors.transparent,
                   ),
-                  child: Icon(
-                    Icons.camera_alt,
-                    size: 40,
-                    color: Colors.white,
-                  ),
+                  child: Icon(Icons.camera_alt, size: 40, color: Colors.white),
                 ),
               ),
               SizedBox(height: 20),

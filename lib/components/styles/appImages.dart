@@ -131,7 +131,7 @@ class AppImages {
   static const String heartfillImage = '${_path}heartfillImage.png';
   static const String sepMediaImage = '${_path}sepMediaImage.png';
   static const String splashLogo = '${_path}splashLogo.png';
-  static const String welcome = '${_path}welcome.jpg';
+  static const String welcome = '${_path}welcome.png';
   static const String getLiveBtn = '${_path}getLiveBtn.png';
   static const String sendmsg = '${_path}sendmsg.png';
   static const String flipCamera = '${_path}flipCamera.png';

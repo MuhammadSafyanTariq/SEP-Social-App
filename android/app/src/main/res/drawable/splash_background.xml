@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Splash screen background matching Flutter splash: black -> green -> black gradient -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Gradient background matching Flutter splash screen -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="linear"
+                android:angle="270"
+                android:startColor="#000000"
+                android:centerColor="#0BB455"
+                android:endColor="#000000" />
+        </shape>
+    </item>
+</layer-list>

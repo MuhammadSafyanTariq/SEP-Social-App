@@ -1511,7 +1511,12 @@ mixin _$FileElement {
   @JsonKey(name: "x")
   double? get x => throw _privateConstructorUsedError;
   @JsonKey(name: "y")
-  double? get y => throw _privateConstructorUsedError;
+  double? get y => throw _privateConstructorUsedError; // NEW: Multiple quality URLs for videos
+  // Format: {"1080p": "url1", "720p": "url2", "480p": "url3", "360p": "url4"}
+  @JsonKey(name: "qualities")
+  Map<String, String>? get qualities => throw _privateConstructorUsedError;
+  @JsonKey(name: "availableQualities")
+  List<String>? get availableQualities => throw _privateConstructorUsedError;
 
   /// Serializes this FileElement to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -1537,6 +1542,8 @@ abstract class $FileElementCopyWith<$Res> {
     @JsonKey(name: "thumbnail") String? thumbnail,
     @JsonKey(name: "x") double? x,
     @JsonKey(name: "y") double? y,
+    @JsonKey(name: "qualities") Map<String, String>? qualities,
+    @JsonKey(name: "availableQualities") List<String>? availableQualities,
   });
 }
 
@@ -1561,6 +1568,8 @@ class _$FileElementCopyWithImpl<$Res, $Val extends FileElement>
     Object? thumbnail = freezed,
     Object? x = freezed,
     Object? y = freezed,
+    Object? qualities = freezed,
+    Object? availableQualities = freezed,
   }) {
     return _then(
       _value.copyWith(
@@ -1588,6 +1597,14 @@ class _$FileElementCopyWithImpl<$Res, $Val extends FileElement>
                 ? _value.y
                 : y // ignore: cast_nullable_to_non_nullable
                       as double?,
+            qualities: freezed == qualities
+                ? _value.qualities
+                : qualities // ignore: cast_nullable_to_non_nullable
+                      as Map<String, String>?,
+            availableQualities: freezed == availableQualities
+                ? _value.availableQualities
+                : availableQualities // ignore: cast_nullable_to_non_nullable
+                      as List<String>?,
           )
           as $Val,
     );
@@ -1610,6 +1627,8 @@ abstract class _$$FileElementImplCopyWith<$Res>
     @JsonKey(name: "thumbnail") String? thumbnail,
     @JsonKey(name: "x") double? x,
     @JsonKey(name: "y") double? y,
+    @JsonKey(name: "qualities") Map<String, String>? qualities,
+    @JsonKey(name: "availableQualities") List<String>? availableQualities,
   });
 }
 
@@ -1633,6 +1652,8 @@ class __$$FileElementImplCopyWithImpl<$Res>
     Object? thumbnail = freezed,
     Object? x = freezed,
     Object? y = freezed,
+    Object? qualities = freezed,
+    Object? availableQualities = freezed,
   }) {
     return _then(
       _$FileElementImpl(
@@ -1660,6 +1681,14 @@ class __$$FileElementImplCopyWithImpl<$Res>
             ? _value.y
             : y // ignore: cast_nullable_to_non_nullable
                   as double?,
+        qualities: freezed == qualities
+            ? _value._qualities
+            : qualities // ignore: cast_nullable_to_non_nullable
+                  as Map<String, String>?,
+        availableQualities: freezed == availableQualities
+            ? _value._availableQualities
+            : availableQualities // ignore: cast_nullable_to_non_nullable
+                  as List<String>?,
       ),
     );
   }
@@ -1675,7 +1704,10 @@ class _$FileElementImpl implements _FileElement {
     @JsonKey(name: "thumbnail") this.thumbnail,
     @JsonKey(name: "x") this.x,
     @JsonKey(name: "y") this.y,
-  });
+    @JsonKey(name: "qualities") final Map<String, String>? qualities,
+    @JsonKey(name: "availableQualities") final List<String>? availableQualities,
+  }) : _qualities = qualities,
+       _availableQualities = availableQualities;
 
   factory _$FileElementImpl.fromJson(Map<String, dynamic> json) =>
       _$$FileElementImplFromJson(json);
@@ -1698,10 +1730,36 @@ class _$FileElementImpl implements _FileElement {
   @override
   @JsonKey(name: "y")
   final double? y;
+  // NEW: Multiple quality URLs for videos
+  // Format: {"1080p": "url1", "720p": "url2", "480p": "url3", "360p": "url4"}
+  final Map<String, String>? _qualities;
+  // NEW: Multiple quality URLs for videos
+  // Format: {"1080p": "url1", "720p": "url2", "480p": "url3", "360p": "url4"}
+  @override
+  @JsonKey(name: "qualities")
+  Map<String, String>? get qualities {
+    final value = _qualities;
+    if (value == null) return null;
+    if (_qualities is EqualUnmodifiableMapView) return _qualities;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableMapView(value);
+  }
+
+  final List<String>? _availableQualities;
+  @override
+  @JsonKey(name: "availableQualities")
+  List<String>? get availableQualities {
+    final value = _availableQualities;
+    if (value == null) return null;
+    if (_availableQualities is EqualUnmodifiableListView)
+      return _availableQualities;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(value);
+  }
 
   @override
   String toString() {
-    return 'FileElement(file: $file, type: $type, id: $id, thumbnail: $thumbnail, x: $x, y: $y)';
+    return 'FileElement(file: $file, type: $type, id: $id, thumbnail: $thumbnail, x: $x, y: $y, qualities: $qualities, availableQualities: $availableQualities)';
   }
 
   @override
@@ -1715,12 +1773,30 @@ class _$FileElementImpl implements _FileElement {
             (identical(other.thumbnail, thumbnail) ||
                 other.thumbnail == thumbnail) &&
             (identical(other.x, x) || other.x == x) &&
-            (identical(other.y, y) || other.y == y));
+            (identical(other.y, y) || other.y == y) &&
+            const DeepCollectionEquality().equals(
+              other._qualities,
+              _qualities,
+            ) &&
+            const DeepCollectionEquality().equals(
+              other._availableQualities,
+              _availableQualities,
+            ));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, file, type, id, thumbnail, x, y);
+  int get hashCode => Object.hash(
+    runtimeType,
+    file,
+    type,
+    id,
+    thumbnail,
+    x,
+    y,
+    const DeepCollectionEquality().hash(_qualities),
+    const DeepCollectionEquality().hash(_availableQualities),
+  );
 
   /// Create a copy of FileElement
   /// with the given fields replaced by the non-null parameter values.
@@ -1744,6 +1820,8 @@ abstract class _FileElement implements FileElement {
     @JsonKey(name: "thumbnail") final String? thumbnail,
     @JsonKey(name: "x") final double? x,
     @JsonKey(name: "y") final double? y,
+    @JsonKey(name: "qualities") final Map<String, String>? qualities,
+    @JsonKey(name: "availableQualities") final List<String>? availableQualities,
   }) = _$FileElementImpl;
 
   factory _FileElement.fromJson(Map<String, dynamic> json) =
@@ -1766,7 +1844,14 @@ abstract class _FileElement implements FileElement {
   double? get x;
   @override
   @JsonKey(name: "y")
-  double? get y;
+  double? get y; // NEW: Multiple quality URLs for videos
+  // Format: {"1080p": "url1", "720p": "url2", "480p": "url3", "360p": "url4"}
+  @override
+  @JsonKey(name: "qualities")
+  Map<String, String>? get qualities;
+  @override
+  @JsonKey(name: "availableQualities")
+  List<String>? get availableQualities;
 
   /// Create a copy of FileElement
   /// with the given fields replaced by the non-null parameter values.

@@ -215,7 +215,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 SEE What I found? SEP a multipurpose social media. Download it now and earn free rewards and full of entertainment. 
 
 Play Store Link: https://play.google.com/store/apps/details?id=com.app.sep
-App Store Link: https://apps.apple.com/app/sep/id123456789
+App Store Link: https://apps.apple.com/pk/app/sep-media-entertainment/id6743032925
 
 Sign up the app using refer code: $referralCode
 ''';

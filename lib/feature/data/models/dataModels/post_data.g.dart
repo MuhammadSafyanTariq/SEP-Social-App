@@ -134,6 +134,12 @@ _$FileElementImpl _$$FileElementImplFromJson(Map<String, dynamic> json) =>
       thumbnail: json['thumbnail'] as String?,
       x: (json['x'] as num?)?.toDouble(),
       y: (json['y'] as num?)?.toDouble(),
+      qualities: (json['qualities'] as Map<String, dynamic>?)?.map(
+        (k, e) => MapEntry(k, e as String),
+      ),
+      availableQualities: (json['availableQualities'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList(),
     );
 
 Map<String, dynamic> _$$FileElementImplToJson(_$FileElementImpl instance) =>
@@ -144,6 +150,8 @@ Map<String, dynamic> _$$FileElementImplToJson(_$FileElementImpl instance) =>
       'thumbnail': instance.thumbnail,
       'x': instance.x,
       'y': instance.y,
+      'qualities': instance.qualities,
+      'availableQualities': instance.availableQualities,
     };
 
 _$LocationImpl _$$LocationImplFromJson(Map<String, dynamic> json) =>

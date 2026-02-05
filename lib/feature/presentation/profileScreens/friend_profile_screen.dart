@@ -36,6 +36,7 @@ import '../Home/homeScreenComponents/post_components.dart';
 import '../Home/story/story_view_screen_new.dart';
 import '../../data/models/dataModels/getUserDetailModel.dart';
 import '../Home/video.dart';
+import '../Home/reels_video_screen.dart';
 import '../chatScreens/Messages_Screen.dart';
 import '../controller/auth_Controller/profileCtrl.dart';
 import '../controller/story/story_controller.dart';
@@ -61,6 +62,8 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
   String? name;
   String? namee;
   StoryController? storyController;
+  RxBool isProfileAccessDenied = RxBool(false);
+  RxString deniedReason = RxString(''); // Track why access was denied
 
   // Cache for video thumbnails
   final Map<String, String?> _thumbnailCache = {};
@@ -134,6 +137,15 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
         .getFriendProfileDetails(profileData.value.id!)
         .applyLoader;
     profileData.refresh();
+
+    // Check profile visibility privacy settings
+    _checkProfileVisibility();
+
+    // If access is denied, don't load posts
+    if (isProfileAccessDenied.value) {
+      return;
+    }
+
     _updateHeight();
     profileImagePageNoFriend = 1;
     profileVideoPageNoFriend = 1;
@@ -145,6 +157,86 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
     });
 
     getPosts(refresh: true);
+  }
+
+  /// Check if current user can view this profile based on privacy settings
+  void _checkProfileVisibility() {
+    final seeMyProfile = profileData.value.seeMyProfile;
+    final currentUserId = Preferences.uid;
+    final profileOwnerId = profileData.value.id;
+    final profileFollowers = profileData.value.followers ?? [];
+    final isCurrentUserFriend = profileFollowers.contains(currentUserId);
+
+    // Allow viewing own profile regardless of settings
+    if (currentUserId == profileOwnerId) {
+      AppUtils.log('🔒 Profile Visibility Check: Own profile - Access GRANTED');
+      isProfileAccessDenied.value = false;
+      deniedReason.value = '';
+      return;
+    }
+
+    AppUtils.log('🔒 Profile Visibility Check:');
+    AppUtils.log(
+      '  - Profile Owner: ${profileData.value.name} (ID: $profileOwnerId)',
+    );
+    AppUtils.log('  - seeMyProfile Setting: $seeMyProfile');
+    AppUtils.log('  - Current User ID: $currentUserId');
+    AppUtils.log('  - Is Friend: $isCurrentUserFriend');
+    AppUtils.log('  - Followers Count: ${profileFollowers.length}');
+
+    if (seeMyProfile == null || seeMyProfile.isEmpty) {
+      // Default to allowing access if setting is not set
+      AppUtils.log('  ✅ Access GRANTED: No privacy setting (default: public)');
+      isProfileAccessDenied.value = false;
+      deniedReason.value = '';
+      return;
+    }
+
+    final seeMyProfileLower = seeMyProfile.toLowerCase().trim();
+
+    // Check if profile is set to "My Friends" (handles various formats)
+    if (seeMyProfileLower == 'my friends' ||
+        seeMyProfileLower == 'myfriends' ||
+        seeMyProfileLower == 'my_friends' ||
+        seeMyProfileLower == 'friends') {
+      if (!isCurrentUserFriend) {
+        AppUtils.log(
+          '  ❌ Access DENIED: Profile is set to "My Friends" and user is not a friend',
+        );
+        isProfileAccessDenied.value = true;
+        deniedReason.value =
+            'my_friends'; // Track that it's "My Friends" setting
+        return;
+      }
+    }
+
+    // Check if profile is set to "Nobody" (handles various formats)
+    if (seeMyProfileLower == 'nobody' ||
+        seeMyProfileLower == 'no_one' ||
+        seeMyProfileLower == 'no one' ||
+        seeMyProfileLower == 'private') {
+      AppUtils.log('  ❌ Access DENIED: Profile is set to "Nobody"');
+      isProfileAccessDenied.value = true;
+      deniedReason.value = 'nobody'; // Track that it's "Nobody" setting
+      return;
+    }
+
+    // Check if profile is set to "Everybody" or "everyBody" (allow access)
+    if (seeMyProfileLower == 'everybody' ||
+        seeMyProfileLower == 'every body' ||
+        seeMyProfileLower == 'public') {
+      AppUtils.log('  ✅ Access GRANTED: Profile is set to "Everybody"');
+      isProfileAccessDenied.value = false;
+      deniedReason.value = '';
+      return;
+    }
+
+    // Default: allow access if setting doesn't match known values
+    AppUtils.log(
+      '  ✅ Access GRANTED: Unknown setting value, defaulting to allow',
+    );
+    isProfileAccessDenied.value = false;
+    deniedReason.value = '';
   }
 
   Future getPosts({
@@ -234,6 +326,10 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
       profileData.value.id!,
     );
     profileData.refresh();
+
+    // Re-check profile visibility after follow/unfollow action
+    _checkProfileVisibility();
+
     LoaderUtils.dismiss();
   }
 
@@ -927,8 +1023,67 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Obx(
-      () => Scaffold(
+    return Obx(() {
+      // Show access denied screen if profile visibility check failed
+      if (isProfileAccessDenied.value) {
+        return Scaffold(
+          backgroundColor: AppColors.white,
+          appBar: AppBar(
+            backgroundColor: AppColors.white,
+            elevation: 0,
+            leading: IconButton(
+              icon: Icon(Icons.arrow_back, color: AppColors.black),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ),
+          body: SafeArea(
+            child: Center(
+              child: Padding(
+                padding: EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.lock_outline, size: 80, color: Colors.grey[400]),
+                    SizedBox(height: 24),
+                    Text(
+                      'Profile Private',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.black,
+                      ),
+                    ),
+                    SizedBox(height: 12),
+                    Text(
+                      'This profile is set to private. Only friends can view this profile.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                    ),
+                    SizedBox(height: 32),
+                    AppButton(
+                      onTap: () => Navigator.of(context).pop(),
+                      label: 'Go Back',
+                      buttonColor: AppColors.primaryColor,
+                      labelStyle: TextStyle(
+                        color: AppColors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      padding: EdgeInsets.symmetric(
+                        vertical: 14,
+                        horizontal: 32,
+                      ),
+                      radius: 10,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+
+      return Scaffold(
         backgroundColor: AppColors.white,
         body: SafeArea(
           child: CustomScrollView(
@@ -948,8 +1103,8 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
             ],
           ),
         ),
-      ),
-    );
+      );
+    });
   }
 
   Widget _buildCoverPhotoSection() {
@@ -1642,9 +1797,26 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
 
     return GestureDetector(
       onTap: () {
-        if (videoUrl != null) {
+        // Get all video posts (filter to only include posts with valid video files)
+        final allVideoPosts = profileVideoPostListFriend
+            .where(
+              (p) =>
+                  p.files.isNotEmpty &&
+                  p.files.first.file?.isNotEmpty == true &&
+                  p.files.first.type == 'video',
+            )
+            .toList();
+
+        if (allVideoPosts.isNotEmpty) {
+          // Find the index of the clicked video
+          final clickedIndex = allVideoPosts.indexWhere((p) => p.id == post.id);
+          final initialIndex = clickedIndex >= 0 ? clickedIndex : 0;
+
           context.pushNavigator(
-            VideoScreen(videoUrls: [videoUrl], initialIndex: 0),
+            ReelsVideoScreen(
+              initialPosts: allVideoPosts,
+              initialIndex: initialIndex,
+            ),
           );
         }
       },
@@ -1887,25 +2059,15 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
         );
       }
 
-      final videoUrls = <String>[];
-
-      videoUrls.add(
-        "https://www.learningcontainer.com/wp-content/uploads/2020/05/sample-mp4-file.mp4",
-      );
-
-      for (var post in videoPosts) {
-        if (post.files?.isNotEmpty ?? false) {
-          String? filePath = post.files?.first.file;
-          if (filePath != null && filePath.isNotEmpty) {
-            if (filePath.startsWith("http")) {
-              videoUrls.add(filePath);
-            } else if (filePath.startsWith("/public/uploads/") ||
-                filePath.startsWith("/")) {
-              videoUrls.add("$baseUrl$filePath");
-            }
-          }
-        }
-      }
+      // Filter to only include posts with valid video files
+      final validVideoPosts = videoPosts
+          .where(
+            (p) =>
+                p.files.isNotEmpty &&
+                p.files.first.file?.isNotEmpty == true &&
+                p.files.first.type == 'video',
+          )
+          .toList();
 
       return GridView.builder(
         shrinkWrap: true,
@@ -1915,9 +2077,14 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
           crossAxisSpacing: 10,
           mainAxisSpacing: 10,
         ),
-        itemCount: videoUrls.length,
+        itemCount: validVideoPosts.length,
         itemBuilder: (context, index) {
-          final videoUrl = videoUrls[index];
+          final post = validVideoPosts[index];
+          final videoUrl = post.files.first.file?.isNotEmpty == true
+              ? AppUtils.configImageUrl(post.files.first.file!)
+              : null;
+
+          if (videoUrl == null) return const SizedBox();
 
           return FutureBuilder<String?>(
             future: _generateThumbnail(videoUrl),
@@ -1933,8 +2100,17 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
 
               return GestureDetector(
                 onTap: () {
+                  // Find the index of the clicked video in the filtered list
+                  final clickedIndex = validVideoPosts.indexWhere(
+                    (p) => p.id == post.id,
+                  );
+                  final initialIndex = clickedIndex >= 0 ? clickedIndex : 0;
+
                   context.pushNavigator(
-                    VideoScreen(videoUrls: videoUrls, initialIndex: index),
+                    ReelsVideoScreen(
+                      initialPosts: validVideoPosts,
+                      initialIndex: initialIndex,
+                    ),
                   );
                 },
                 child: ClipRRect(

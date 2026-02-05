@@ -22,66 +22,53 @@ class _SplashState extends State<Splash> {
   @override
   void initState() {
     super.initState();
-    FirebaseServices.init(context).then((value){
+    FirebaseServices.init(context).then((value) {
       FirebaseServices.listener();
     });
     _checkLoginStatus();
   }
 
-
   Future<void> _checkLoginStatus() async {
     await Future.delayed(const Duration(seconds: 3));
     if (Preferences.authToken != null) {
-       context.pushAndClearNavigator(const HomeScreen());
+      context.pushAndClearNavigator(const HomeScreen());
     } else {
       context.pushAndClearNavigator(Language());
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.dark.copyWith(statusBarColor: Colors.transparent),
+      value: SystemUiOverlayStyle.dark.copyWith(
+        statusBarColor: Colors.transparent,
+      ),
       child: Scaffold(
         body: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [
-                Colors.black,
-                AppColors.greenSplash,
-                Colors.black,
-              ],
+              colors: [Colors.black, AppColors.greenSplash, Colors.black],
               stops: [0.0, 0.5, 1.0],
             ),
           ),
 
-          child: Stack(
-            children: [
-              Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(20),
-                      child: ImageView(
-                        url: AppImages.splashLogo,
-                        height: 250.sdp,
-                        width: 250.sdp,
-                        fit: BoxFit.contain,
-                      ),
-                    ),
-                    50.height,
-                  ],
-                ),
+          child: Align(
+            alignment: const Alignment(-0.15, 0.10),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: Image.asset(
+                AppImages.splashLogo,
+                height: 250.sdp,
+                width: 250.sdp,
+                fit: BoxFit.contain,
+                alignment: Alignment.center,
               ),
-            ],
+            ),
           ),
         ),
       ),
     );
   }
-
 }
