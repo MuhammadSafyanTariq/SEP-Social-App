@@ -91,16 +91,18 @@ class PostVideo extends StatelessWidget {
                     },
                     child: AutoPlayVideoPlayer(
                       videoUrl: file != null
-                          ? VideoQualityHelper.getOptimalVideoUrl(
-                                  file!,
-                                  context: context,
-                                ).fileUrl ??
-                                ''
-                          : videoUrl?.fileUrl ?? '',
+                          ? AppUtils.configImageUrl(
+                              VideoQualityHelper.getOptimalVideoUrl(
+                                file!,
+                                context: context,
+                              ),
+                            )
+                          : AppUtils.configImageUrl(videoUrl?.fileUrl ?? ''),
                       postId: postId ?? '',
                       aspectRatio: (file?.x != null && file?.y != null)
                           ? file!.x! / file!.y!
                           : 16 / 9,
+                      fileElement: file, // Pass FileElement for quality management
                     ),
                   ),
 

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../styles/appColors.dart';
+import 'dialog_styles.dart';
 
 appDialog(BuildContext context, Widget child,
-    {bool barrierDismissible = true, Color bgColor = AppColors.white, Key? key}) {
+    {bool barrierDismissible = true, Color bgColor = DialogStyles.dialogBackground, Key? key}) {
 
   final alertDialog = AlertDialog(
     key: key,
@@ -24,6 +24,7 @@ appDialog(BuildContext context, Widget child,
       context: context,
       useSafeArea: true,
       barrierDismissible: barrierDismissible,
+      barrierColor: DialogStyles.barrierColor.withOpacity(0.5), // Black barrier with opacity
       builder: (_) => FractionallySizedBox(
         widthFactor: 0.9,
         child: Material(

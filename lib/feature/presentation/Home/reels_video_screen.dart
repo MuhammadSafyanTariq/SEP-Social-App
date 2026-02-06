@@ -10,6 +10,12 @@ import 'package:sep/utils/appUtils.dart';
 import 'package:sep/feature/presentation/Home/homeScreenComponents/read_more_text.dart';
 import 'package:sep/services/networking/urls.dart';
 import 'package:sep/utils/video_quality_helper.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:sep/services/saved_post_service.dart';
+import 'package:sep/services/deep_link_service.dart';
+import 'package:sep/feature/presentation/profileScreens/friend_profile_screen.dart';
+import 'package:sep/feature/data/models/dataModels/profile_data/profile_data_model.dart';
+import 'package:sep/utils/extensions/contextExtensions.dart';
 
 class ReelsVideoScreen extends StatefulWidget {
   final List<PostData> initialPosts;
@@ -46,6 +52,9 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
   // Track video progress for view counting
   bool _hasReachedHalfway = false;
 
+  // Track saved status for each post
+  final Map<String, bool> _savedStatusMap = {};
+
   @override
   void initState() {
     super.initState();
@@ -53,6 +62,14 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
     _posts = List.from(widget.initialPosts);
     _pageController = PageController(initialPage: widget.initialIndex);
     _currentIndex = widget.initialIndex;
+    
+    // Initialize saved status map
+    for (var post in _posts) {
+      if (post.id != null) {
+        _savedStatusMap[post.id!] = post.isSaved ?? false;
+      }
+    }
+    
     _initializeAndPlay(_currentIndex);
   }
 
@@ -82,8 +99,19 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
   @override
   void deactivate() {
     // Pause and stop video when navigating away from this screen
+    // Defer pause to avoid setState() during build phase
     if (_controller != null && _controller!.value.isInitialized) {
-      _controller!.pause();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        // Check if still mounted and controller is still valid
+        if (mounted && _controller != null && _controller!.value.isInitialized) {
+          try {
+            _controller!.pause();
+          } catch (e) {
+            // Ignore errors if controller was disposed
+            AppUtils.log('Error pausing video in deactivate: $e');
+          }
+        }
+      });
     }
     super.deactivate();
   }
@@ -227,6 +255,13 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
           .toList();
 
       if (newVideoPosts.isNotEmpty) {
+        // Initialize saved status for new posts
+        for (var post in newVideoPosts) {
+          if (post.id != null) {
+            _savedStatusMap[post.id!] = post.isSaved ?? false;
+          }
+        }
+        
         setState(() {
           _posts.addAll(newVideoPosts);
           _currentPage++;
@@ -306,6 +341,81 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
       profileCtrl.globalPostList[globalIndex] = updatedPost;
       profileCtrl.globalPostList.refresh();
     }
+  }
+
+  Future<void> _sharePost(PostData post) async {
+    try {
+      if (post.id == null) {
+        AppUtils.toastError('Unable to share this post');
+        return;
+      }
+
+      // Get post caption (limit to 200 chars)
+      String caption = post.content ?? '';
+      if (caption.length > 200) {
+        caption = caption.substring(0, 200) + '...';
+      }
+
+      // Generate share message
+      String shareText = DeepLinkService.generatePostShareText(
+        post.id!,
+        caption: caption.isNotEmpty ? caption : null,
+      );
+
+      // Add app install instructions
+      shareText += '\n\nDownload SEP Media to see more amazing content!';
+
+      // Use share_plus to share
+      final result = await Share.share(
+        shareText,
+        subject: 'Check out this post on SEP Media!',
+      );
+
+      if (result.status == ShareResultStatus.success) {
+        AppUtils.toast('Post shared successfully!');
+      }
+    } catch (e) {
+      AppUtils.log('❌ Error sharing post: $e');
+      AppUtils.toastError('Failed to share post');
+    }
+  }
+
+  Future<void> _toggleSave(PostData post) async {
+    if (post.id == null || post.id!.isEmpty) return;
+
+    final postId = post.id!;
+    final isCurrentlySaved = _savedStatusMap[postId] ?? (post.isSaved ?? false);
+
+    setState(() {
+      _savedStatusMap[postId] = !isCurrentlySaved;
+    });
+
+    try {
+      if (isCurrentlySaved) {
+        await SavedPostService.unsavePost(postId: postId);
+      } else {
+        await SavedPostService.savePost(postId: postId);
+      }
+    } catch (e) {
+      // Revert on error
+      setState(() {
+        _savedStatusMap[postId] = isCurrentlySaved;
+      });
+      AppUtils.log('Error toggling save: $e');
+      AppUtils.toastError('Failed to ${isCurrentlySaved ? 'unsave' : 'save'} post');
+    }
+  }
+
+  void _navigateToProfile(dynamic user) {
+    if (user == null) return;
+
+    final profileData = ProfileDataModel(
+      id: user.id ?? '',
+      name: user.name ?? '',
+      image: user.image,
+    );
+
+    context.pushNavigator(FriendProfileScreen(data: profileData));
   }
 
   void _openComments(BuildContext context, PostData post) {
@@ -668,32 +778,38 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
                       // User info
                       Row(
                         children: [
-                          CircleAvatar(
-                            radius: 20,
-                            backgroundColor: Colors.grey[300],
-                            backgroundImage:
-                                (user?.image != null && user!.image!.isNotEmpty)
-                                ? NetworkImage(
-                                    user.image!.startsWith('http')
-                                        ? user.image!
-                                        : '$baseUrl${user.image}',
-                                  )
-                                : null,
-                            child: (user?.image == null || user!.image!.isEmpty)
-                                ? Icon(Icons.person, color: Colors.grey[600])
-                                : null,
+                          GestureDetector(
+                            onTap: () => _navigateToProfile(user),
+                            child: CircleAvatar(
+                              radius: 20,
+                              backgroundColor: Colors.grey[300],
+                              backgroundImage:
+                                  (user?.image != null && user!.image!.isNotEmpty)
+                                  ? NetworkImage(
+                                      user.image!.startsWith('http')
+                                          ? user.image!
+                                          : '$baseUrl${user.image}',
+                                    )
+                                  : null,
+                              child: (user?.image == null || user!.image!.isEmpty)
+                                  ? Icon(Icons.person, color: Colors.grey[600])
+                                  : null,
+                            ),
                           ),
                           SizedBox(width: 12),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  user?.name ?? 'Unknown User',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
+                                GestureDetector(
+                                  onTap: () => _navigateToProfile(user),
+                                  child: Text(
+                                    user?.name ?? 'Unknown User',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -762,6 +878,28 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
                       color: Colors.white,
                       label: '${post.videoCount ?? 0}',
                       onTap: null,
+                    ),
+                    SizedBox(height: 24),
+
+                    // Share button
+                    _buildActionButton(
+                      icon: Icons.share,
+                      color: Colors.white,
+                      label: 'Share',
+                      onTap: () => _sharePost(post),
+                    ),
+                    SizedBox(height: 24),
+
+                    // Save button
+                    _buildActionButton(
+                      icon: (_savedStatusMap[post.id ?? ''] ?? (post.isSaved ?? false))
+                          ? Icons.bookmark
+                          : Icons.bookmark_border,
+                      color: (_savedStatusMap[post.id ?? ''] ?? (post.isSaved ?? false))
+                          ? Colors.yellow
+                          : Colors.white,
+                      label: 'Save',
+                      onTap: () => _toggleSave(post),
                     ),
                   ],
                 ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:sep/components/coreComponents/TextView.dart';
+import 'package:sep/components/coreComponents/dialog_styles.dart';
 import 'package:sep/components/styles/appColors.dart';
 import 'package:sep/feature/presentation/subscription/subscription_required_screen.dart';
 import 'package:sep/services/subscription/subscription_service.dart';
@@ -44,6 +45,7 @@ class ResubscribeWarningDialog extends StatelessWidget {
     showDialog(
       context: context,
       barrierDismissible: false,
+      barrierColor: DialogStyles.barrierColor.withOpacity(0.5),
       builder: (context) =>
           ResubscribeWarningDialog(daysRemaining: daysRemaining),
     );
@@ -52,11 +54,12 @@ class ResubscribeWarningDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Dialog(
+      backgroundColor: DialogStyles.dialogBackground,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: DialogStyles.dialogBackground,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Column(
@@ -79,13 +82,9 @@ class ResubscribeWarningDialog extends StatelessWidget {
             const SizedBox(height: 20),
 
             // Title
-            const TextView(
+            TextView(
               text: "Subscription Expired",
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
+              style: DialogStyles.titleStyle.copyWith(fontSize: 22),
             ),
 
             const SizedBox(height: 12),
@@ -94,11 +93,7 @@ class ResubscribeWarningDialog extends StatelessWidget {
             TextView(
               text:
                   "Your seller subscription has expired. Your store and products are currently not visible to other users.",
-              style: TextStyle(
-                fontSize: 15,
-                color: Colors.grey[700],
-                height: 1.5,
-              ),
+              style: DialogStyles.bodyStyle,
               textAlign: TextAlign.center,
             ),
 
@@ -121,16 +116,16 @@ class ResubscribeWarningDialog extends StatelessWidget {
                     color: Colors.orange.shade700,
                   ),
                   const SizedBox(width: 8),
-                  TextView(
-                    text: daysRemaining == 0
-                        ? "Last day to resubscribe"
-                        : "$daysRemaining day${daysRemaining > 1 ? 's' : ''} left to resubscribe",
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.orange.shade700,
+                    TextView(
+                      text: daysRemaining == 0
+                          ? "Last day to resubscribe"
+                          : "$daysRemaining day${daysRemaining > 1 ? 's' : ''} left to resubscribe",
+                      style: DialogStyles.bodyStyle.copyWith(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.orange.shade700,
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -156,10 +151,9 @@ class ResubscribeWarningDialog extends StatelessWidget {
                     child: TextView(
                       text:
                           "Resubscribe now to make your store visible again and continue selling.",
-                      style: TextStyle(
+                      style: DialogStyles.bodyStyle.copyWith(
                         fontSize: 13,
                         color: Colors.blue.shade900,
-                        height: 1.4,
                       ),
                     ),
                   ),
@@ -186,10 +180,10 @@ class ResubscribeWarningDialog extends StatelessWidget {
                     ),
                     child: TextView(
                       text: "Later",
-                      style: TextStyle(
+                      style: DialogStyles.buttonStyle.copyWith(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
-                        color: Colors.grey[700],
+                        color: DialogStyles.bodyColor,
                       ),
                     ),
                   ),
@@ -217,11 +211,10 @@ class ResubscribeWarningDialog extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    child: const TextView(
+                    child: TextView(
                       text: "Resubscribe Now",
-                      style: TextStyle(
+                      style: DialogStyles.buttonStyle.copyWith(
                         fontSize: 15,
-                        fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
                     ),

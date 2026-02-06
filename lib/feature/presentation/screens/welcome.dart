@@ -11,21 +11,30 @@ import 'loginsignup/login.dart';
 class Welcome extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
 
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // Background image
-          Container(
-            height: screenHeight,
-            width: screenWidth,
-            decoration: BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage(AppImages.welcome),
-                fit: BoxFit.cover,
+          // Background image - positioned at top with SafeArea, displayed at real width
+          SafeArea(
+            bottom: false, // Don't add bottom padding, let image extend
+            child: Padding(
+              padding: const EdgeInsets.only(
+                top: 15.0,
+              ), // Move image down a bit from top
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: Container(
+                  width: screenWidth,
+                  child: Image.asset(
+                    AppImages.welcome,
+                    fit: BoxFit
+                        .contain, // Show image at its real width/height without cropping
+                    alignment: Alignment.topCenter,
+                  ),
+                ),
               ),
             ),
           ),
@@ -50,12 +59,16 @@ class Welcome extends StatelessWidget {
           SafeArea(
             child: Column(
               children: [
-                // Spacer to push buttons to bottom
-                Expanded(child: SizedBox()),
-
-                // Buttons section at bottom
+                // Spacer to position buttons higher up
+                Spacer(), // Minimal spacer to move buttons up
+                // Buttons section
                 Padding(
-                  padding: EdgeInsets.fromLTRB(24.sdp, 0, 24.sdp, 40.sdp),
+                  padding: EdgeInsets.fromLTRB(
+                    24.sdp,
+                    0,
+                    24.sdp,
+                    65.sdp,
+                  ), // Further reduced bottom padding
                   child: Column(
                     children: [
                       // Login Button - Dark green with glow effect

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sep/components/coreComponents/TextView.dart';
+import 'package:sep/components/coreComponents/dialog_styles.dart';
 import 'package:sep/components/styles/appColors.dart';
 import 'package:sep/services/game/game_manager.dart';
 
@@ -25,6 +26,7 @@ class GameStartDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
+      backgroundColor: DialogStyles.dialogBackground,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: Row(
         children: [
@@ -37,11 +39,7 @@ class GameStartDialog extends StatelessWidget {
           Expanded(
             child: TextView(
               text: isFree ? 'Free Play!' : 'Play Again?',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
+              style: DialogStyles.titleStyle,
             ),
           ),
         ],
@@ -52,10 +50,8 @@ class GameStartDialog extends StatelessWidget {
         children: [
           TextView(
             text: 'Game: $gameName',
-            style: TextStyle(
-              fontSize: 16,
+            style: DialogStyles.bodyStyle.copyWith(
               fontWeight: FontWeight.w600,
-              color: Colors.black87,
             ),
           ),
           SizedBox(height: 12),
@@ -74,8 +70,7 @@ class GameStartDialog extends StatelessWidget {
                   Expanded(
                     child: TextView(
                       text: 'Your first play today is FREE!',
-                      style: TextStyle(
-                        fontSize: 14,
+                      style: DialogStyles.bodyStyle.copyWith(
                         color: Colors.green.shade800,
                         fontWeight: FontWeight.w500,
                       ),
@@ -87,9 +82,9 @@ class GameStartDialog extends StatelessWidget {
             SizedBox(height: 8),
             TextView(
               text: 'Next plays will cost $tokensRequired tokens each.',
-              style: TextStyle(
+              style: DialogStyles.bodyStyle.copyWith(
                 fontSize: 12,
-                color: Colors.grey.shade600,
+                color: DialogStyles.bodyColor,
                 fontStyle: FontStyle.italic,
               ),
             ),
@@ -111,8 +106,7 @@ class GameStartDialog extends StatelessWidget {
                       Expanded(
                         child: TextView(
                           text: 'Token Cost',
-                          style: TextStyle(
-                            fontSize: 14,
+                          style: DialogStyles.bodyStyle.copyWith(
                             fontWeight: FontWeight.w600,
                             color: Colors.orange.shade800,
                           ),
@@ -123,8 +117,7 @@ class GameStartDialog extends StatelessWidget {
                   SizedBox(height: 8),
                   TextView(
                     text: 'This game will cost $tokensRequired tokens to play.',
-                    style: TextStyle(
-                      fontSize: 14,
+                    style: DialogStyles.bodyStyle.copyWith(
                       color: Colors.orange.shade900,
                     ),
                   ),
@@ -132,7 +125,10 @@ class GameStartDialog extends StatelessWidget {
                   TextView(
                     text:
                         'Current Balance: ${GameManager.getCurrentTokenBalance()} tokens',
-                    style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+                    style: DialogStyles.bodyStyle.copyWith(
+                      fontSize: 13,
+                      color: DialogStyles.bodyColor,
+                    ),
                   ),
                 ],
               ),
@@ -145,7 +141,10 @@ class GameStartDialog extends StatelessWidget {
           onPressed: onCancel,
           child: TextView(
             text: 'Cancel',
-            style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
+            style: DialogStyles.buttonStyle.copyWith(
+              color: DialogStyles.bodyColor,
+              fontWeight: FontWeight.normal,
+            ),
           ),
         ),
         ElevatedButton(
@@ -159,10 +158,8 @@ class GameStartDialog extends StatelessWidget {
           ),
           child: TextView(
             text: isFree ? 'Play Free' : 'Play ($tokensRequired Tokens)',
-            style: TextStyle(
+            style: DialogStyles.buttonStyle.copyWith(
               color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
             ),
           ),
         ),
@@ -181,6 +178,7 @@ class GameStartDialog extends StatelessWidget {
     return showDialog<bool>(
       context: context,
       barrierDismissible: false,
+      barrierColor: DialogStyles.barrierColor.withOpacity(0.5),
       builder: (context) => GameStartDialog(
         gameId: gameId,
         gameName: gameName,
@@ -207,6 +205,7 @@ class InsufficientTokensDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
+      backgroundColor: DialogStyles.dialogBackground,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: Row(
         children: [
@@ -215,11 +214,7 @@ class InsufficientTokensDialog extends StatelessWidget {
           Expanded(
             child: TextView(
               text: 'Insufficient Tokens',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
+              style: DialogStyles.titleStyle,
             ),
           ),
         ],
@@ -230,7 +225,7 @@ class InsufficientTokensDialog extends StatelessWidget {
         children: [
           TextView(
             text: 'You need $tokensRequired tokens to play this game.',
-            style: TextStyle(fontSize: 16, color: Colors.black87),
+            style: DialogStyles.bodyStyle,
           ),
           SizedBox(height: 12),
           Container(
@@ -248,8 +243,7 @@ class InsufficientTokensDialog extends StatelessWidget {
                   child: TextView(
                     text:
                         'Current Balance: ${GameManager.getCurrentTokenBalance()} tokens',
-                    style: TextStyle(
-                      fontSize: 14,
+                    style: DialogStyles.bodyStyle.copyWith(
                       color: Colors.red.shade800,
                       fontWeight: FontWeight.w500,
                     ),
@@ -261,7 +255,9 @@ class InsufficientTokensDialog extends StatelessWidget {
           SizedBox(height: 12),
           TextView(
             text: 'Purchase more tokens to continue playing!',
-            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+            style: DialogStyles.bodyStyle.copyWith(
+              fontSize: 14,
+            ),
           ),
         ],
       ),
@@ -270,7 +266,10 @@ class InsufficientTokensDialog extends StatelessWidget {
           onPressed: () => Navigator.of(context).pop(),
           child: TextView(
             text: 'Later',
-            style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
+            style: DialogStyles.buttonStyle.copyWith(
+              color: DialogStyles.bodyColor,
+              fontWeight: FontWeight.normal,
+            ),
           ),
         ),
         ElevatedButton(
@@ -287,10 +286,8 @@ class InsufficientTokensDialog extends StatelessWidget {
           ),
           child: TextView(
             text: 'Buy Tokens',
-            style: TextStyle(
+            style: DialogStyles.buttonStyle.copyWith(
               color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
             ),
           ),
         ),
@@ -307,6 +304,7 @@ class InsufficientTokensDialog extends StatelessWidget {
     return showDialog(
       context: context,
       barrierDismissible: false,
+      barrierColor: DialogStyles.barrierColor.withOpacity(0.5),
       builder: (context) => InsufficientTokensDialog(
         tokensRequired: tokensRequired,
         onBuyTokens: onBuyTokens,

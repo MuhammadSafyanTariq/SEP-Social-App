@@ -21,11 +21,25 @@ import 'feature/presentation/Home/homeScreen.dart';
 import 'services/storage/preferences.dart';
 import 'services/firebaseServices.dart';
 import 'utils/extensions/contextExtensions.dart';
+import 'utils/appUtils.dart';
+import 'utils/gpu_error_handler.dart';
 
 final GlobalKey<NavigatorState> navState = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Set up global error handler for GPU device lost errors
+  FlutterError.onError = (FlutterErrorDetails details) {
+    // Handle GPU errors through our handler
+    final wasGpuError = GpuErrorHandler.instance.isGpuDeviceLost;
+    GpuErrorHandler.instance.handleFlutterError(details);
+    
+    // Only present error if it wasn't a GPU error (GPU errors are suppressed)
+    if (!wasGpuError || !GpuErrorHandler.instance.isGpuDeviceLost) {
+      FlutterError.presentError(details);
+    }
+  };
 
   // Lock orientation to portrait mode
   await SystemChrome.setPreferredOrientations([
@@ -142,7 +156,7 @@ class MyApp extends StatelessWidget {
 }
 
 /// Initial screen that handles navigation without showing Flutter splash UI
-/// Only native splash screen will be visible
+/// Shows home screen with loading spinner instead of white screen
 class InitialScreen extends StatefulWidget {
   const InitialScreen({super.key});
 
@@ -151,6 +165,8 @@ class InitialScreen extends StatefulWidget {
 }
 
 class _InitialScreenState extends State<InitialScreen> {
+  bool _shouldShowHome = false;
+
   @override
   void initState() {
     super.initState();
@@ -160,29 +176,49 @@ class _InitialScreenState extends State<InitialScreen> {
     });
   }
 
-  void _initializeAndNavigate() {
+  void _initializeAndNavigate() async {
     // Initialize Firebase (same as Splash widget)
-    FirebaseServices.init(context).then((value) {
-      FirebaseServices.listener();
+    try {
+      await FirebaseServices.init(context);
+      // Don't await listener to avoid blocking navigation
+      FirebaseServices.listener().catchError((e) {
+        AppUtils.log('Firebase listener error: $e');
+      });
+    } catch (e) {
+      AppUtils.log('Firebase init error: $e');
+    }
+
+    // Show home screen immediately
+    if (!mounted) return;
+    
+    setState(() {
+      _shouldShowHome = Preferences.authToken != null;
     });
 
-    // Check login status and navigate (no delay - native splash already shown)
-    if (Preferences.authToken != null) {
-      if (mounted) {
-        context.pushAndClearNavigator(const HomeScreen());
-      }
-    } else {
-      if (mounted) {
-        context.pushAndClearNavigator(Language());
-      }
+    // Small delay to ensure Flutter renders first frame and dismisses native splash
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    // Navigate if needed (only if not showing home)
+    if (!mounted) return;
+    
+    if (!_shouldShowHome) {
+      context.pushAndClearNavigator(Language());
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Return empty/transparent container - native splash is already showing
-    return const Scaffold(
-      body: SizedBox.shrink(),
+    // If user is logged in, show home screen directly (it handles its own loading states)
+    if (_shouldShowHome) {
+      return const HomeScreen();
+    }
+    
+    // While checking login status, show loading spinner
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: const Center(
+        child: CircularProgressIndicator(),
+      ),
     );
   }
 }

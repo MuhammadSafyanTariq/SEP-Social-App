@@ -3,6 +3,21 @@ import 'package:flutter/material.dart';
 import '../feature/data/models/dataModels/post_data.dart';
 import 'package:sep/utils/appUtils.dart';
 
+/// Result class containing all quality information for a video
+class VideoQualityDetailsResult {
+  final String selectedUrl;
+  final String originalUrl;
+  final List<String> sortedQualities; // Sorted highest to lowest (e.g., ["2160p", "1080p", "720p", "480p", "360p"])
+  final Map<String, String> qualityUrlMap; // Maps quality string to its URL
+
+  VideoQualityDetailsResult({
+    required this.selectedUrl,
+    required this.originalUrl,
+    required this.sortedQualities,
+    required this.qualityUrlMap,
+  });
+}
+
 /// Helper class to get optimal video quality based on device capabilities
 class VideoQualityHelper {
   /// Get max supported resolution for current device
@@ -119,5 +134,79 @@ class VideoQualityHelper {
     return fileElement.qualities != null &&
         fileElement.qualities!.isNotEmpty &&
         fileElement.qualities!.length > 1;
+  }
+
+  /// Get all available qualities sorted from highest to lowest
+  /// Returns a VideoQualityDetailsResult with sorted qualities and their URLs
+  static VideoQualityDetailsResult getAllQualities(
+    FileElement fileElement, {
+    BuildContext? context,
+    int? maxWidth,
+  }) {
+    final deviceMaxWidth = maxWidth ?? getMaxSupportedResolution(context);
+    final file = fileElement.file ?? '';
+    final qualities = fileElement.qualities ?? {};
+
+    // Quality order from highest to lowest
+    final qualityOrder = ['2160p', '1440p', '1080p', '720p', '480p', '360p', '240p'];
+    
+    // Build sorted list of available qualities (highest to lowest)
+    final sortedQualities = <String>[];
+    final qualityUrlMap = <String, String>{};
+
+    // Add qualities from the map in order
+    for (final quality in qualityOrder) {
+      if (qualities.containsKey(quality)) {
+        sortedQualities.add(quality);
+        qualityUrlMap[quality] = qualities[quality]!;
+      }
+    }
+
+    // Add any remaining qualities not in the standard order
+    for (final entry in qualities.entries) {
+      if (!qualityOrder.contains(entry.key)) {
+        sortedQualities.add(entry.key);
+        qualityUrlMap[entry.key] = entry.value;
+      }
+    }
+
+    // Get optimal URL (using existing logic)
+    final selectedUrl = getOptimalVideoUrl(
+      fileElement,
+      context: context,
+      maxWidth: deviceMaxWidth,
+    );
+
+    AppUtils.log('🎥 [Video Quality] getAllQualities:');
+    AppUtils.log('  📊 Available Qualities: $sortedQualities');
+    AppUtils.log('  ✅ Selected URL: $selectedUrl');
+
+    return VideoQualityDetailsResult(
+      selectedUrl: selectedUrl,
+      originalUrl: file,
+      sortedQualities: sortedQualities,
+      qualityUrlMap: qualityUrlMap,
+    );
+  }
+
+  /// Get URL for a specific quality by index (from sortedQualities list)
+  /// Returns null if index is out of bounds
+  static String? getUrlForQualityIndex(
+    VideoQualityDetailsResult qualityDetails,
+    int index,
+  ) {
+    if (index < 0 || index >= qualityDetails.sortedQualities.length) {
+      return null;
+    }
+    final quality = qualityDetails.sortedQualities[index];
+    return qualityDetails.qualityUrlMap[quality];
+  }
+
+  /// Get URL for a specific quality by quality string (e.g., "720p")
+  static String? getUrlForQualityString(
+    VideoQualityDetailsResult qualityDetails,
+    String quality,
+  ) {
+    return qualityDetails.qualityUrlMap[quality];
   }
 }

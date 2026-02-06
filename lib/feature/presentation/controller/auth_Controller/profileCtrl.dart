@@ -11,6 +11,7 @@ import '../../../../services/networking/apiMethods.dart';
 import '../../../../services/networking/urls.dart';
 import '../../../../services/storage/preferences.dart';
 import '../../../../utils/appUtils.dart';
+import '../../../../utils/gpu_error_handler.dart';
 import '../../../data/models/dataModels/Createpost/getcategory_model.dart';
 import '../../../data/models/dataModels/home_model/comments_list_model.dart';
 import '../../../data/models/dataModels/poll_item_model/poll_item_model.dart';
@@ -472,7 +473,15 @@ class ProfileCtrl extends GetxController {
             String finalImageUrl = filePath.startsWith("http")
                 ? filePath
                 : "$baseUrl$filePath";
-            precacheImage(NetworkImage(finalImageUrl), Get.context!);
+            // Use safe precache that handles GPU errors
+            try {
+              await GpuErrorHandler.safePrecacheImage(
+                NetworkImage(finalImageUrl),
+                Get.context!,
+              );
+            } catch (e) {
+              AppUtils.log('Error precaching image: $e');
+            }
           }
         }
       } else {

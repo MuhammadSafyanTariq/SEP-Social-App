@@ -108,7 +108,11 @@ class FirebaseServices {
       print('.........666666');
 
       // ChatCtrl.find.joinRecentChat();
-      ChatCtrl.find.fireRecentChatEvent();
+      try {
+        ChatCtrl.find.fireRecentChatEvent();
+      } catch (e) {
+        AppUtils.log('Error firing recent chat event: $e');
+      }
 
       Map<String, dynamic> notification = message.data;
       RemoteNotification? notification1 = message.notification;

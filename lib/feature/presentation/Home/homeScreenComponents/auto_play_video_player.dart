@@ -1,11 +1,12 @@
-import 'dart:async';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 import 'package:sep/utils/appUtils.dart';
 import 'package:get/get.dart';
 import 'package:sep/feature/presentation/controller/auth_Controller/profileCtrl.dart';
+import 'package:sep/feature/data/models/dataModels/post_data.dart';
+import 'package:sep/utils/video_quality_helper.dart';
+import 'package:sep/utils/gpu_error_handler.dart';
 
 // Global video controller manager
 class VideoControllerManager extends GetxController {
@@ -18,20 +19,37 @@ class VideoControllerManager extends GetxController {
   }
 
   void unregisterController(String postId) {
-    _controllers.remove(postId);
+    final controller = _controllers.remove(postId);
+    if (controller != null) {
+      try {
+        controller.pause();
+        controller.dispose();
+      } catch (e) {
+        AppUtils.log('Error disposing controller: $e');
+      }
+    }
   }
 
   void pauseAll() {
     for (var controller in _controllers.values) {
-      if (controller.value.isPlaying) {
-        controller.pause();
+      try {
+        if (controller.value.isPlaying) {
+          controller.pause();
+        }
+      } catch (e) {
+        AppUtils.log('Error pausing controller: $e');
       }
     }
   }
 
   void disposeAll() {
     for (var controller in _controllers.values) {
-      controller.dispose();
+      try {
+        controller.pause();
+        controller.dispose();
+      } catch (e) {
+        AppUtils.log('Error disposing controller: $e');
+      }
     }
     _controllers.clear();
   }
@@ -53,12 +71,14 @@ class AutoPlayVideoPlayer extends StatefulWidget {
   final String videoUrl;
   final String postId;
   final double aspectRatio;
+  final FileElement? fileElement; // Optional: provides access to qualities map
 
   const AutoPlayVideoPlayer({
     Key? key,
     required this.videoUrl,
     required this.postId,
     this.aspectRatio = 16 / 9,
+    this.fileElement,
   }) : super(key: key);
 
   @override
@@ -72,10 +92,6 @@ class _AutoPlayVideoPlayerState extends State<AutoPlayVideoPlayer> {
   bool _isMuted = true;
   bool _hasReachedHalfway = false;
   bool _viewCounted = false;
-  bool _hasError = false;
-  String? _errorMessage;
-  int _retryCount = 0;
-  static const int _maxRetries = 2;
 
   @override
   void initState() {
@@ -90,123 +106,49 @@ class _AutoPlayVideoPlayerState extends State<AutoPlayVideoPlayer> {
     }
   }
 
-  // Get device max supported resolution based on screen size and capabilities
-  int _getMaxSupportedResolution() {
-    if (Platform.isAndroid) {
-      // Conservative approach: Most Android devices can handle up to 1080p
-      // High-end devices might handle 1440p, but we'll be conservative
-      return 1920; // 1080p for most devices
-    } else if (Platform.isIOS) {
-      // iOS devices generally handle up to 1080p well
-      return 1920; // 1080p
-    }
-    return 1920; // Default to 1080p
-  }
-
-  // Check if video URL supports HLS (adaptive streaming)
-  bool _isHLSVideo(String url) {
-    return url.toLowerCase().endsWith('.m3u8') ||
-        url.toLowerCase().contains('/hls/') ||
-        url.toLowerCase().contains('playlist.m3u8');
-  }
-
-  // Get optimal video URL - prefer HLS, fallback to MP4 with quality detection
-  String _getOptimalVideoUrl(String originalUrl, int attempt) {
-    // If HLS, use it directly (HLS handles quality automatically)
-    if (_isHLSVideo(originalUrl)) {
-      return originalUrl;
+  Future<void> _initializeVideo() async {
+    // Check GPU state before initializing
+    if (GpuErrorHandler.instance.isGpuDeviceLost && 
+        !GpuErrorHandler.instance.canAttemptRecovery()) {
+      AppUtils.log('⚠️ Skipping video initialization - GPU device lost');
+      return;
     }
 
-    // For MP4, check if server provides multiple quality versions
-    // Common patterns: video_1080p.mp4, video_720p.mp4, etc.
-    if (attempt > 0 && originalUrl.contains('.mp4')) {
-      final uri = Uri.parse(originalUrl);
-      final path = uri.path;
-
-      // Try to find lower quality versions by modifying filename
-      if (attempt == 1 &&
-          (path.contains('_4k') ||
-              path.contains('_2160p') ||
-              path.contains('_1440p'))) {
-        // Replace 4K/1440p with 1080p
-        final newPath = path
-            .replaceAll('_4k', '_1080p')
-            .replaceAll('_2160p', '_1080p')
-            .replaceAll('_1440p', '_1080p');
-        return uri.replace(path: newPath).toString();
-      } else if (attempt == 2 && path.contains('_1080p')) {
-        // Replace 1080p with 720p
-        final newPath = path.replaceAll('_1080p', '_720p');
-        return uri.replace(path: newPath).toString();
-      }
-    }
-
-    return originalUrl;
-  }
-
-  Future<void> _initializeVideo({
-    int attempt = 0,
-    bool useSoftwareDecoding = false,
-  }) async {
     try {
-      // Get optimal URL based on retry attempt and video type
-      final videoUrl = _getOptimalVideoUrl(widget.videoUrl, attempt);
-
-      // Log video type for debugging
-      if (attempt == 0) {
-        AppUtils.log(
-          'Initializing video: ${_isHLSVideo(videoUrl) ? "HLS (adaptive)" : "MP4 (single quality)"}',
+      // Get optimal video URL
+      // widget.videoUrl from postVideo.dart is already wrapped with AppUtils.configImageUrl()
+      // But if fileElement is provided, we can re-select quality if needed
+      String finalVideoUrl = widget.videoUrl;
+      
+      if (widget.fileElement != null) {
+        // Get optimal quality URL (returns relative path like /public/upload/...)
+        final optimalUrl = VideoQualityHelper.getOptimalVideoUrl(
+          widget.fileElement!,
+          context: context,
         );
+        
+        // Wrap with base URL if it's a relative path
+        finalVideoUrl = optimalUrl.startsWith('http://') || optimalUrl.startsWith('https://')
+            ? optimalUrl
+            : AppUtils.configImageUrl(optimalUrl);
+      } else {
+        // If no fileElement, ensure widget.videoUrl is properly formatted
+        if (!finalVideoUrl.startsWith('http://') && !finalVideoUrl.startsWith('https://')) {
+          finalVideoUrl = AppUtils.configImageUrl(finalVideoUrl);
+        }
       }
 
-      // For single-quality videos, we'll try software decoding as last resort
-      // Note: video_player doesn't directly expose software decoding
+      AppUtils.log('🎥 Initializing video - URL: $finalVideoUrl');
+
       _controller = VideoPlayerController.networkUrl(
-        Uri.parse(videoUrl),
+        Uri.parse(finalVideoUrl),
         videoPlayerOptions: VideoPlayerOptions(
           mixWithOthers: true,
           allowBackgroundPlayback: false,
         ),
       );
 
-      // Add timeout to prevent hanging - increased for slow networks/large files
-      await _controller!.initialize().timeout(
-        const Duration(seconds: 30), // Increased from 10 to 30 seconds
-        onTimeout: () {
-          throw TimeoutException(
-            'Video initialization timed out after 30 seconds. This may be due to slow network or large file size.',
-          );
-        },
-      );
-
-      // Check if initialization was successful
-      if (!_controller!.value.isInitialized) {
-        throw Exception('Video failed to initialize');
-      }
-
-      // Check video resolution and retry with lower quality if too high
-      final videoSize = _controller!.value.size;
-      final maxResolution = _getMaxSupportedResolution();
-
-      if (videoSize.width > maxResolution &&
-          attempt == 0 &&
-          _retryCount < _maxRetries) {
-        AppUtils.log(
-          'Video resolution (${videoSize.width}x${videoSize.height}) exceeds recommended max ($maxResolution). Retrying with lower quality...',
-        );
-        // Dispose and retry with lower quality
-        await _controller?.dispose();
-        _controller = null;
-
-        if (mounted) {
-          setState(() {
-            _retryCount++;
-          });
-          // Retry with lower quality
-          await Future.delayed(const Duration(milliseconds: 500));
-          return _initializeVideo(attempt: _retryCount);
-        }
-      }
+      await _controller!.initialize();
 
       // Set video to loop and mute by default for better auto-play UX
       _controller!.setLooping(true);
@@ -224,29 +166,18 @@ class _AutoPlayVideoPlayerState extends State<AutoPlayVideoPlayer> {
 
       _controller!.addListener(() {
         if (mounted) {
-          // Check for errors during playback
+          // Check for GPU errors during playback
           if (_controller!.value.hasError) {
-            AppUtils.log(
-              'Video playback error: ${_controller!.value.errorDescription}',
-            );
-
-            // Try to recover from playback errors
-            if (_retryCount < _maxRetries) {
-              _retryCount++;
-              Future.delayed(const Duration(milliseconds: 500), () {
-                if (mounted) {
-                  _initializeVideo(attempt: _retryCount);
-                }
-              });
+            final errorDesc = _controller!.value.errorDescription ?? '';
+            final errorStr = errorDesc.toLowerCase();
+            if (errorStr.contains('devicelost') ||
+                errorStr.contains('vulkan') ||
+                errorStr.contains('impeller') ||
+                errorStr.contains('gpu')) {
+              GpuErrorHandler.instance.markGpuDeviceLost();
+              AppUtils.log('⚠️ GPU error detected during playback');
               return;
             }
-
-            setState(() {
-              _hasError = true;
-              _errorMessage = 'Video playback error';
-              _isInitialized = false;
-            });
-            return;
           }
 
           setState(() {
@@ -259,111 +190,41 @@ class _AutoPlayVideoPlayerState extends State<AutoPlayVideoPlayer> {
       if (mounted) {
         setState(() {
           _isInitialized = true;
-          _hasError = false;
-          _errorMessage = null;
-          _retryCount = 0; // Reset retry count on success
         });
       }
     } catch (e) {
-      AppUtils.log('Error initializing video (attempt $attempt): $e');
-
-      // Check for specific error types
-      final errorString = e.toString().toLowerCase();
-      bool isFormatError =
-          errorString.contains('exceeds_capabilities') ||
-          errorString.contains('format_supported=no') ||
-          errorString.contains('mediacodec') ||
-          errorString.contains('codec') ||
-          errorString.contains('exoplayer');
-
-      bool isTimeoutError =
-          errorString.contains('timeout') ||
-          errorString.contains('timed out') ||
-          e is TimeoutException;
-
-      bool isNetworkError =
-          errorString.contains('socket') ||
-          errorString.contains('connection') ||
-          errorString.contains('network') ||
-          errorString.contains('failed host lookup');
-
-      // Retry on timeout or network errors (up to max retries)
-      if ((isTimeoutError || isNetworkError) && _retryCount < _maxRetries) {
-        _retryCount++;
-        AppUtils.log(
-          '${isTimeoutError ? "Timeout" : "Network"} error detected. Retrying (attempt $_retryCount/$_maxRetries)...',
-        );
-
-        // Dispose current controller
-        try {
-          await _controller?.dispose();
-          _controller = null;
-        } catch (_) {
-          // Ignore disposal errors
-        }
-
-        // Wait longer before retry for network issues
-        if (mounted) {
-          await Future.delayed(Duration(seconds: isTimeoutError ? 2 : 1));
-          return _initializeVideo(attempt: _retryCount);
-        }
+      AppUtils.log('❌ Error initializing video: $e');
+      AppUtils.log('   Video URL was: ${widget.videoUrl}');
+      if (widget.fileElement != null) {
+        AppUtils.log('   FileElement provided, attempted quality selection');
       }
-
-      // Retry with lower quality if format error and haven't exceeded max retries
-      if (isFormatError && _retryCount < _maxRetries) {
-        _retryCount++;
-        AppUtils.log(
-          'Format error detected. Retrying with lower quality (attempt $_retryCount)...',
-        );
-
-        // Dispose current controller
-        try {
-          await _controller?.dispose();
-          _controller = null;
-        } catch (_) {
-          // Ignore disposal errors
-        }
-
-        // Retry with lower quality after a short delay
-        if (mounted) {
-          await Future.delayed(const Duration(milliseconds: 500));
-          return _initializeVideo(attempt: _retryCount);
-        }
+      
+      // Check if it's a GPU error
+      final errorStr = e.toString().toLowerCase();
+      if (errorStr.contains('devicelost') ||
+          errorStr.contains('vulkan') ||
+          errorStr.contains('impeller') ||
+          errorStr.contains('gpu')) {
+        GpuErrorHandler.instance.markGpuDeviceLost();
       }
-
+      
+      // If initialization fails, set state to show error
       if (mounted) {
         setState(() {
-          _hasError = true;
           _isInitialized = false;
-          if (isFormatError && _retryCount >= _maxRetries) {
-            _errorMessage = 'Video format not supported on this device';
-          } else if (isFormatError) {
-            _errorMessage =
-                'Video format not supported. Trying lower quality...';
-          } else if (isTimeoutError && _retryCount >= _maxRetries) {
-            _errorMessage =
-                'Video took too long to load. Please check your connection.';
-          } else if (isNetworkError && _retryCount >= _maxRetries) {
-            _errorMessage =
-                'Network error. Please check your internet connection.';
-          } else {
-            _errorMessage = 'Failed to load video';
-          }
         });
-      }
-
-      // Dispose controller on error to prevent memory leaks
-      try {
-        await _controller?.dispose();
-        _controller = null;
-      } catch (_) {
-        // Ignore disposal errors
       }
     }
   }
 
   void _handleVisibilityChanged(VisibilityInfo info) {
-    if (!mounted || _controller == null || !_isInitialized || _hasError) return;
+    if (!mounted || _controller == null || !_isInitialized) return;
+
+    // Check GPU state
+    if (GpuErrorHandler.instance.isGpuDeviceLost && 
+        !GpuErrorHandler.instance.canAttemptRecovery()) {
+      return;
+    }
 
     // Video is considered "in focus" when more than 50% visible
     final isVisible = info.visibleFraction > 0.5;
@@ -376,7 +237,7 @@ class _AutoPlayVideoPlayerState extends State<AutoPlayVideoPlayer> {
         AppUtils.log('Error pausing other videos: $e');
       }
 
-      // Play this video with error handling
+      // Play this video
       try {
         _controller!.play();
         if (mounted) {
@@ -386,21 +247,18 @@ class _AutoPlayVideoPlayerState extends State<AutoPlayVideoPlayer> {
         }
       } catch (e) {
         AppUtils.log('Error playing video: $e');
-        // If play fails, mark as error
-        if (mounted) {
-          setState(() {
-            _hasError = true;
-            _errorMessage = 'Failed to play video';
-          });
-        }
       }
     } else if (!isVisible && _controller!.value.isPlaying) {
       // Pause when scrolled away
-      _controller!.pause();
-      if (mounted) {
-        setState(() {
-          _isPlaying = false;
-        });
+      try {
+        _controller!.pause();
+        if (mounted) {
+          setState(() {
+            _isPlaying = false;
+          });
+        }
+      } catch (e) {
+        AppUtils.log('Error pausing video: $e');
       }
     }
   }
@@ -466,24 +324,32 @@ class _AutoPlayVideoPlayerState extends State<AutoPlayVideoPlayer> {
   void _togglePlayPause() {
     if (_controller == null || !_isInitialized) return;
 
-    setState(() {
-      if (_controller!.value.isPlaying) {
-        _controller!.pause();
-        _isPlaying = false;
-      } else {
-        _controller!.play();
-        _isPlaying = true;
-      }
-    });
+    try {
+      setState(() {
+        if (_controller!.value.isPlaying) {
+          _controller!.pause();
+          _isPlaying = false;
+        } else {
+          _controller!.play();
+          _isPlaying = true;
+        }
+      });
+    } catch (e) {
+      AppUtils.log('Error toggling play/pause: $e');
+    }
   }
 
   void _toggleMute() {
     if (_controller == null || !_isInitialized) return;
 
-    setState(() {
-      _isMuted = !_isMuted;
-      _controller!.setVolume(_isMuted ? 0 : 1);
-    });
+    try {
+      setState(() {
+        _isMuted = !_isMuted;
+        _controller!.setVolume(_isMuted ? 0 : 1);
+      });
+    } catch (e) {
+      AppUtils.log('Error toggling mute: $e');
+    }
   }
 
   @override
@@ -495,54 +361,18 @@ class _AutoPlayVideoPlayerState extends State<AutoPlayVideoPlayer> {
       AppUtils.log('Error unregistering controller: $e');
     }
 
-    _controller?.pause();
-    _controller?.dispose();
+    try {
+      _controller?.pause();
+      _controller?.dispose();
+    } catch (e) {
+      AppUtils.log('Error disposing controller: $e');
+    }
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // Show error state
-    if (_hasError) {
-      return AspectRatio(
-        aspectRatio: widget.aspectRatio,
-        child: Container(
-          color: Colors.black,
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.error_outline, color: Colors.white70, size: 48),
-                SizedBox(height: 12),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: Text(
-                    _errorMessage ?? 'Video unavailable',
-                    style: TextStyle(color: Colors.white70, fontSize: 14),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-                SizedBox(height: 8),
-                TextButton(
-                  onPressed: () {
-                    setState(() {
-                      _hasError = false;
-                      _errorMessage = null;
-                      _retryCount = 0; // Reset retry count
-                    });
-                    _initializeVideo(attempt: 0);
-                  },
-                  child: Text('Retry', style: TextStyle(color: Colors.white)),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
-    // Show loading state
-    if (!_isInitialized || _controller == null) {
+    if (!_isInitialized || _controller == null || !_controller!.value.isInitialized) {
       return AspectRatio(
         aspectRatio: widget.aspectRatio,
         child: Container(

@@ -117,9 +117,15 @@ class _HomeScreenState extends State<Contentscreen> {
   @override
   void initState() {
     super.initState();
-    _loadInitialPosts();
-    CreatePostCtrl.find.getPostCategories();
-    widget.getLiveStreamList?.call();
+    // Defer heavy operations until after first frame renders
+    // This prevents blocking the UI thread and ensures smooth transition from splash
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _loadInitialPosts();
+        CreatePostCtrl.find.getPostCategories();
+        widget.getLiveStreamList?.call();
+      }
+    });
   }
 
   Future postliker(String selectedpostId) async {
@@ -213,6 +219,9 @@ class _HomeScreenState extends State<Contentscreen> {
         onRefresh: _loadInitialPosts,
         onLoading: _loadMorePosts,
         child: CustomScrollView(
+          // Limit cache extent to reduce off-screen widgets (prevents GPU memory buildup)
+          // This ensures only ~2-3 screens worth of content is kept in memory
+          cacheExtent: MediaQuery.of(context).size.height * 1.5,
           slivers: [
             // Search Bar
             SliverToBoxAdapter(

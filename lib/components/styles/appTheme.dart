@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import 'appColors.dart';
 import 'textStyles.dart';
+import '../coreComponents/dialog_styles.dart';
 
 class AppTheme {
   static final ThemeData light = ThemeData(
@@ -33,8 +34,14 @@ class AppTheme {
       floatingActionButtonTheme: _floatingButtonTheme,
       checkboxTheme: _checkboxThemeData,
   // dialogBackgroundColor: Colors.transparent,
-      dialogTheme: const DialogThemeData(
+      dialogTheme: DialogThemeData(
         surfaceTintColor: Colors.transparent,
+        backgroundColor: DialogStyles.dialogBackground,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(6),
+        ),
+        titleTextStyle: DialogStyles.titleStyle,
+        contentTextStyle: DialogStyles.bodyStyle,
       )
 
 
@@ -60,9 +67,15 @@ class AppTheme {
 
       inputDecorationTheme: EditTextTheme.editTextTheme,
       floatingActionButtonTheme: _floatingButtonTheme, checkboxTheme: _checkboxThemeData,
-      dialogTheme: const DialogThemeData(
-    surfaceTintColor: Colors.transparent,
-  )
+      dialogTheme: DialogThemeData(
+        surfaceTintColor: Colors.transparent,
+        backgroundColor: DialogStyles.dialogBackground,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(6),
+        ),
+        titleTextStyle: DialogStyles.titleStyle,
+        contentTextStyle: DialogStyles.bodyStyle,
+      )
 
   );
   static FloatingActionButtonThemeData get _floatingButtonTheme => FloatingActionButtonThemeData(

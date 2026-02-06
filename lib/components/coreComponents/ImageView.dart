@@ -3,6 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:sep/utils/extensions/extensions.dart';
+import 'package:sep/utils/gpu_error_handler.dart';
 // import 'package:video_thumbnail_imageview/video_thumbnail_imageview.dart';
 import '../styles/appColors.dart';
 import 'TapWidget.dart';
@@ -191,14 +192,44 @@ class ImageViewContent extends StatelessWidget {
                           //         },
                           //         assetPlaceHolder: '',
                           //       )
-                          Image(
-                            image: image(),
-                            height: size ?? height,
-                            width: size ?? width,
-                            fit: fit,
-                            color: tintColor,
-                            errorBuilder: (context, error, stackTrace) =>
-                                const SizedBox(),
+                          Builder(
+                            builder: (context) {
+                              // Check GPU state before rendering image
+                              try {
+                                final gpuHandler = GpuErrorHandler.instance;
+                                if (gpuHandler.isGpuDeviceLost && !gpuHandler.canAttemptRecovery()) {
+                                  // GPU is lost, show placeholder instead
+                                  return Container(
+                                    height: size ?? height,
+                                    width: size ?? width,
+                                    color: Colors.grey[200],
+                                    child: Icon(Icons.image_not_supported, 
+                                      color: Colors.grey[400], 
+                                      size: (size ?? height ?? 24) * 0.5),
+                                  );
+                                }
+                              } catch (_) {
+                                // If GpuErrorHandler not available, continue normally
+                              }
+                              
+                              return Image(
+                                image: image(),
+                                height: size ?? height,
+                                width: size ?? width,
+                                fit: fit,
+                                color: tintColor,
+                                errorBuilder: (context, error, stackTrace) {
+                                  // Check if error is GPU-related
+                                  final errorStr = error.toString().toLowerCase();
+                                  if (errorStr.contains('gpu') || 
+                                      errorStr.contains('devicelost') ||
+                                      errorStr.contains('invalid image data')) {
+                                    GpuErrorHandler.instance.markGpuDeviceLost();
+                                  }
+                                  return const SizedBox();
+                                },
+                              );
+                            },
                           ),
                     ),
                   ),
