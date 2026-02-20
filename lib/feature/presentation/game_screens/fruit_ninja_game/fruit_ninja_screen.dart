@@ -8,7 +8,6 @@ import 'package:sep/feature/presentation/game_screens/fruit_ninja_game/bgm.dart'
 import 'package:sep/feature/presentation/wallet/packages_screen.dart';
 import 'package:sep/services/game/game_manager.dart';
 import 'package:sep/utils/appUtils.dart';
-import 'package:sep/utils/extensions/contextExtensions.dart';
 
 class FruitNinjaScreen extends StatefulWidget {
   const FruitNinjaScreen({Key? key}) : super(key: key);
@@ -58,8 +57,10 @@ class _FruitNinjaScreenState extends State<FruitNinjaScreen> {
         context: context,
         tokensRequired: status.tokensRequired,
         onBuyTokens: () {
-          Navigator.of(context).pop(); // Close dialog first
-          context.pushNavigator(PackagesScreen());
+          // Dialog closes itself; push packages on root navigator
+          Navigator.of(context, rootNavigator: true).push(
+            MaterialPageRoute(builder: (_) => PackagesScreen()),
+          );
         },
       );
       // Exit game screen after dialog is closed

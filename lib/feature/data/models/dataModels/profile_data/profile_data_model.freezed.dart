@@ -79,6 +79,11 @@ mixin _$ProfileDataModel {
   String? get website => throw _privateConstructorUsedError;
   @JsonKey(name: "username")
   String? get userName => throw _privateConstructorUsedError;
+  @JsonKey(name: "isPrivate")
+  bool? get isPrivate => throw _privateConstructorUsedError;
+  @JsonKey(name: "pendingFollowRequests")
+  List<PendingFollowRequestItem>? get pendingFollowRequests =>
+      throw _privateConstructorUsedError;
   @JsonKey(name: "__v")
   int? get v => throw _privateConstructorUsedError;
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -132,6 +137,9 @@ abstract class $ProfileDataModelCopyWith<$Res> {
     @JsonKey(name: "bio") String? bio,
     @JsonKey(name: "website") String? website,
     @JsonKey(name: "username") String? userName,
+    @JsonKey(name: "isPrivate") bool? isPrivate,
+    @JsonKey(name: "pendingFollowRequests")
+    List<PendingFollowRequestItem>? pendingFollowRequests,
     @JsonKey(name: "__v") int? v,
     @JsonKey(includeFromJson: false, includeToJson: false)
     AgoraUserLiveStatus? agoraLiveStatus,
@@ -182,6 +190,8 @@ class _$ProfileDataModelCopyWithImpl<$Res, $Val extends ProfileDataModel>
     Object? bio = freezed,
     Object? website = freezed,
     Object? userName = freezed,
+    Object? isPrivate = freezed,
+    Object? pendingFollowRequests = freezed,
     Object? v = freezed,
     Object? agoraLiveStatus = freezed,
   }) {
@@ -303,6 +313,14 @@ class _$ProfileDataModelCopyWithImpl<$Res, $Val extends ProfileDataModel>
                 ? _value.userName
                 : userName // ignore: cast_nullable_to_non_nullable
                       as String?,
+            isPrivate: freezed == isPrivate
+                ? _value.isPrivate
+                : isPrivate // ignore: cast_nullable_to_non_nullable
+                      as bool?,
+            pendingFollowRequests: freezed == pendingFollowRequests
+                ? _value.pendingFollowRequests
+                : pendingFollowRequests // ignore: cast_nullable_to_non_nullable
+                      as List<PendingFollowRequestItem>?,
             v: freezed == v
                 ? _value.v
                 : v // ignore: cast_nullable_to_non_nullable
@@ -356,6 +374,9 @@ abstract class _$$ProfileDataModelImplCopyWith<$Res>
     @JsonKey(name: "bio") String? bio,
     @JsonKey(name: "website") String? website,
     @JsonKey(name: "username") String? userName,
+    @JsonKey(name: "isPrivate") bool? isPrivate,
+    @JsonKey(name: "pendingFollowRequests")
+    List<PendingFollowRequestItem>? pendingFollowRequests,
     @JsonKey(name: "__v") int? v,
     @JsonKey(includeFromJson: false, includeToJson: false)
     AgoraUserLiveStatus? agoraLiveStatus,
@@ -405,6 +426,8 @@ class __$$ProfileDataModelImplCopyWithImpl<$Res>
     Object? bio = freezed,
     Object? website = freezed,
     Object? userName = freezed,
+    Object? isPrivate = freezed,
+    Object? pendingFollowRequests = freezed,
     Object? v = freezed,
     Object? agoraLiveStatus = freezed,
   }) {
@@ -526,6 +549,14 @@ class __$$ProfileDataModelImplCopyWithImpl<$Res>
             ? _value.userName
             : userName // ignore: cast_nullable_to_non_nullable
                   as String?,
+        isPrivate: freezed == isPrivate
+            ? _value.isPrivate
+            : isPrivate // ignore: cast_nullable_to_non_nullable
+                  as bool?,
+        pendingFollowRequests: freezed == pendingFollowRequests
+            ? _value._pendingFollowRequests
+            : pendingFollowRequests // ignore: cast_nullable_to_non_nullable
+                  as List<PendingFollowRequestItem>?,
         v: freezed == v
             ? _value.v
             : v // ignore: cast_nullable_to_non_nullable
@@ -572,10 +603,14 @@ class _$ProfileDataModelImpl implements _ProfileDataModel {
     @JsonKey(name: "bio") this.bio,
     @JsonKey(name: "website") this.website,
     @JsonKey(name: "username") this.userName,
+    @JsonKey(name: "isPrivate") this.isPrivate,
+    @JsonKey(name: "pendingFollowRequests")
+    final List<PendingFollowRequestItem>? pendingFollowRequests,
     @JsonKey(name: "__v") this.v,
     @JsonKey(includeFromJson: false, includeToJson: false) this.agoraLiveStatus,
   }) : _followers = followers,
-       _following = following;
+       _following = following,
+       _pendingFollowRequests = pendingFollowRequests;
 
   factory _$ProfileDataModelImpl.fromJson(Map<String, dynamic> json) =>
       _$$ProfileDataModelImplFromJson(json);
@@ -684,6 +719,21 @@ class _$ProfileDataModelImpl implements _ProfileDataModel {
   @JsonKey(name: "username")
   final String? userName;
   @override
+  @JsonKey(name: "isPrivate")
+  final bool? isPrivate;
+  final List<PendingFollowRequestItem>? _pendingFollowRequests;
+  @override
+  @JsonKey(name: "pendingFollowRequests")
+  List<PendingFollowRequestItem>? get pendingFollowRequests {
+    final value = _pendingFollowRequests;
+    if (value == null) return null;
+    if (_pendingFollowRequests is EqualUnmodifiableListView)
+      return _pendingFollowRequests;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(value);
+  }
+
+  @override
   @JsonKey(name: "__v")
   final int? v;
   @override
@@ -692,7 +742,7 @@ class _$ProfileDataModelImpl implements _ProfileDataModel {
 
   @override
   String toString() {
-    return 'ProfileDataModel(stripeCustomerId: $stripeCustomerId, walletBalance: $walletBalance, tokenBalance: $tokenBalance, walletTokens: $walletTokens, name: $name, id: $id, email: $email, password: $password, role: $role, phone: $phone, countryCode: $countryCode, dob: $dob, country: $country, gender: $gender, image: $image, coverPhoto: $coverPhoto, socialId: $socialId, isActive: $isActive, createdAt: $createdAt, updatedAt: $updatedAt, seeMyProfile: $seeMyProfile, shareMyPost: $shareMyPost, isNotification: $isNotification, followers: $followers, following: $following, postCount: $postCount, bio: $bio, website: $website, userName: $userName, v: $v, agoraLiveStatus: $agoraLiveStatus)';
+    return 'ProfileDataModel(stripeCustomerId: $stripeCustomerId, walletBalance: $walletBalance, tokenBalance: $tokenBalance, walletTokens: $walletTokens, name: $name, id: $id, email: $email, password: $password, role: $role, phone: $phone, countryCode: $countryCode, dob: $dob, country: $country, gender: $gender, image: $image, coverPhoto: $coverPhoto, socialId: $socialId, isActive: $isActive, createdAt: $createdAt, updatedAt: $updatedAt, seeMyProfile: $seeMyProfile, shareMyPost: $shareMyPost, isNotification: $isNotification, followers: $followers, following: $following, postCount: $postCount, bio: $bio, website: $website, userName: $userName, isPrivate: $isPrivate, pendingFollowRequests: $pendingFollowRequests, v: $v, agoraLiveStatus: $agoraLiveStatus)';
   }
 
   @override
@@ -751,6 +801,12 @@ class _$ProfileDataModelImpl implements _ProfileDataModel {
             (identical(other.website, website) || other.website == website) &&
             (identical(other.userName, userName) ||
                 other.userName == userName) &&
+            (identical(other.isPrivate, isPrivate) ||
+                other.isPrivate == isPrivate) &&
+            const DeepCollectionEquality().equals(
+              other._pendingFollowRequests,
+              _pendingFollowRequests,
+            ) &&
             (identical(other.v, v) || other.v == v) &&
             (identical(other.agoraLiveStatus, agoraLiveStatus) ||
                 other.agoraLiveStatus == agoraLiveStatus));
@@ -789,6 +845,8 @@ class _$ProfileDataModelImpl implements _ProfileDataModel {
     bio,
     website,
     userName,
+    isPrivate,
+    const DeepCollectionEquality().hash(_pendingFollowRequests),
     v,
     agoraLiveStatus,
   ]);
@@ -841,6 +899,9 @@ abstract class _ProfileDataModel implements ProfileDataModel {
     @JsonKey(name: "bio") final String? bio,
     @JsonKey(name: "website") final String? website,
     @JsonKey(name: "username") final String? userName,
+    @JsonKey(name: "isPrivate") final bool? isPrivate,
+    @JsonKey(name: "pendingFollowRequests")
+    final List<PendingFollowRequestItem>? pendingFollowRequests,
     @JsonKey(name: "__v") final int? v,
     @JsonKey(includeFromJson: false, includeToJson: false)
     final AgoraUserLiveStatus? agoraLiveStatus,
@@ -936,6 +997,12 @@ abstract class _ProfileDataModel implements ProfileDataModel {
   @override
   @JsonKey(name: "username")
   String? get userName;
+  @override
+  @JsonKey(name: "isPrivate")
+  bool? get isPrivate;
+  @override
+  @JsonKey(name: "pendingFollowRequests")
+  List<PendingFollowRequestItem>? get pendingFollowRequests;
   @override
   @JsonKey(name: "__v")
   int? get v;

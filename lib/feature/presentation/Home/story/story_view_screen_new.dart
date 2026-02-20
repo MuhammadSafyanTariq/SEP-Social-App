@@ -14,11 +14,14 @@ import 'dart:async';
 class StoryViewScreenNew extends StatefulWidget {
   final List<UserStoryGroup> storyGroups;
   final int initialGroupIndex;
+  /// When true, show delete menu for stories (used for \"Your Story\" views).
+  final bool canDeleteStories;
 
   const StoryViewScreenNew({
     Key? key,
     required this.storyGroups,
     this.initialGroupIndex = 0,
+    this.canDeleteStories = false,
   }) : super(key: key);
 
   @override
@@ -266,6 +269,72 @@ class _StoryViewScreenNewState extends State<StoryViewScreenNew> {
       await _storyController.toggleLikeStory(story.id);
       setState(() {}); // Refresh UI
     }
+  }
+
+  Future<void> _confirmDeleteStory(Story story) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) {
+        return AlertDialog(
+          backgroundColor: Colors.grey[900],
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Text(
+            'Delete story?',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          content: Text(
+            'This will remove the story for everyone.',
+            style: TextStyle(color: Colors.white70),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: Text(
+                'Delete',
+                style: TextStyle(color: Colors.redAccent),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) return;
+
+    final success = await _storyController.deleteStory(story.id);
+    if (!success) return;
+
+    // Also update the local list this screen is rendering from
+    if (_currentGroupIndex >= widget.storyGroups.length) {
+      Navigator.pop(context);
+      return;
+    }
+
+    final group = widget.storyGroups[_currentGroupIndex];
+    group.stories.removeWhere((s) => s.id == story.id);
+
+    if (group.stories.isEmpty) {
+      Navigator.pop(context);
+      return;
+    }
+
+    if (_currentStoryIndex >= group.stories.length) {
+      _currentStoryIndex = group.stories.length - 1;
+    }
+
+    setState(() {
+      _startStoryTimer();
+    });
   }
 
   @override
@@ -545,9 +614,32 @@ class _StoryViewScreenNewState extends State<StoryViewScreenNew> {
                 ],
               ),
             ),
-            IconButton(
-              icon: Icon(Icons.close, color: Colors.white),
-              onPressed: () => Navigator.pop(context),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (widget.canDeleteStories)
+                  PopupMenuButton<String>(
+                    icon: Icon(Icons.more_vert, color: Colors.white),
+                    onSelected: (value) {
+                      if (value == 'delete') {
+                        _confirmDeleteStory(story);
+                      }
+                    },
+                    itemBuilder: (context) => const [
+                      PopupMenuItem(
+                        value: 'delete',
+                        child: Text(
+                          'Delete',
+                          style: TextStyle(color: Colors.redAccent),
+                        ),
+                      ),
+                    ],
+                  ),
+                IconButton(
+                  icon: Icon(Icons.close, color: Colors.white),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
             ),
           ],
         ),

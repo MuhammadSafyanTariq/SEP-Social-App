@@ -14,6 +14,7 @@ class Preferences {
   static const _seemypost = 'seemypost_sep';
   static const _sharepost = 'sharepost_sep';
   static const _readNotificationsKey = 'readNotifications_sep';
+  static const _pendingFollowRequestSentKey = 'pendingFollowRequestSent_sep';
 
   static late SharedPreferences _prefs;
 
@@ -99,6 +100,41 @@ class Preferences {
     fcmToken = null;
     uploadedImage = null;
     clearReadNotificationIds();
+    clearPendingFollowRequestSentIds();
+  }
+
+  /// User IDs we've sent a follow request to (private accounts). Persisted so "Requested" state survives navigation.
+  static Set<String> get pendingFollowRequestSentToIds {
+    final jsonString = _prefs.getString(_pendingFollowRequestSentKey);
+    if (jsonString != null) {
+      try {
+        final List<dynamic> decoded = jsonDecode(jsonString);
+        return decoded.cast<String>().toSet();
+      } catch (e) {
+        return {};
+      }
+    }
+    return {};
+  }
+
+  static set _pendingFollowRequestSentToIds(Set<String> ids) {
+    _prefs.setString(_pendingFollowRequestSentKey, jsonEncode(ids.toList()));
+  }
+
+  static void addPendingFollowRequestSent(String userId) {
+    final set = pendingFollowRequestSentToIds;
+    set.add(userId);
+    _pendingFollowRequestSentToIds = set;
+  }
+
+  static void removePendingFollowRequestSent(String userId) {
+    final set = pendingFollowRequestSentToIds;
+    set.remove(userId);
+    _pendingFollowRequestSentToIds = set;
+  }
+
+  static void clearPendingFollowRequestSentIds() {
+    _prefs.remove(_pendingFollowRequestSentKey);
   }
 
   static set language(String? value) => value != null

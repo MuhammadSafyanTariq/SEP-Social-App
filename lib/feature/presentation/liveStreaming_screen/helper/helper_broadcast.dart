@@ -240,6 +240,9 @@ class IconControl extends StatelessWidget {
 
   const IconControl({this.icon, required this.onTap, this.url});
 
+  static const double _iconSize = 20;
+  static const double _padding = 6;
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -247,16 +250,26 @@ class IconControl extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.all(7),
+          padding: const EdgeInsets.all(_padding),
           decoration: BoxDecoration(
-            color: AppColors.black.withValues(
-              alpha: 0.35,
-            ), // semi-transparent dark bg
+            color: AppColors.black.withValues(alpha: 0.5),
             shape: BoxShape.circle,
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.25),
+              width: 1,
+            ),
           ),
           child: icon != null
-              ? Icon(icon, size: 24, color: Colors.black45)
-              : ImageView(url: url ?? '', size: 24, tintColor: Colors.black45),
+              ? Icon(
+                  icon,
+                  size: _iconSize,
+                  color: Colors.white,
+                )
+              : ImageView(
+                  url: url ?? '',
+                  size: _iconSize,
+                  tintColor: Colors.white,
+                ),
         ),
       ),
     );

@@ -1,6 +1,8 @@
 import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
+import 'package:sep/feature/presentation/notifactionScreens/notificationScreen.dart';
 import 'package:sep/feature/presentation/postDetail/post_deeplink_loader_screen.dart';
+import 'package:sep/services/networking/urls.dart';
 import 'package:sep/utils/appUtils.dart';
 
 /// Deep Link Service
@@ -19,7 +21,9 @@ class DeepLinkService {
   String? _pendingPostId;
 
   /// Initialize deep link handling
-  Future<void> initialize({required GlobalKey<NavigatorState> navigatorKey}) async {
+  Future<void> initialize({
+    required GlobalKey<NavigatorState> navigatorKey,
+  }) async {
     if (_isInitialized) return;
 
     _navigatorKey = navigatorKey;
@@ -28,14 +32,17 @@ class DeepLinkService {
       AppUtils.log('🔗 Initializing Deep Link Service...');
 
       // Handle deep link when app is already open
-      _appLinks.uriLinkStream.listen((Uri? uri) async {
-        if (uri != null) {
-          AppUtils.log('🔗 Received deep link (app running): $uri');
-          await _handleDeepLink(uri);
-        }
-      }, onError: (Object err) {
-        AppUtils.log('🔗 Error handling deep link: $err');
-      });
+      _appLinks.uriLinkStream.listen(
+        (Uri? uri) async {
+          if (uri != null) {
+            AppUtils.log('🔗 Received deep link (app running): $uri');
+            await _handleDeepLink(uri);
+          }
+        },
+        onError: (Object err) {
+          AppUtils.log('🔗 Error handling deep link: $err');
+        },
+      );
 
       // Get the initial link if app was opened from a deep link
       final Uri? initialUri = await _appLinks.getInitialLink();
@@ -60,10 +67,14 @@ class DeepLinkService {
   Future<void> tryOpenPendingPost() async {
     final postId = _pendingPostId;
     if (postId == null || postId.isEmpty) return;
+
+    // Clear pending ID first so we don't open the same post twice
+    // (e.g. once from initialize() and again from HomeScreen).
+    _pendingPostId = null;
     await _openPostById(postId);
   }
 
-  /// Handle incoming deep link
+  /// Handle incoming deep link (custom scheme sepmedia:// or HTTPS App Link from Firebase Hosting)
   Future<void> _handleDeepLink(Uri uri) async {
     AppUtils.log('🔗 Processing deep link: $uri');
     AppUtils.log('   Scheme: ${uri.scheme}');
@@ -72,11 +83,21 @@ class DeepLinkService {
     AppUtils.log('   Query: ${uri.query}');
 
     try {
-      // Handle different deep link types
-      if (uri.host == 'post' || uri.pathSegments.contains('post')) {
+      // Handle post links: sepmedia://post/id or https://sep-app-9b95e.web.app/post/id
+      final isPostLink = uri.host == 'post' ||
+          uri.pathSegments.contains('post') ||
+          (uri.scheme == 'https' &&
+              uri.host == Uri.parse(Urls.shareWebBaseUrl).host &&
+              uri.path.startsWith('/post'));
+      if (isPostLink) {
         await _handlePostDeepLink(uri);
-      } else if (uri.host == 'profile' || uri.pathSegments.contains('profile')) {
+      } else if (uri.host == 'profile' ||
+          uri.pathSegments.contains('profile')) {
         _handleProfileDeepLink(uri);
+      } else if (uri.host == 'notifications' ||
+          uri.host == 'pending-requests' ||
+          uri.pathSegments.contains('pending-requests')) {
+        await _openNotificationsScreen();
       } else {
         AppUtils.log('⚠️ Unknown deep link type');
         AppUtils.toast('Link opened');
@@ -137,6 +158,12 @@ class DeepLinkService {
     final navKey = _navigatorKey;
     if (navKey == null) return;
 
+    // Also clear pending ID here as an extra safety net
+    // so repeated calls won't keep stacking multiple loaders/details.
+    if (_pendingPostId == postId) {
+      _pendingPostId = null;
+    }
+
     // Wait until navigator is available (app might still be starting up)
     for (int i = 0; i < 10; i++) {
       if (navKey.currentState != null && navKey.currentContext != null) break;
@@ -192,25 +219,44 @@ class DeepLinkService {
     // Get.to(() => ProfileScreen(userId: userId!));
   }
 
-  /// Generate share link for a post
+  /// Open notifications screen (e.g. for followRequest deep link)
+  Future<void> _openNotificationsScreen() async {
+    final navKey = _navigatorKey;
+    if (navKey == null) return;
+    for (int i = 0; i < 10; i++) {
+      if (navKey.currentState != null && navKey.currentContext != null) break;
+      await Future.delayed(const Duration(milliseconds: 300));
+    }
+    if (navKey.currentState == null || navKey.currentContext == null) return;
+    try {
+      navKey.currentState!.push(
+        MaterialPageRoute(
+          builder: (_) => Notificationscreen(),
+        ),
+      );
+    } catch (e) {
+      AppUtils.log('🔗 Failed to open notifications: $e');
+    }
+  }
+
+  /// Custom scheme link (opens app when installed; used as fallback from web landing).
   static String generatePostLink(String postId) {
-    // Use custom scheme for deep linking
     return 'sepmedia://post/$postId';
   }
 
-  /// Generate universal link for a post (if you have a web domain)
-  /// This would open in browser if app is not installed
+  /// Web link for sharing (Firebase Hosting). Opens in app if installed (App Links),
+  /// otherwise opens landing page which tries app then redirects to store.
   static String generatePostWebLink(String postId) {
-    // Replace with your actual domain
-    return 'https://sepmedia.app/post/$postId';
+    return '${Urls.shareWebBaseUrl}/post/$postId';
   }
 
-  /// Generate share text with link
+  /// Generate share text using web link so WhatsApp etc. open the link; if app
+  /// is installed it opens in app, else user goes to web then store.
   static String generatePostShareText(String postId, {String? caption}) {
-    final link = generatePostLink(postId);
+    final link = generatePostWebLink(postId);
     if (caption != null && caption.isNotEmpty) {
-      return 'Check out this post on SEP Media!\n\n"$caption"\n\nOpen in app: $link';
+      return 'Check out this post on SEP Media!\n\n"$caption"\n\n$link';
     }
-    return 'Check out this post on SEP Media!\n\nOpen in app: $link';
+    return 'Check out this post on SEP Media!\n\n$link';
   }
 }

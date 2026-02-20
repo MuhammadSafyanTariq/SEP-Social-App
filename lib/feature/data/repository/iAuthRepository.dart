@@ -873,7 +873,7 @@ class IAuthRepository implements AuthRepository {
     String? dob,
     String? gender,
     String? image,
-
+    bool? isPrivate,
     String? accessToken,
   }) async {
     try {
@@ -890,18 +890,22 @@ class IAuthRepository implements AuthRepository {
         'dob': dob.isNotNullEmpty ? dob?.ddMMyyyy.yyyyMMdd : null,
         'gender': gender,
         'image': image ?? 'No image provided',
+        'isPrivate': isPrivate,
       });
+
+      final body = <String, dynamic>{
+        'name': name,
+        'email': email,
+        'phone': phone,
+        'dob': dob,
+        'gender': gender,
+      };
+      if (isPrivate != null) body['isPrivate'] = isPrivate;
 
       final result = await _apiMethod.put(
         authToken: authToken,
         url: Urls.updateProfile,
-        body: {
-          'name': name,
-          'email': email,
-          'phone': phone,
-          'dob': dob,
-          'gender': gender,
-        },
+        body: body,
         multipartFile: multipartFile,
         headers: {},
       );
@@ -916,6 +920,27 @@ class IAuthRepository implements AuthRepository {
     } catch (e) {
       AppUtils.log("Exception: $e");
       return ResponseData(isSuccess: false);
+    }
+  }
+
+  @override
+  Future<ResponseData<Map<String, dynamic>>> updateIsPrivate({
+    required bool isPrivate,
+  }) async {
+    try {
+      final result = await _apiMethod.put(
+        authToken: Preferences.authToken?.bearer,
+        url: Urls.updateProfile,
+        body: {'isPrivate': isPrivate},
+        headers: {},
+      );
+      if (result.isSuccess) {
+        return ResponseData(isSuccess: true, data: result.data ?? {});
+      }
+      return ResponseData(isSuccess: false, error: result.getError);
+    } catch (e) {
+      AppUtils.log("Exception updateIsPrivate: $e");
+      return ResponseData(isSuccess: false, error: Exception(e.toString()));
     }
   }
 
@@ -987,6 +1012,11 @@ class IAuthRepository implements AuthRepository {
   ) async {
     String? authToken = Preferences.authToken!.bearer;
     try {
+      AppUtils.log(
+        '🗑 deleteNotification → url=${Urls.deleteNotification}, '
+        'notificationId=$notificationId, '
+        'authTokenPresent=${authToken != null}',
+      );
       final response = await _apiMethod.delete(
         url: Urls.deleteNotification,
         authToken: authToken,
@@ -994,15 +1024,19 @@ class IAuthRepository implements AuthRepository {
       );
 
       AppUtils.log(
-        "API response: ${response.isSuccess ? 'Success' : 'Failed'}",
+        '🗑 deleteNotification ← isSuccess=${response.isSuccess}, '
+        'statusCode=${response.statusCode}, '
+        'error=${response.getError}',
       );
-      AppUtils.log("API response error: ${response.error}");
       if (response.isSuccess) {
-        AppUtils.log('Notification Delete successfully.');
+          AppUtils.log(
+            '🗑 deleteNotification data: ${response.data?.toString()}',
+          );
+        AppUtils.log('✅ Notification deleted successfully.');
       }
       return response;
     } catch (e) {
-      AppUtils.log('Delete exception: $e');
+      AppUtils.log('❌ deleteNotification exception: $e');
       return ResponseData(
         isSuccess: false,
         error: Exception('Delete failed due to an exception: $e'),
@@ -1167,7 +1201,7 @@ class IAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<ResponseData<bool>> followUnfollowUserRequest({
+  Future<ResponseData<Map<String, dynamic>>> followUnfollowUserRequest({
     required String followUserId,
   }) async {
     String? currentUserId = Preferences.uid;
@@ -1176,53 +1210,95 @@ class IAuthRepository implements AuthRepository {
       url: Urls.followUnfollowUserRequest,
       body: {
         "followUserId": followUserId,
-        "userId": currentUserId, // Add current userId for follow notification
+        "userId": currentUserId,
       },
       headers: {},
       authToken: Preferences.authToken,
     );
 
     if (response.isSuccess) {
-      //     {
-      //       "status": true,
-      //   "code": 200,
-      //   "message": "User follow successfully",
-      //   "data": {
-      //   "username": "",
-      //   "countryCode": "",
-      //   "followers": [],
-      //   "isBlocked": false,
-      //   "isBlockedByAdmin": false,
-      //   "_id": "67ad7a7be5f3610a389acc92",
-      //   "name": "Pankaj sharma",
-      //   "email": "pankajcdz63@gmail.com",
-      //   "password": "$2b$10$v8HqbAlOttV7z2FWpwWiBefvrwTsYpRaxM6CZ3sh0f5y7PI20T54q",
-      //   "role": "user",
-      //   "phone": "+null",
-      //   "dob": "2003-05-31T00:00:00.000Z",
-      //   "gender": "Male",
-      //   "seeMyProfile": "Everybody",
-      //   "shareMyPost": "Nobody",
-      //   "image": "/public/uploads/1739360336105.jpg",
-      //   "createdAt": "2025-02-13T04:52:11.903Z",
-      //   "updatedAt": "2025-03-13T19:20:06.597Z",
-      //   "__v": 0,
-      //   "isNotification": false,
-      //   "otp": "2498",
-      //   "isActive": true,
-      //   "following": [
-      //   "679b081d3cdfb86bfb8d705f"
-      //   ],
-      //   "blockUser": [
-      //   "679b081d3cdfb86bfb8d705f"
-      //   ]
-      // }
-      // }
-
-      return ResponseData<bool>(isSuccess: true, data: true);
+      return ResponseData<Map<String, dynamic>>(
+        isSuccess: true,
+        data: response.data ?? {},
+      );
     } else {
-      throw response.getError!;
+      return ResponseData<Map<String, dynamic>>(
+        isSuccess: false,
+        error: response.getError,
+      );
     }
+  }
+
+  @override
+  Future<ResponseData<List<ProfileDataModel>>> getPendingFollowRequests() async {
+    final response = await _apiMethod.get(
+      url: Urls.getPendingFollowRequests,
+      authToken: Preferences.authToken,
+      headers: {},
+    );
+    if (response.isSuccess) {
+      final raw = response.data;
+      List<dynamic> listRaw = const [];
+      if (raw != null) {
+        final data = raw['data'];
+        final pending = raw['pendingFollowRequests'];
+        if (data is List) listRaw = data;
+        else if (pending is List) listRaw = pending;
+      }
+      final list = listRaw
+          .map((e) {
+            final map = e is Map<String, dynamic> ? e : null;
+            if (map == null) return null;
+            final requester = map['requesterId'];
+            if (requester is! Map) return null;
+            final r = Map<String, dynamic>.from(requester);
+            return ProfileDataModel(
+              id: r['_id'] as String?,
+              name: r['name'] as String?,
+              image: r['image'] as String?,
+              userName: r['username'] as String?,
+            );
+          })
+          .whereType<ProfileDataModel>()
+          .toList();
+      return ResponseData<List<ProfileDataModel>>(isSuccess: true, data: list);
+    }
+    return ResponseData<List<ProfileDataModel>>(
+      isSuccess: false,
+      error: response.getError,
+    );
+  }
+
+  @override
+  Future<ResponseData<bool>> approveFollowRequest({
+    required String requesterId,
+  }) async {
+    final response = await _apiMethod.post(
+      url: Urls.approveFollowRequest,
+      body: {"requesterId": requesterId},
+      headers: {},
+      authToken: Preferences.authToken,
+    );
+    if (response.isSuccess) {
+      return ResponseData<bool>(isSuccess: true, data: true);
+    }
+    return ResponseData<bool>(isSuccess: false, error: response.getError);
+  }
+
+  @override
+  Future<ResponseData<bool>> rejectFollowRequest({
+    required String requesterId,
+  }) async {
+    final response = await _apiMethod.post(
+      url: Urls.rejectFollowRequest,
+      body: {"requesterId": requesterId},
+      headers: {},
+      authToken: Preferences.authToken,
+    );
+    if (response.isSuccess) {
+      return ResponseData<bool>(isSuccess: true, data: true);
+    }
+    return ResponseData<bool>(isSuccess: false, error: response.getError);
   }
 
   @override

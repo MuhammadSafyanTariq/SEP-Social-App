@@ -143,6 +143,28 @@ class _StoryListWidgetNewState extends State<StoryListWidgetNew> {
             // Check if user has unviewed stories
             final hasUnviewed = storyGroup.hasUnviewedStories;
 
+            // This bubble represents the logged-in user's own stories if basic identity matches
+            final profile = Preferences.profile;
+            final isCurrentUserGroup = profile != null &&
+                (
+                  // prefer strong email match
+                  (profile.email?.isNotEmpty == true &&
+                      profile.email == user.email) ||
+                  // or backend id match when available
+                  (profile.id != null &&
+                      user.id != null &&
+                      profile.id == user.id.toString()) ||
+                  // fallback: same display name
+                  (profile.name?.isNotEmpty == true &&
+                      profile.name == user.name)
+                );
+
+            AppUtils.log(
+              'Story bubble user=${user.email}/${user.id}, '
+              'current=${profile?.email}/${profile?.id}, '
+              'isCurrentUserGroup=$isCurrentUserGroup',
+            );
+
             return GestureDetector(
               onTap: () {
                 AppUtils.log(
@@ -154,6 +176,7 @@ class _StoryListWidgetNewState extends State<StoryListWidgetNew> {
                     builder: (context) => StoryViewScreenNew(
                       storyGroups: [storyGroup],
                       initialGroupIndex: 0,
+                      canDeleteStories: isCurrentUserGroup,
                     ),
                   ),
                 );

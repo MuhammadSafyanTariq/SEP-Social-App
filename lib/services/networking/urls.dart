@@ -49,6 +49,15 @@ class Urls {
   // static const String baseUrlApi = _apiUrl;
   static const String appApiBaseUrl = _apiUrl;
 
+  /// Firebase Hosting base URL for share links. When users open this link:
+  /// - If app is installed → opens in app (App Links / Universal Links).
+  /// - If not → opens web landing page which tries app then redirects to store.
+  static const String shareWebBaseUrl = 'https://sep-app-9b95e.web.app';
+  static const String playStoreUrl =
+      'https://play.google.com/store/apps/details?id=com.app.sep';
+  static const String appStoreUrl =
+      'https://apps.apple.com/pk/app/sep-media-entertainment/id6743032925';
+
   // ============================================================================
   // GOOGLE ADMOB AD UNIT IDs
   // ============================================================================
@@ -117,6 +126,12 @@ class Urls {
       '${_Collection.profileBrowser}/followUnfollowUser';
   // {"followUserId":"679b081d3cdfb86bfb8d705f"}
   //Authorization
+  static const String approveFollowRequest =
+      '${_Collection.profileBrowser}/approveFollowRequest';
+  static const String rejectFollowRequest =
+      '${_Collection.profileBrowser}/rejectFollowRequest';
+  static const String getPendingFollowRequests =
+      '${_Collection.profileBrowser}/getPendingFollowRequests';
 
   static const String blockUnblockUserRequest =
       '${_Collection.profileBrowser}/blockUnblockUsers';

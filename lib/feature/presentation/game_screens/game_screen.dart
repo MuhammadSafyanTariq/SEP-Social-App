@@ -12,6 +12,9 @@ import 'package:sep/components/styles/app_strings.dart';
 import 'package:sep/feature/presentation/game_screens/gun_firing_game/gun_firing_Screen.dart';
 import 'package:sep/feature/presentation/game_screens/fruit_ninja_game/fruit_ninja_screen.dart';
 import 'package:sep/feature/presentation/game_screens/game_2048/game_2048_screen.dart';
+import 'package:sep/components/dialogs/game_start_dialog.dart';
+import 'package:sep/feature/presentation/game_screens/tic_tac_toe_game/tic_tac_toe_screen.dart';
+import 'package:sep/feature/presentation/game_screens/car_race_game/car_race_screen.dart';
 import 'package:sep/services/game/game_manager.dart';
 import 'package:sep/utils/extensions/contextExtensions.dart';
 import 'package:sep/utils/extensions/size.dart';
@@ -20,6 +23,7 @@ import 'package:sep/services/networking/apiMethods.dart';
 import 'package:sep/services/networking/urls.dart';
 import 'package:sep/services/storage/preferences.dart';
 import 'package:sep/utils/appUtils.dart';
+import 'package:sep/feature/presentation/wallet/packages_screen.dart';
 import 'flappy_game/FlameGameScreen.dart';
 
 class GameScreen extends StatefulWidget {
@@ -198,6 +202,51 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       colorText: Colors.white,
       snackPosition: SnackPosition.TOP,
     );
+  }
+
+  Future<void> _startGameWithTokens(
+    BuildContext context, {
+    required String gameId,
+    required String gameName,
+    required Widget screen,
+  }) async {
+    final status = await GameManager.canStartGame(gameId);
+
+    if (!status.canStart) {
+      await InsufficientTokensDialog.show(
+        context: context,
+        tokensRequired: status.tokensRequired,
+        onBuyTokens: () {
+          // Dialog closes itself; just push packages screen (use root navigator)
+          Navigator.of(context, rootNavigator: true).push(
+            MaterialPageRoute(
+              builder: (_) => const PackagesScreen(),
+            ),
+          );
+        },
+      );
+      return;
+    }
+
+    final confirmed = await GameStartDialog.show(
+      context: context,
+      gameId: gameId,
+      gameName: gameName,
+      isFree: status.isFree,
+      tokensRequired: status.tokensRequired,
+    );
+
+    if (confirmed == true) {
+      final success = await GameManager.startGame(
+        gameId,
+        isFree: status.isFree,
+      );
+      if (success) {
+        context.pushNavigator(screen);
+      } else {
+        AppUtils.toastError('Failed to start game. Please try again.');
+      }
+    }
   }
 
   String _getFullImageUrl(String url) {
@@ -522,6 +571,35 @@ Sign up the app using refer code: $referralCode
                 onTap: () {
                   context.pushNavigator(Game2048Screen());
                 },
+              ),
+              _buildEnhancedGameCard(
+                context,
+                gameId: GameManager.TIC_TAC_TOE_GAME,
+                title: AppStrings.ticTacToe.tr,
+                subtitle: '',
+                imagePath: AppImages.ticTacToeImg,
+                backgroundColor: AppColors.white,
+                onTap: () => _startGameWithTokens(
+                  context,
+                  gameId: GameManager.TIC_TAC_TOE_GAME,
+                  gameName: 'Tic Tac Toe',
+                  screen: const TicTacToeScreen(),
+                ),
+              ),
+              _buildEnhancedGameCard(
+                context,
+                gameId: GameManager.CAR_RACE_GAME,
+                title: AppStrings.carRace.tr,
+                subtitle: '',
+                imagePath: AppImages.carRaceImg,
+                backgroundColor: AppColors.white,
+                imageScale: 1.2,
+                onTap: () => _startGameWithTokens(
+                  context,
+                  gameId: GameManager.CAR_RACE_GAME,
+                  gameName: 'Car Race',
+                  screen: const CarRaceScreen(),
+                ),
               ),
             ],
           ),
@@ -1032,6 +1110,7 @@ Sign up the app using refer code: $referralCode
     required String imagePath,
     required Color backgroundColor,
     required VoidCallback onTap,
+    double imageScale = 1.0,
   }) {
     return FutureBuilder<String>(
       future: GameManager.getGameStatusText(gameId),
@@ -1070,19 +1149,22 @@ Sign up the app using refer code: $referralCode
                           ),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(12.sdp),
-                            child: Image.asset(
-                              imagePath,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Container(
-                                  color: backgroundColor.withOpacity(0.3),
-                                  child: Icon(
-                                    Icons.games,
-                                    size: 40.sdp,
-                                    color: Colors.white.withOpacity(0.7),
-                                  ),
-                                );
-                              },
+                            child: Transform.scale(
+                              scale: imageScale,
+                              child: Image.asset(
+                                imagePath,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    color: backgroundColor.withOpacity(0.3),
+                                    child: Icon(
+                                      Icons.games,
+                                      size: 40.sdp,
+                                      color: Colors.white.withOpacity(0.7),
+                                    ),
+                                  );
+                                },
+                              ),
                             ),
                           ),
                         ),

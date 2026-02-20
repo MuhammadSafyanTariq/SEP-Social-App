@@ -933,15 +933,28 @@ class ITempRepository implements TempRepository {
 
       AppUtils.log("Notification list raw data: $data");
 
+      // Normalize: backend may send _id (MongoDB) as string or object; ensure 'id' is set for delete/read
       final list = List<NotificationItem>.from(
-        data.map((json) => NotificationItem.fromJson(json)),
+        data.map((json) {
+          final map = Map<String, dynamic>.from(json as Map);
+          if (map['id'] == null && map['_id'] != null) {
+            final raw = map['_id'];
+            if (raw is String) {
+              map['id'] = raw;
+            } else if (raw is Map) {
+              map['id'] = raw['\$oid'] ?? raw['oid'] ?? raw.toString();
+            } else {
+              map['id'] = raw.toString();
+            }
+          }
+          return NotificationItem.fromJson(map);
+        }),
       );
 
-      // Log each notification's postId
       for (var i = 0; i < list.length; i++) {
         final notif = list[i];
         AppUtils.log(
-          "Notification[$i]: type=${notif.notificationType}, postId=${notif.postId}, title=${notif.title}",
+          "Notification[$i]: id=${notif.id}, type=${notif.notificationType}, postId=${notif.postId}",
         );
       }
 

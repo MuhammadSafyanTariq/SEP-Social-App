@@ -489,14 +489,20 @@ class _HomeScreenState extends State<Contentscreen> {
       context: context,
       item: item,
       postLiker: (value) {
-        postliker(value);
+        // Optimistic update: change UI immediately, then sync with backend
         final count = item.likeCount ?? 0;
         final status = item.isLikedByUser ?? false;
-        profileCtrl.globalPostList[index] = item.copyWith(
+        final updated = item.copyWith(
           isLikedByUser: !status,
           likeCount: status ? count - 1 : count + 1,
         );
-        profileCtrl.globalPostList.refresh();
+        final globalIndex =
+            profileCtrl.globalPostList.indexWhere((p) => p.id == item.id);
+        if (globalIndex != -1) {
+          profileCtrl.globalPostList[globalIndex] = updated;
+          profileCtrl.globalPostList.refresh();
+        }
+        postliker(value);
       },
       updateCommentCount: updateCommentCount,
       updatePostOnAction: (commentCount) {

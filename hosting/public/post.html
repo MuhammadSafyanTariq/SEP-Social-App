@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Open this post in SEP Media app">
+  <title>Open in SEP Media</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #e4e4e7;
+    }
+    .card {
+      background: rgba(255,255,255,0.06);
+      border-radius: 16px;
+      padding: 32px;
+      max-width: 400px;
+      width: 100%;
+      text-align: center;
+    }
+    .spinner-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(255,255,255,0.2);
+      border-top-color: #22c55e;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .spinner-text { color: #a1a1aa; font-size: 0.95rem; margin: 0; }
+    .redirect-text { color: #22c55e; font-size: 0.9rem; margin: 0; }
+    h1 { font-size: 1.5rem; margin: 0 0 8px; }
+    p { color: #a1a1aa; margin: 0 0 24px; font-size: 0.95rem; }
+    .btn {
+      display: inline-block;
+      padding: 14px 24px;
+      margin: 6px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+      border: none;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .btn-primary { background: #22c55e; color: #fff; }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(34,197,94,0.4); }
+    .btn-secondary { background: rgba(255,255,255,0.1); color: #e4e4e7; }
+    .btn-secondary:hover { background: rgba(255,255,255,0.15); }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div id="state-trying" class="spinner-box">
+      <div class="spinner"></div>
+      <p class="spinner-text" id="spinner-msg">Opening in app…</p>
+    </div>
+    <div id="state-redirect" class="spinner-box hidden">
+      <div class="spinner"></div>
+      <p class="redirect-text">Redirecting to app store…</p>
+    </div>
+    <div id="state-fallback" class="hidden">
+      <h1>Get SEP Media</h1>
+      <p>Install the app to open this post.</p>
+      <a id="btn-play" class="btn btn-primary" href="#" target="_blank" rel="noopener">Google Play</a>
+      <a id="btn-apple" class="btn btn-secondary" href="#" target="_blank" rel="noopener">App Store</a>
+    </div>
+  </div>
+  <script>
+    (function() {
+      var PLAY_STORE = 'https://play.google.com/store/apps/details?id=com.app.sep';
+      var APP_STORE = 'https://apps.apple.com/pk/app/sep-media-entertainment/id6743032925';
+      var path = window.location.pathname || '';
+      var match = path.match(/\/post\/([^/]+)/);
+      var postId = match ? match[1] : '';
+      var appScheme = 'sepmedia://post/' + (postId || '');
+      var tryTimeout = 2500;
+
+      document.getElementById('btn-play').href = PLAY_STORE;
+      document.getElementById('btn-apple').href = APP_STORE;
+
+      var isAndroid = /Android/i.test(navigator.userAgent);
+      var isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+      function showRedirectThenGo(storeUrl) {
+        document.getElementById('state-trying').classList.add('hidden');
+        document.getElementById('state-redirect').classList.remove('hidden');
+        window.location.href = storeUrl;
+      }
+
+      function showFallback() {
+        document.getElementById('state-trying').classList.add('hidden');
+        document.getElementById('state-redirect').classList.add('hidden');
+        document.getElementById('state-fallback').classList.remove('hidden');
+      }
+
+      function openApp() {
+        if (!postId) { showFallback(); return; }
+        var iframe = document.createElement('iframe');
+        iframe.style.cssText = 'display:none;border:0;width:0;height:0;';
+        iframe.src = appScheme;
+        document.body.appendChild(iframe);
+        setTimeout(function() {
+          document.body.removeChild(iframe);
+          if (isAndroid) showRedirectThenGo(PLAY_STORE);
+          else if (isIOS) showRedirectThenGo(APP_STORE);
+          else showFallback();
+        }, tryTimeout);
+      }
+
+      if (isAndroid) {
+        window.location.href = appScheme;
+        setTimeout(function() {
+          showRedirectThenGo(PLAY_STORE);
+        }, tryTimeout);
+      } else if (isIOS) {
+        openApp();
+      } else {
+        showFallback();
+      }
+    })();
+  </script>
+</body>
+</html>

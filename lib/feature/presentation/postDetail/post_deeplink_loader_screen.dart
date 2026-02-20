@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:sep/components/coreComponents/appBar2.dart';
+import 'package:sep/feature/data/models/dataModels/post_data.dart';
 import 'package:sep/feature/data/repository/iTempRepository.dart';
+import 'package:sep/feature/presentation/controller/auth_Controller/profileCtrl.dart';
 import 'package:sep/feature/presentation/postDetail/post_detail_screen.dart';
 import 'package:sep/utils/appUtils.dart';
 import 'package:sep/utils/extensions/contextExtensions.dart';
@@ -40,13 +42,30 @@ class _PostDeepLinkLoaderScreenState extends State<PostDeepLinkLoaderScreen> {
 
       if (res.isSuccess && res.data != null && (res.data!.id?.isNotEmpty ?? false)) {
         AppUtils.log('✅ DeepLinkLoader: post fetched successfully!');
-        AppUtils.log('   Post ID: ${res.data!.id}');
-        AppUtils.log('   Post content: ${res.data!.content}');
-        AppUtils.log('   Files count: ${res.data!.files.length}');
-        
+        PostData postData = res.data!;
+        // If API did not populate post owner (user array empty), fetch profile so name & picture show
+        if (postData.user.isEmpty &&
+            postData.userId != null &&
+            postData.userId!.isNotEmpty) {
+          try {
+            final profile = await ProfileCtrl.find.getFriendProfileDetails(
+              postData.userId!,
+            );
+            final postUser = User(
+              id: profile.id,
+              name: profile.name ?? profile.userName,
+              image: profile.image,
+            );
+            postData = postData.copyWith(user: [postUser]);
+            AppUtils.log('🔗 DeepLinkLoader: filled post owner from profile');
+          } catch (e) {
+            AppUtils.log('🔗 DeepLinkLoader: could not load post owner: $e');
+          }
+        }
+        if (!mounted) return;
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
-            builder: (_) => PostDetailScreen(postData: res.data!),
+            builder: (_) => PostDetailScreen(postData: postData),
           ),
         );
         return;

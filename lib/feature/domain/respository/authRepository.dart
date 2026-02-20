@@ -146,17 +146,24 @@ abstract class AuthRepository {
     String? dob,
     String? gender,
     String? image,
-
+    bool? isPrivate,
     String? accessToken,
   });
+
+  /// Update only the private account flag (sends only { "isPrivate": value } to avoid backend validation errors on null fields).
+  Future<ResponseData<Map<String, dynamic>>> updateIsPrivate({required bool isPrivate});
 
   Future<ResponseData> deleteAccount();
 
   Future<ResponseData<List<String>>> uploadPhoto({required File imageFile});
 
-  Future<ResponseData<bool>> followUnfollowUserRequest({
+  /// Returns response message: "User follow successfully", "User Unfollow successfully", or "Follow request sent" (private account).
+  Future<ResponseData<Map<String, dynamic>>> followUnfollowUserRequest({
     required String followUserId,
   });
+  Future<ResponseData<List<ProfileDataModel>>> getPendingFollowRequests();
+  Future<ResponseData<bool>> approveFollowRequest({required String requesterId});
+  Future<ResponseData<bool>> rejectFollowRequest({required String requesterId});
   Future<ResponseData<bool>> blockUnblockUserRequest({
     required String blockUserId,
   });

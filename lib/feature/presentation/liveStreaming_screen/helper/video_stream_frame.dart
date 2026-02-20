@@ -23,7 +23,6 @@ import '../live_stream_ctrl.dart';
 import '../../../data/models/dataModels/profile_data/profile_data_model.dart';
 import '../../controller/agora_chat_ctrl.dart';
 import '../../wallet/add_card_screen.dart';
-import '../live_stream_ctrl.dart';
 import 'helper_broadcast.dart';
 
 class InstagramLiveFrame extends StatefulWidget {
@@ -87,9 +86,8 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
   bool _rightControlsCollapsed = false;
   bool _keyboardVisible = false;
 
-  // Pagination state for video grid
-  int _currentVideoPage = 0;
-  static const int _maxUsersPerPage = 4;
+  // Chat overlay visibility (hidden by default)
+  bool _showChatOverlay = false;
 
   void onJoinHandler() {
     if (ctrl.isHost && !chatConnected) {
@@ -223,62 +221,22 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
     }
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // Main Content: Video Grid and Chat Sections
-          Column(
-            children: [
-              // TOP HALF: Video Grid Section
-              Expanded(flex: 1, child: _buildCameraView()),
+          // Full-screen video: non-positioned so Stack gets full size
+          SizedBox.expand(child: _buildCameraView()),
 
-              // BOTTOM HALF: Messaging Section
-              Expanded(
-                flex: 1,
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    // Calculate responsive heights
-                    final screenHeight = MediaQuery.of(context).size.height;
-                    final keyboardHeight = MediaQuery.of(
-                      context,
-                    ).viewInsets.bottom;
-                    final isKeyboardOpen = keyboardHeight > 0;
+          // Chat overlay (show when toggled on, or when host needs Start Live button)
+          Obx(() {
+            final showOverlay = _showChatOverlay ||
+                (ctrl.isHost && !ctrl.streamCtrl.value.localChannelJoined);
+            return showOverlay
+                ? _buildChatOverlay()
+                : Positioned(top: 0, left: 0, child: SizedBox.shrink());
+          }),
 
-                    return Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            Color(0xFF1a1a2e).withValues(alpha: 0.95),
-                            Color(0xFF16213e).withValues(alpha: 0.98),
-                          ],
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                        ),
-                        border: Border(
-                          top: BorderSide(
-                            color: Colors.white.withValues(alpha: 0.2),
-                            width: 2,
-                          ),
-                        ),
-                      ),
-                      child: Column(
-                        children: [
-                          // Chat Messages (takes most of bottom half)
-                          Expanded(child: _buildChatList(context)),
-
-                          // Chat Input Box and Controls (compact at bottom)
-                          _buildBottomBar(),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-
-          // Overlays that span entire screen
-          // Coin Animation
+          // Coin Animation (always Positioned so it never shrinks the Stack)
           Obx(
             () => loopCounts > 0
                 ? Positioned(
@@ -287,7 +245,7 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
                     bottom: context.getHeight / 2,
                     child: coinAnimation(),
                   )
-                : SizedBox.shrink(),
+                : Positioned(top: 0, left: 0, child: SizedBox.shrink()),
           ),
 
           // App Bar (Host info, Live status, Close button)
@@ -300,9 +258,86 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
 
           // Left Action Buttons (for Host) - Overlay entire screen
           _leftActionButtonsForHost(),
+
+          // Chat toggle button (visible for everyone)
+          _buildChatToggleButton(),
         ],
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.miniEndTop,
+    );
+  }
+
+  /// Chat + input shown as an overlay on top of the full‑screen video.
+  Widget _buildChatOverlay() {
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    // Fixed overlay height so Column gets tight constraints
+    final overlayHeight = screenHeight * 0.45;
+
+    return Positioned(
+      left: 0,
+      right: 0,
+      // Use bottom: 0 so overlay sticks to bottom of body (Scaffold resizes body
+      // when keyboard opens, so this keeps the typing area right above the keyboard)
+      bottom: 0,
+      child: SizedBox(
+        height: overlayHeight,
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                const Color(0xFF1a1a2e).withValues(alpha: 0.0),
+                const Color(0xFF16213e).withValues(alpha: 0.0),
+              ],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+            border: Border(
+              top: BorderSide(
+                color: Colors.white.withValues(alpha: 0.0),
+                width: 1,
+              ),
+            ),
+          ),
+          child: Column(
+            children: [
+              // Chat messages
+              Expanded(child: _buildChatList(context)),
+
+              // Chat input + actions
+              _buildBottomBar(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Floating chat toggle button for audience (host uses side menu).
+  Widget _buildChatToggleButton() {
+    if (ctrl.streamCtrl.value.clientRole != ClientRoleType.clientRoleAudience) {
+      return Positioned(top: 0, left: 0, child: SizedBox.shrink());
+    }
+    // Body already resizes with keyboard, so position from bottom of body
+    return Positioned(
+      right: 16,
+      bottom: 16,
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _showChatOverlay = !_showChatOverlay;
+          });
+        },
+        child: CircleAvatar(
+          radius: 20,
+          backgroundColor: Colors.black.withValues(alpha: 0.5),
+          child: Icon(
+            _showChatOverlay ? Icons.chat_bubble : Icons.chat_bubble_outline,
+            size: 20,
+            color: Colors.white,
+          ),
+        ),
+      ),
     );
   }
 
@@ -382,90 +417,8 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
       );
     }
 
-    // Pagination: Show max 4 users per page
-    final totalPages = (count / _maxUsersPerPage).ceil();
-
-    // Ensure current page is valid
-    if (_currentVideoPage >= totalPages) {
-      _currentVideoPage = totalPages - 1;
-    }
-    if (_currentVideoPage < 0) {
-      _currentVideoPage = 0;
-    }
-
-    final startIndex = _currentVideoPage * _maxUsersPerPage;
-    final endIndex = (startIndex + _maxUsersPerPage).clamp(0, count);
-    final visibleUsers = uids.sublist(startIndex, endIndex);
-
-    return Stack(
-      children: [
-        // Video Grid
-        _buildGridForUsers(visibleUsers),
-
-        // Pagination Controls (only show if more than 4 users)
-        if (totalPages > 1)
-          Positioned(
-            bottom: 16,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.6),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Previous button
-                    IconButton(
-                      icon: Icon(Icons.chevron_left, color: Colors.white),
-                      onPressed: _currentVideoPage > 0
-                          ? () {
-                              setState(() {
-                                _currentVideoPage--;
-                              });
-                            }
-                          : null,
-                      padding: EdgeInsets.zero,
-                      constraints: BoxConstraints(),
-                    ),
-
-                    SizedBox(width: 8),
-
-                    // Page indicator
-                    Text(
-                      '${_currentVideoPage + 1} / $totalPages',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-
-                    SizedBox(width: 8),
-
-                    // Next button
-                    IconButton(
-                      icon: Icon(Icons.chevron_right, color: Colors.white),
-                      onPressed: _currentVideoPage < totalPages - 1
-                          ? () {
-                              setState(() {
-                                _currentVideoPage++;
-                              });
-                            }
-                          : null,
-                      padding: EdgeInsets.zero,
-                      constraints: BoxConstraints(),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-      ],
-    );
+    // Multi Guest: all users in one grid, no pagination
+    return _buildGridForUsers(uids);
   }
 
   Widget _buildGridForUsers(List<RemoteUserAgora> uids) {
@@ -526,6 +479,65 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
               children: [
                 Expanded(child: _agoraVideoViewWidget(uid: uids[2])),
                 Expanded(child: _agoraVideoViewWidget(uid: uids[3])),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (count == 5) {
+      // Five users: 2 columns, 2 full rows + 1 bottom row (one tile full width)
+      return Column(
+        children: [
+          Expanded(
+            child: Row(
+              children: [
+                Expanded(child: _agoraVideoViewWidget(uid: uids[0])),
+                Expanded(child: _agoraVideoViewWidget(uid: uids[1])),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Row(
+              children: [
+                Expanded(child: _agoraVideoViewWidget(uid: uids[2])),
+                Expanded(child: _agoraVideoViewWidget(uid: uids[3])),
+              ],
+            ),
+          ),
+          Expanded(
+            child: _agoraVideoViewWidget(uid: uids[4]),
+          ),
+        ],
+      );
+    }
+
+    if (count == 6) {
+      // Six users: 2x3 grid (2 columns, 3 rows) – all visible in same session
+      return Column(
+        children: [
+          Expanded(
+            child: Row(
+              children: [
+                Expanded(child: _agoraVideoViewWidget(uid: uids[0])),
+                Expanded(child: _agoraVideoViewWidget(uid: uids[1])),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Row(
+              children: [
+                Expanded(child: _agoraVideoViewWidget(uid: uids[2])),
+                Expanded(child: _agoraVideoViewWidget(uid: uids[3])),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Row(
+              children: [
+                Expanded(child: _agoraVideoViewWidget(uid: uids[4])),
+                Expanded(child: _agoraVideoViewWidget(uid: uids[5])),
               ],
             ),
           ),
@@ -1635,6 +1647,18 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
                       ],
                     ),
                   ),
+                ),
+                SizedBox(height: 12),
+                // Chat toggle at end of menu
+                IconControl(
+                  icon: _showChatOverlay
+                      ? Icons.chat_bubble
+                      : Icons.chat_bubble_outline,
+                  onTap: () {
+                    setState(() {
+                      _showChatOverlay = !_showChatOverlay;
+                    });
+                  },
                 ),
               ], // Close the conditional block for !_rightControlsCollapsed
             ],

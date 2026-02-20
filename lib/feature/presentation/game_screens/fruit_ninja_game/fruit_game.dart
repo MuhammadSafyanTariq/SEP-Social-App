@@ -80,7 +80,7 @@ class FruitGame extends Game {
   Future<void> onLoad() async {
     await super.onLoad();
 
-    // Preload all game images
+    // Preload all game images (Flame default prefix is assets/images/)
     await images.loadAll([
       'backyard.png',
       'lose-splash.png',

@@ -76,6 +76,9 @@ class ProfileDataModel with _$ProfileDataModel {
     @JsonKey(name: "bio") String? bio,
     @JsonKey(name: "website") String? website,
     @JsonKey(name: "username") String? userName,
+    @JsonKey(name: "isPrivate") bool? isPrivate,
+    @JsonKey(name: "pendingFollowRequests")
+    List<PendingFollowRequestItem>? pendingFollowRequests,
     @JsonKey(name: "__v") int? v,
     @JsonKey(includeFromJson: false, includeToJson: false)
     AgoraUserLiveStatus? agoraLiveStatus,
@@ -110,6 +113,29 @@ extension ProfileDataExt on ProfileDataModel {
 
   // Helper getter to handle both tokenBalance and walletTokens field names
   int get actualTokenBalance => walletTokens ?? tokenBalance ?? 0;
+}
+
+/// Item from getPendingFollowRequests / user profile: { requesterId: { _id, name, image, username } }
+class PendingFollowRequestItem {
+  final Map<String, dynamic>? requesterId;
+
+  PendingFollowRequestItem({this.requesterId});
+
+  factory PendingFollowRequestItem.fromJson(Map<String, dynamic> json) {
+    return PendingFollowRequestItem(
+      requesterId: json['requesterId'] is Map
+          ? Map<String, dynamic>.from(json['requesterId'] as Map)
+          : null,
+    );
+  }
+
+  Map<String, dynamic> toJson() =>
+      {'requesterId': requesterId};
+
+  String? get id => requesterId?['_id'] as String?;
+  String? get name => requesterId?['name'] as String?;
+  String? get image => requesterId?['image'] as String?;
+  String? get username => requesterId?['username'] as String?;
 }
 
 extension OnMap on Map<String, dynamic> {

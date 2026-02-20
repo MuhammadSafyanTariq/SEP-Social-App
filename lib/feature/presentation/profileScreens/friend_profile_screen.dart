@@ -104,6 +104,11 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
   bool get isFriend =>
       (profileData.value.followers ?? []).contains(Preferences.uid);
 
+  /// True if we sent a follow request to this private account (pending approval).
+  final RxBool hasPendingFollowRequest = false.obs;
+
+  bool get isPrivateAccount => profileData.value.isPrivate == true;
+
   // Get actual count of displayed posts (excluding stories)
   int get adjustedFriendPostCount {
     return profileImagePostListFriend.length +
@@ -141,6 +146,18 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
     // Check profile visibility privacy settings
     _checkProfileVisibility();
 
+    // Restore "Requested" state from persisted list (so it survives when user leaves and comes back)
+    final profileId = profileData.value.id;
+    if (profileId != null) {
+      if (isFriend) {
+        Preferences.removePendingFollowRequestSent(profileId);
+        hasPendingFollowRequest.value = false;
+      } else if (profileData.value.isPrivate == true) {
+        hasPendingFollowRequest.value =
+            Preferences.pendingFollowRequestSentToIds.contains(profileId);
+      }
+    }
+
     // If access is denied, don't load posts
     if (isProfileAccessDenied.value) {
       return;
@@ -170,6 +187,22 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
     // Allow viewing own profile regardless of settings
     if (currentUserId == profileOwnerId) {
       AppUtils.log('🔒 Profile Visibility Check: Own profile - Access GRANTED');
+      isProfileAccessDenied.value = false;
+      deniedReason.value = '';
+      return;
+    }
+
+    // Private account: only approved followers can view profile, posts, and stories
+    if (profileData.value.isPrivate == true) {
+      if (!isCurrentUserFriend) {
+        AppUtils.log(
+          '  ❌ Access DENIED: Private account and user is not an approved follower',
+        );
+        isProfileAccessDenied.value = true;
+        deniedReason.value = 'private_account';
+        return;
+      }
+      AppUtils.log('  ✅ Access GRANTED: Private account, user is approved follower');
       isProfileAccessDenied.value = false;
       deniedReason.value = '';
       return;
@@ -320,17 +353,33 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
   }
 
   Future followAction() async {
+    final profileId = profileData.value.id;
+    if (profileId == null) return;
     LoaderUtils.show();
-    await ProfileCtrl.find.followRequest(profileData.value.id!);
-    profileData.value = await profileCtrl.getFriendProfileDetails(
-      profileData.value.id!,
-    );
-    profileData.refresh();
-
-    // Re-check profile visibility after follow/unfollow action
-    _checkProfileVisibility();
-
-    LoaderUtils.dismiss();
+    try {
+      final message = await ProfileCtrl.find.followRequest(profileId);
+      if (message != null &&
+          message.toLowerCase().contains('follow request sent')) {
+        hasPendingFollowRequest.value = true;
+        Preferences.addPendingFollowRequestSent(profileId);
+        AppUtils.toast('Follow request sent');
+      } else if (message != null &&
+          (message.toLowerCase().contains('unfollow') ||
+              message.toLowerCase().contains('unfollowed'))) {
+        hasPendingFollowRequest.value = false;
+        Preferences.removePendingFollowRequestSent(profileId);
+      }
+      profileData.value = await profileCtrl.getFriendProfileDetails(profileId);
+      profileData.refresh();
+      _checkProfileVisibility();
+      // If we're now approved (isFriend), clear pending state
+      if (isFriend) {
+        hasPendingFollowRequest.value = false;
+        Preferences.removePendingFollowRequestSent(profileId);
+      }
+    } finally {
+      LoaderUtils.dismiss();
+    }
   }
 
   // Block user functionality
@@ -609,6 +658,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
                       StoryViewScreenNew(
                         storyGroups: [storyGroup],
                         initialGroupIndex: 0,
+                        canDeleteStories: false,
                       ),
                     );
                   },
@@ -913,21 +963,38 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
 
             // 10.height,
             Obx(
-              () => Visibility(
-                visible: !isFriend,
-                child: AppButton(
-                  margin: 15.top,
-                  onTap: () {
-                    followAction();
-                  },
-                  padding: EdgeInsets.symmetric(vertical: 8),
-                  radius: 10,
-                  buttonColor: AppColors.btnColor,
-                  label: 'Link Up',
-                ),
-              ),
+              () {
+                final requested = isPrivateAccount && hasPendingFollowRequest.value;
+                final showFollow = !isFriend && !requested;
+                return Visibility(
+                  visible: showFollow,
+                  child: AppButton(
+                    margin: 15.top,
+                    onTap: () => followAction(),
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    radius: 10,
+                    buttonColor: AppColors.btnColor,
+                    label: 'Link Up',
+                  ),
+                );
+              },
             ),
-
+            Obx(
+              () {
+                final requested = isPrivateAccount && hasPendingFollowRequest.value;
+                return Visibility(
+                  visible: !isFriend && requested,
+                  child: AppButton(
+                    margin: 15.top,
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    radius: 10,
+                    buttonBorderColor: AppColors.btnColor,
+                    buttonColor: Colors.transparent,
+                    label: 'Requested',
+                  ),
+                );
+              },
+            ),
             Obx(
               () => Visibility(
                 visible: isFriend,
@@ -942,7 +1009,6 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
                         radius: 10,
                         buttonBorderColor: AppColors.btnColor,
                         textOverflow: TextOverflow.ellipsis,
-                        // buttonColor: AppColors.green,
                         label: 'Linked',
                       ),
                     ),
@@ -1026,6 +1092,8 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
     return Obx(() {
       // Show access denied screen if profile visibility check failed
       if (isProfileAccessDenied.value) {
+        final isPrivateReason = deniedReason.value == 'private_account';
+        final canRequest = isPrivateReason && !hasPendingFollowRequest.value;
         return Scaffold(
           backgroundColor: AppColors.white,
           appBar: AppBar(
@@ -1038,44 +1106,141 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
           ),
           body: SafeArea(
             child: Center(
-              child: Padding(
-                padding: EdgeInsets.all(24.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.lock_outline, size: 80, color: Colors.grey[400]),
-                    SizedBox(height: 24),
-                    Text(
-                      'Profile Private',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.black,
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Profile avatar so user sees whose profile it is
+                      Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          ImageView(
+                            url: AppUtils.configImageUrl(
+                                profileData.value.image ?? ''),
+                            size: 96,
+                            imageType: ImageType.network,
+                            defaultImage: AppImages.dummyProfile,
+                            radius: 48,
+                            fit: BoxFit.cover,
+                          ),
+                          Positioned(
+                            right: 0,
+                            bottom: 0,
+                            child: Container(
+                              padding: EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: AppColors.white,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black12,
+                                    blurRadius: 4,
+                                    offset: Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Icon(
+                                Icons.lock_outline,
+                                size: 24,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    SizedBox(height: 12),
-                    Text(
-                      'This profile is set to private. Only friends can view this profile.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-                    ),
-                    SizedBox(height: 32),
-                    AppButton(
-                      onTap: () => Navigator.of(context).pop(),
-                      label: 'Go Back',
-                      buttonColor: AppColors.primaryColor,
-                      labelStyle: TextStyle(
-                        color: AppColors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                      SizedBox(height: 20),
+                      Text(
+                        profileData.value.name ?? 'This account',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.black,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
-                      padding: EdgeInsets.symmetric(
-                        vertical: 14,
-                        horizontal: 32,
+                      SizedBox(height: 12),
+                      Text(
+                        isPrivateReason
+                            ? 'This account is private. Send a follow request to see their posts and stories.'
+                            : 'This profile is set to private. Only friends can view this profile.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 15, color: Colors.grey[600]),
                       ),
-                      radius: 10,
-                    ),
-                  ],
+                      SizedBox(height: 28),
+                      // Primary action: Request (when private) or nothing for other deny reasons
+                      if (canRequest)
+                        AppButton(
+                          onTap: () async {
+                            if (profileData.value.id == null) return;
+                            LoaderUtils.show();
+                            try {
+                              await followAction();
+                            } catch (_) {}
+                            LoaderUtils.dismiss();
+                          },
+                          label: 'Request',
+                          buttonColor: AppColors.btnColor,
+                          labelStyle: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          padding: EdgeInsets.symmetric(
+                            vertical: 14,
+                            horizontal: 48,
+                          ),
+                          radius: 10,
+                        ),
+                      if (isPrivateReason && hasPendingFollowRequest.value) ...[
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                              vertical: 14, horizontal: 48),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[200],
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.schedule,
+                                  size: 20, color: Colors.grey[700]),
+                              SizedBox(width: 8),
+                              Text(
+                                'Requested',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.grey[700],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          'You\'ll see their posts when they approve.',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey[500],
+                          ),
+                        ),
+                      ],
+                      SizedBox(height: 24),
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: Text(
+                          'Go Back',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey[600],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -1424,58 +1589,69 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
     return Padding(
       padding: EdgeInsets.all(20),
       child: Obx(
-        () => Row(
-          children: [
-            Expanded(
-              child: GestureDetector(
-                onTap: followAction,
-                child: Container(
-                  height: 45,
-                  decoration: BoxDecoration(
-                    color: isFriend ? AppColors.btnColor : Colors.transparent,
-                    border: Border.all(color: AppColors.btnColor, width: 2),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Center(
-                    child: TextView(
-                      text: isFriend ? "Linked" : "Link Up",
-                      style: TextStyle(
-                        color: isFriend ? Colors.white : AppColors.btnColor,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
+        () {
+          final requested = isPrivateAccount && hasPendingFollowRequest.value;
+          String followLabel = 'Link Up';
+          bool followFilled = false;
+          if (isFriend) {
+            followLabel = 'Linked';
+            followFilled = true;
+          } else if (requested) {
+            followLabel = 'Requested';
+          }
+          return Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: requested ? null : followAction,
+                  child: Container(
+                    height: 45,
+                    decoration: BoxDecoration(
+                      color: followFilled ? AppColors.btnColor : Colors.transparent,
+                      border: Border.all(color: AppColors.btnColor, width: 2),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Center(
+                      child: TextView(
+                        text: followLabel,
+                        style: TextStyle(
+                          color: followFilled ? Colors.white : AppColors.btnColor,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
-            SizedBox(width: 12),
-            Expanded(
-              child: GestureDetector(
-                onTap: () {
-                  context.pushNavigator(MessageScreen(data: profileData.value));
-                },
-                child: Container(
-                  height: 45,
-                  decoration: BoxDecoration(
-                    border: Border.all(color: AppColors.btnColor, width: 2),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Center(
-                    child: TextView(
-                      text: "Message",
-                      style: TextStyle(
-                        color: AppColors.btnColor,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
+              SizedBox(width: 12),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    context.pushNavigator(MessageScreen(data: profileData.value));
+                  },
+                  child: Container(
+                    height: 45,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: AppColors.btnColor, width: 2),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Center(
+                      child: TextView(
+                        text: "Message",
+                        style: TextStyle(
+                          color: AppColors.btnColor,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
-        ),
+            ],
+          );
+        },
       ),
     );
   }

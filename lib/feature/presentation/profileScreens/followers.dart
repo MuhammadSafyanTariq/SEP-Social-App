@@ -41,13 +41,17 @@ class _MyFollowersListScreenState extends State<MyFollowersListScreen> {
     return _FollowerScreen(
       list: ProfileCtrl.find.myFollowersList,
       onRemove: (value) {
-        ProfileCtrl.find.removeFollower(value).applyLoader.then((value) {
-          if (value != null) {
-            ProfileCtrl.find.profileData.value = value;
+        ProfileCtrl.find.removeFollower(value).applyLoader.then((updated) {
+          if (updated != null) {
+            ProfileCtrl.find.profileData.value = updated;
+            AppUtils.toast('Follower removed. They can no longer see your posts.');
           } else {
             ProfileCtrl.find.getProfileDetails();
+            AppUtils.toast('Follower removed. They can no longer see your posts.');
           }
           ProfileCtrl.find.getMyFollowers();
+        }).catchError((_) {
+          AppUtils.toastError('Failed to remove follower');
         });
       },
       isMyList: true,

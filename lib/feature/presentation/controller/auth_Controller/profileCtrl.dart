@@ -17,6 +17,7 @@ import '../../../data/models/dataModels/home_model/comments_list_model.dart';
 import '../../../data/models/dataModels/poll_item_model/poll_item_model.dart';
 import '../../../data/models/dataModels/post_data.dart';
 import '../../../data/models/dataModels/profile_data/profile_data_model.dart';
+import '../../../data/models/dataModels/responseDataModel.dart';
 import '../../../data/repository/iAuthRepository.dart';
 import '../../../data/repository/iTempRepository.dart';
 import '../../profileScreens/profileScreen.dart';
@@ -729,15 +730,42 @@ class ProfileCtrl extends GetxController {
     }
   }
 
-  Future followRequest(String id) async {
+  /// Returns response message: "User follow successfully", "User Unfollow successfully", or "Follow request sent" (private account).
+  Future<String?> followRequest(String id) async {
     final result = await _authRepository.followUnfollowUserRequest(
       followUserId: id,
     );
     if (result.isSuccess) {
-      return;
+      final message = result.data?['message'] as String?;
+      return message;
     } else {
       AppUtils.toastError(result.getError);
       throw '';
+    }
+  }
+
+  Future<ResponseData<List<ProfileDataModel>>> getPendingFollowRequests() =>
+      _authRepository.getPendingFollowRequests();
+
+  Future<ResponseData<bool>> approveFollowRequest(String requesterId) =>
+      _authRepository.approveFollowRequest(requesterId: requesterId);
+
+  Future<ResponseData<bool>> rejectFollowRequest(String requesterId) =>
+      _authRepository.rejectFollowRequest(requesterId: requesterId);
+
+  Future<void> updatePrivateAccount(bool isPrivate) async {
+    final res = await _authRepository.updateIsPrivate(isPrivate: isPrivate);
+    if (res.isSuccess) {
+      final updated = profileData.value.copyWith(isPrivate: isPrivate);
+      profileData.value = updated;
+      Preferences.profile = updated;
+      Preferences.savePrefOnLogin = updated;
+      AppUtils.toast(isPrivate ? 'Private account enabled' : 'Private account disabled');
+    } else {
+      final err = res.getError?.toString() ?? '';
+      AppUtils.toastError(
+        err.contains('false') || err.isEmpty ? 'Failed to update private account' : err,
+      );
     }
   }
 

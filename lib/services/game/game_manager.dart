@@ -2,18 +2,29 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sep/feature/data/models/dataModels/profile_data/profile_data_model.dart';
 import 'package:sep/feature/data/repository/iAuthRepository.dart';
 import 'package:sep/feature/presentation/controller/auth_Controller/profileCtrl.dart';
+import 'package:sep/services/storage/preferences.dart';
 import 'package:sep/utils/appUtils.dart';
 
-/// Manages game attempts and token deduction for daily free games
+/// Manages game attempts and token deduction for daily free games.
+/// Play state is scoped per user so each account gets its own "free today" state.
 class GameManager {
   static const String _lastPlayDatePrefix = 'last_play_date_';
   static const String _hasPlayedTodayPrefix = 'has_played_today_';
   static const int TOKEN_COST_PER_RETRY = 2;
 
+  static String get _userId => Preferences.uid ?? '';
+
+  static String _lastPlayKey(String gameId) =>
+      '${_lastPlayDatePrefix}${gameId}_$_userId';
+  static String _hasPlayedKey(String gameId) =>
+      '${_hasPlayedTodayPrefix}${gameId}_$_userId';
+
   static const String FLAPPY_BIRD_GAME = 'flappy_bird';
   static const String SHOOTING_GAME = 'shooting_rush';
   static const String FRUIT_NINJA_GAME = 'fruit_ninja';
   static const String GAME_2048 = 'game_2048';
+  static const String TIC_TAC_TOE_GAME = 'tic_tac_toe';
+  static const String CAR_RACE_GAME = 'car_race';
 
   static SharedPreferences? _prefs;
 
@@ -31,7 +42,7 @@ class GameManager {
   /// Check if the user has played this game today
   static Future<bool> hasPlayedToday(String gameId) async {
     await init();
-    final lastPlayDate = _prefs?.getString('$_lastPlayDatePrefix$gameId');
+    final lastPlayDate = _prefs?.getString(_lastPlayKey(gameId));
     final today = _getTodayDateString();
     return lastPlayDate == today;
   }
@@ -99,10 +110,10 @@ class GameManager {
       }
     }
 
-    // Mark as played today
+    // Mark as played today (scoped to current user)
     final today = _getTodayDateString();
-    await _prefs?.setString('$_lastPlayDatePrefix$gameId', today);
-    await _prefs?.setBool('$_hasPlayedTodayPrefix$gameId', true);
+    await _prefs?.setString(_lastPlayKey(gameId), today);
+    await _prefs?.setBool(_hasPlayedKey(gameId), true);
 
     AppUtils.log('Game $gameId started. Free: $isFree');
     return true;
@@ -146,18 +157,22 @@ class GameManager {
     }
   }
 
-  /// Reset all game data (for testing purposes)
+  /// Reset all game data for the current user (for testing purposes)
   static Future<void> resetAllGames() async {
     await init();
-    await _prefs?.remove('$_lastPlayDatePrefix$FLAPPY_BIRD_GAME');
-    await _prefs?.remove('$_lastPlayDatePrefix$SHOOTING_GAME');
-    await _prefs?.remove('$_lastPlayDatePrefix$FRUIT_NINJA_GAME');
-    await _prefs?.remove('$_lastPlayDatePrefix$GAME_2048');
-    await _prefs?.remove('$_hasPlayedTodayPrefix$FLAPPY_BIRD_GAME');
-    await _prefs?.remove('$_hasPlayedTodayPrefix$SHOOTING_GAME');
-    await _prefs?.remove('$_hasPlayedTodayPrefix$FRUIT_NINJA_GAME');
-    await _prefs?.remove('$_hasPlayedTodayPrefix$GAME_2048');
-    AppUtils.log('All game data reset');
+    await _prefs?.remove(_lastPlayKey(FLAPPY_BIRD_GAME));
+    await _prefs?.remove(_lastPlayKey(SHOOTING_GAME));
+    await _prefs?.remove(_lastPlayKey(FRUIT_NINJA_GAME));
+    await _prefs?.remove(_lastPlayKey(GAME_2048));
+    await _prefs?.remove(_lastPlayKey(TIC_TAC_TOE_GAME));
+    await _prefs?.remove(_lastPlayKey(CAR_RACE_GAME));
+    await _prefs?.remove(_hasPlayedKey(FLAPPY_BIRD_GAME));
+    await _prefs?.remove(_hasPlayedKey(SHOOTING_GAME));
+    await _prefs?.remove(_hasPlayedKey(FRUIT_NINJA_GAME));
+    await _prefs?.remove(_hasPlayedKey(GAME_2048));
+    await _prefs?.remove(_hasPlayedKey(TIC_TAC_TOE_GAME));
+    await _prefs?.remove(_hasPlayedKey(CAR_RACE_GAME));
+    AppUtils.log('All game data reset for current user');
   }
 
   /// Get game status info for display

@@ -41,23 +41,24 @@ class _PackagesScreenState extends State<PackagesScreen> {
   Package? selectedPackage;
   final TextEditingController customAmountController = TextEditingController();
 
+  // Backend: $10 → 1,000 tokens, $20 → 2,500, $50 → 10,000 (1¢ per token); valid amounts: 10, 20, 50
   final List<Package> packages = [
     Package(
       id: '1',
       name: 'Basic',
       description: 'Perfect for getting started',
-      price: 9.99,
-      tokens: 100,
-      features: ['100 Tokens', 'Basic Support', 'Standard Features'],
+      price: 10,
+      tokens: 1000,
+      features: ['1,000 Tokens', 'Basic Support', 'Standard Features'],
     ),
     Package(
       id: '2',
       name: 'Popular',
       description: 'Most popular choice',
-      price: 19.99,
-      tokens: 250,
+      price: 20,
+      tokens: 2500,
       features: [
-        '250 Tokens',
+        '2,500 Tokens',
         'Priority Support',
         'Premium Features',
         'Bonus Tokens',
@@ -68,28 +69,14 @@ class _PackagesScreenState extends State<PackagesScreen> {
       id: '3',
       name: 'Premium',
       description: 'Best value for power users',
-      price: 39.99,
-      tokens: 600,
+      price: 50,
+      tokens: 10000,
       features: [
-        '600 Tokens',
+        '10,000 Tokens',
         '24/7 Support',
         'All Premium Features',
         'Exclusive Content',
         'Extra Bonuses',
-      ],
-    ),
-    Package(
-      id: '4',
-      name: 'Enterprise',
-      description: 'For businesses and teams',
-      price: 99.99,
-      tokens: 1500,
-      features: [
-        '1500 Tokens',
-        'Dedicated Support',
-        'Enterprise Features',
-        'Team Management',
-        'Custom Solutions',
       ],
     ),
   ];
@@ -122,20 +109,9 @@ class _PackagesScreenState extends State<PackagesScreen> {
     });
   }
 
-  // Calculate tokens based on amount with tiered pricing
-  // This formula matches the existing packages:
-  // $9.99 → 100 tokens, $19.99 → 250 tokens, $39.99 → 600 tokens, $99.99 → 1500 tokens
+  // Backend: 1¢ per token; tokens = floor(customAmount × 100)
   int _calculateTokensFromAmount(double amount) {
-    if (amount <= 15) {
-      // Basic tier: 10 tokens per dollar (up to $15)
-      return (amount * 10).round();
-    } else if (amount <= 30) {
-      // Popular tier: 12.5 tokens per dollar ($15-$30)
-      return (amount * 12.5).round();
-    } else {
-      // Premium/Enterprise tier: 15 tokens per dollar ($30+)
-      return (amount * 15).round();
-    }
+    return (amount * 100).floor();
   }
 
   Future<void> _payNow() async {

@@ -38,8 +38,11 @@ class _ChatScreenState extends State<ChatScreen> {
 
   List<RecentChatModel> filteredChatList = [];
 
-  // Toggle between Slidable and Dismissible modes
+  // Toggle between Slidable and Dismissible modes (kept for existing logic)
   bool useSlidableMode = true;
+
+  // Currently long-pressed/selected chat id for toolbar delete
+  String? _selectedChatId;
 
   @override
   void initState() {
@@ -91,6 +94,44 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  Future<void> _confirmDeleteSelectedChat() async {
+    final chatId = _selectedChatId;
+    if (chatId == null) return;
+
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Delete Chat'),
+          content: const Text(
+            'Are you sure you want to delete this chat?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text(
+                'Delete',
+                style: TextStyle(color: Colors.red),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldDelete == true) {
+      ctrl.deleteChat(chatId);
+      setState(() {
+        _selectedChatId = null;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -124,20 +165,13 @@ class _ChatScreenState extends State<ChatScreen> {
                 titleAlign: TextAlign.center,
                 titleStyle: 20.txtSBoldprimary,
                 backgroundColor: AppColors.white,
-                suffixWidget: IconButton(
-                  icon: Icon(
-                    useSlidableMode ? Icons.swipe : Icons.delete_sweep,
-                    color: AppColors.btnColor,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      useSlidableMode = !useSlidableMode;
-                    });
-                  },
-                  tooltip: useSlidableMode
-                      ? 'Switch to Swipe to Delete'
-                      : 'Switch to Slidable Actions',
-                ),
+                suffixWidget: _selectedChatId == null
+                    ? const SizedBox.shrink()
+                    : IconButton(
+                        icon: const Icon(Icons.delete, color: AppColors.btnColor),
+                        tooltip: 'Delete selected chat',
+                        onPressed: _confirmDeleteSelectedChat,
+                      ),
               ),
 
               Padding(
@@ -199,6 +233,8 @@ class _ChatScreenState extends State<ChatScreen> {
                                       ? Slidable(
                                           // Specify a key if the Slidable is dismissible.
                                           key: const ValueKey(0),
+                                          // Disable all slide gestures (no slide-to-delete/actions).
+                                          enabled: false,
 
                                           // The start action pane is the one at the left or the top side.
                                           startActionPane: ActionPane(
@@ -487,6 +523,11 @@ class _ChatScreenState extends State<ChatScreen> {
                                                       vertical: 8,
                                                     ),
                                                 child: InkWell(
+                                                  onLongPress: () {
+                                                    setState(() {
+                                                      _selectedChatId = data.id;
+                                                    });
+                                                  },
                                                   onTap: () async {
                                                     await context
                                                         .pushNavigator(
@@ -682,6 +723,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
                                     return useSlidableMode
                                         ? Slidable(
+                                            // Disable all slide gestures here as well.
+                                            enabled: false,
                                             endActionPane: ActionPane(
                                               motion: ScrollMotion(),
                                               extentRatio: 0.2,
@@ -910,6 +953,12 @@ class _ChatScreenState extends State<ChatScreen> {
                                                                     ),
                                                               ),
                                                               child: InkWell(
+                                                                onLongPress: () {
+                                                                  setState(() {
+                                                                    _selectedChatId =
+                                                                        data.id;
+                                                                  });
+                                                                },
                                                                 onTap: () async {
                                                                   Slidable.of(
                                                                     slideableContext,
@@ -1220,6 +1269,12 @@ class _ChatScreenState extends State<ChatScreen> {
                                                         vertical: 8,
                                                       ),
                                                   child: InkWell(
+                                                    onLongPress: () {
+                                                      setState(() {
+                                                        _selectedChatId =
+                                                            data.id;
+                                                      });
+                                                    },
                                                     onTap: () async {
                                                       await context
                                                           .pushNavigator(

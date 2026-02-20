@@ -5,6 +5,7 @@ import 'package:sep/components/styles/textStyles.dart';
 import '../../../components/coreComponents/TextView.dart';
 import '../../data/models/dataModels/post_data.dart';
 import '../Home/like_Screen.dart';
+
 class FavButton extends StatefulWidget {
   final bool initialState; // Initial like state (isLikedByUser)
   final int initialCount; // Initial like count
@@ -53,10 +54,7 @@ class _FavButtonState extends State<FavButton> {
           ),
         ),
         const SizedBox(width: 5),
-        TextView(
-          text: '${widget.initialCount}',
-          style: 12.txtRegularprimary,
-        ),
+        TextView(text: '${widget.initialCount}', style: 12.txtRegularprimary),
         Padding(
           padding: const EdgeInsets.only(left: 5.0),
           child: InkWell(
@@ -77,19 +75,14 @@ class _FavButtonState extends State<FavButton> {
                     ),
                     child: Column(
                       children: [
-                        Expanded(
-                          child: LikeScreen(postId: widget.postId),
-                        ),
+                        Expanded(child: LikeScreen(postId: widget.postId)),
                       ],
                     ),
                   );
                 },
               );
             },
-            child: TextView(
-              text: "Likes",
-              style: 12.txtRegularGrey,
-            ),
+            child: TextView(text: "Likes", style: 12.txtRegularGrey),
           ),
         ),
       ],

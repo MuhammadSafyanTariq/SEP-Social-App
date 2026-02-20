@@ -39,8 +39,10 @@ class _Game2048ScreenState extends State<Game2048Screen> {
           context: context,
           tokensRequired: status.tokensRequired,
           onBuyTokens: () {
-            Navigator.of(context).pop(); // Close dialog
-            context.pushNavigator(PackagesScreen());
+            // Dialog closes itself; push packages on root navigator
+            Navigator.of(context, rootNavigator: true).push(
+              MaterialPageRoute(builder: (_) => PackagesScreen()),
+            );
           },
         );
         // Go back after dialog is closed

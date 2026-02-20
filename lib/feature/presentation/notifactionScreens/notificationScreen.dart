@@ -188,10 +188,11 @@ final olderNotifications = notificationlist.where((item) {
 class _NotificationscreenState extends State<Notificationscreen> {
   @override
   void initState() {
-    WidgetsBinding.instance.addPostFrameCallback(
-      (_) => getNotification().applyLoader,
-    );
     super.initState();
+    // Refetch from backend when opening screen so badge and read state stay in sync
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => getNotification(isRefresh: true).applyLoader,
+    );
   }
 
   Future<bool?> showConfirmationDialog(
@@ -266,6 +267,19 @@ class _NotificationscreenState extends State<Notificationscreen> {
                             labelStyle: 14.txtMediumWhite,
                             buttonColor: AppColors.btnColor,
                             onTap: () async {
+                              AppUtils.log(
+                                '🗑 Delete dialog confirmed for notificationId=$notificationId',
+                              );
+                              if (notificationId.isEmpty) {
+                                AppUtils.log(
+                                  '🗑 Delete aborted: notificationId is empty (backend may send _id instead of id)',
+                                );
+                                AppUtils.toastError(
+                                  'Cannot delete: notification ID missing.',
+                                );
+                                Navigator.of(context).pop(false);
+                                return;
+                              }
                               showDialog(
                                 context: context,
                                 barrierDismissible: false,
@@ -279,24 +293,34 @@ class _NotificationscreenState extends State<Notificationscreen> {
                               try {
                                 final response = await IAuthRepository()
                                     .deleteNotification(notificationId);
+                                AppUtils.log(
+                                  '🗑 Delete dialog API result '
+                                  'isSuccess=${response.isSuccess}, '
+                                  'statusCode=${response.statusCode}, '
+                                  'error=${response.getError}',
+                                );
                                 Navigator.pop(context);
                                 if (response.isSuccess) {
-                                  AppUtils.toast(
-                                    "Your Notification has been deleted.",
-                                  );
+                                  // Remove from UI immediately so list and badge update
                                   controller.notificationlist.removeWhere(
                                     (item) => item.id == notificationId,
+                                  );
+                                  controller.notificationlist.refresh();
+                                  AppUtils.toast(
+                                    "Your Notification has been deleted.",
                                   );
                                   Navigator.of(context).pop(true);
                                 } else {
                                   AppUtils.toastError(
-                                    "Failed to delete Notification.",
+                                    response.getError?.toString() ??
+                                        "Failed to delete Notification.",
                                   );
                                   Navigator.of(context).pop(false);
                                 }
                               } catch (e) {
                                 Navigator.pop(context);
-                                AppUtils.toast("An unexpected error occurred.");
+                                AppUtils.toastError(
+                                    "An unexpected error occurred.");
                                 Navigator.of(context).pop(false);
                               }
                             },
@@ -435,27 +459,21 @@ class _NotificationscreenState extends State<Notificationscreen> {
 
   Future<void> markAllAsRead() async {
     try {
+      // Optimistic update: clear badge and list read state immediately
+      final allIds = notificationlist
+          .where((n) => n.id != null)
+          .map((n) => n.id!)
+          .toSet();
+      Preferences.readNotificationIds = allIds;
+      for (int i = 0; i < notificationlist.length; i++) {
+        notificationlist[i] = notificationlist[i].copyWith(isRead: true);
+      }
+      notificationlist.refresh();
+
       final result = await _repo.markAllNotificationsAsRead();
-
-      if (result.isSuccess) {
-        // Cache all notification IDs as read
-        final allIds = notificationlist
-            .where((n) => n.id != null)
-            .map((n) => n.id!)
-            .toSet();
-        Preferences.readNotificationIds = allIds;
-
-        // Update local list only if API call succeeded
-        for (int i = 0; i < notificationlist.length; i++) {
-          notificationlist[i] = notificationlist[i].copyWith(isRead: true);
-        }
-        notificationlist.refresh();
+      if (!result.isSuccess) {
         AppUtils.log(
-          'Successfully marked all ${allIds.length} notifications as read',
-        );
-      } else {
-        AppUtils.log(
-          'Failed to mark all notifications as read: ${result.error}',
+          'Mark all as read API failed: ${result.error}',
         );
       }
     } catch (e) {
@@ -567,43 +585,29 @@ class _NotificationscreenState extends State<Notificationscreen> {
                               context,
                               liveIndex > -1,
                               onTap: () async {
-                                // Mark as read when tapped
-                                if (item.isRead == false) {
-                                  try {
-                                    final result = await _repo
-                                        .markNotificationAsRead(
-                                          notificationId: item.id ?? '',
-                                        );
-
-                                    if (result.isSuccess) {
-                                      // Cache the read notification ID
-                                      if (item.id != null) {
-                                        Preferences.addReadNotificationId(
-                                          item.id!,
-                                        );
-                                      }
-
-                                      // Update local list only if API call succeeded
-                                      final index = notificationlist.indexOf(
-                                        item,
-                                      );
-                                      if (index != -1) {
-                                        notificationlist[index] = item.copyWith(
-                                          isRead: true,
-                                        );
-                                        notificationlist.refresh();
-                                      }
+                                // Mark as read on open: optimistic update first, then sync to backend
+                                if (item.isRead == false && item.id != null) {
+                                  final index = notificationlist
+                                      .indexWhere((n) => n.id == item.id);
+                                  if (index != -1) {
+                                    notificationlist[index] =
+                                        item.copyWith(isRead: true);
+                                    notificationlist.refresh();
+                                  }
+                                  Preferences.addReadNotificationId(item.id!);
+                                  _repo
+                                      .markNotificationAsRead(
+                                        notificationId: item.id!,
+                                      )
+                                      .then((result) {
+                                    if (!result.isSuccess) {
                                       AppUtils.log(
-                                        'Successfully marked notification ${item.id} as read',
-                                      );
-                                    } else {
-                                      AppUtils.log(
-                                        'Failed to mark notification as read: ${result.error}',
+                                        'Mark as read API failed: ${result.error}',
                                       );
                                     }
-                                  } catch (e) {
+                                  }).catchError((e) {
                                     AppUtils.log('Error marking as read: $e');
-                                  }
+                                  });
                                 }
                               },
                             );
@@ -648,7 +652,10 @@ class _NotificationscreenState extends State<Notificationscreen> {
       key: Key(item.id ?? UniqueKey().toString()),
       direction: DismissDirection.endToStart,
       confirmDismiss: (_) => showConfirmationDialog(context, item.id ?? ""),
-      onDismissed: (_) => notificationlist.remove(item),
+      onDismissed: (_) {
+        notificationlist.removeWhere((n) => n.id == item.id);
+        notificationlist.refresh();
+      },
       background: Container(
         color: Colors.red,
         alignment: Alignment.centerRight,
@@ -658,10 +665,14 @@ class _NotificationscreenState extends State<Notificationscreen> {
           children: [ImageView(url: AppImages.deleteicon, size: 40)],
         ),
       ),
-      child: InkWell(
-        onTap: () {
-          onTap?.call();
-          if (item.notificationType == 'live' ||
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          InkWell(
+            onTap: () {
+              onTap?.call();
+              if (item.notificationType == 'live' ||
               item.notificationType == 'inviteForLive') {
             bool liveStatus1 =
                 item.notificationType == 'inviteForLive' ||
@@ -698,6 +709,8 @@ class _NotificationscreenState extends State<Notificationscreen> {
               message.contains("started following you") ||
               message.contains("started folowing you") ||
               item.notificationType?.toLowerCase() == 'follow';
+          final isFollowRequestNotification =
+              item.notificationType?.toLowerCase() == 'followrequest';
           final isCommentNotification =
               message.contains("commented") ||
               item.notificationType?.toLowerCase() == 'comment';
@@ -715,12 +728,10 @@ class _NotificationscreenState extends State<Notificationscreen> {
             );
 
             if (isLikeNotification) {
-              // Navigate to post for likes
               _navigateToPost(item, openComments: false);
             } else if (isCommentNotification) {
-              // Navigate to post/comments sheet for comments
               _navigateToPost(item, openComments: true);
-            } else if (isFollowNotification) {
+            } else if (isFollowNotification || isFollowRequestNotification) {
               context.pushNavigator(FriendProfileScreen(data: userData));
               AppUtils.log(
                 "Navigated to friend profile: ${userData.name}, ${userData.image}",
@@ -740,23 +751,92 @@ class _NotificationscreenState extends State<Notificationscreen> {
           }
         },
 
-        child: NotificationItemComponent(
-          data: item,
-          title:
-              (item.notificationType == 'live' ||
-                  item.notificationType == 'inviteForLive')
-              ? item.senderId?.name ?? ''
-              : 'New Notification',
-          type: item.notificationType ?? '',
-          notification: _getFormattedNotificationMessage(
-            item.message ?? "No message",
+            child: NotificationItemComponent(
+              data: item,
+              title:
+                  (item.notificationType == 'live' ||
+                      item.notificationType == 'inviteForLive')
+                  ? item.senderId?.name ?? ''
+                  : 'New Notification',
+              type: item.notificationType ?? '',
+              notification: _getFormattedNotificationMessage(
+                item.message ?? "No message",
+              ),
+              time: item.localDate ?? DateTime.parse(''),
+              liveStatus: liveStatus,
+            ),
           ),
-          // time: DateTime.parse(item.createdAt ?? ""),
-          time: item.localDate ?? DateTime.parse(''),
-          liveStatus: liveStatus,
-        ),
+          if (item.notificationType?.toLowerCase() == 'followrequest' &&
+              item.senderId?.id != null) ...[
+            Padding(
+              padding: EdgeInsets.only(left: 56, right: 16, bottom: 12, top: 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => _rejectFollowRequest(context, item),
+                    child: TextView(
+                      text: 'Reject',
+                      style: TextStyle(
+                        color: Colors.grey[700],
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  AppButton(
+                    radius: 20.sdp,
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    label: 'Approve',
+                    labelStyle: 14.txtMediumWhite,
+                    buttonColor: AppColors.btnColor,
+                    onTap: () => _approveFollowRequest(context, item),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
       ),
     );
+  }
+
+  Future<void> _approveFollowRequest(
+      BuildContext context, NotificationItem item) async {
+    final requesterId = item.senderId?.id;
+    if (requesterId == null || requesterId.isEmpty) return;
+    try {
+      final res = await ProfileCtrl.find.approveFollowRequest(requesterId);
+      if (res.isSuccess) {
+        AppUtils.toast('Follow request approved');
+        notificationlist.removeWhere((n) => n.id == item.id);
+        notificationlist.refresh();
+        _onRefresh();
+      } else {
+        AppUtils.toastError(res.getError?.toString() ?? 'Failed to approve');
+      }
+    } catch (e) {
+      AppUtils.toastError('Failed to approve');
+    }
+  }
+
+  Future<void> _rejectFollowRequest(
+      BuildContext context, NotificationItem item) async {
+    final requesterId = item.senderId?.id;
+    if (requesterId == null || requesterId.isEmpty) return;
+    try {
+      final res = await ProfileCtrl.find.rejectFollowRequest(requesterId);
+      if (res.isSuccess) {
+        AppUtils.toast('Follow request rejected');
+        notificationlist.removeWhere((n) => n.id == item.id);
+        notificationlist.refresh();
+        _onRefresh();
+      } else {
+        AppUtils.toastError(res.getError?.toString() ?? 'Failed to reject');
+      }
+    } catch (e) {
+      AppUtils.toastError('Failed to reject');
+    }
   }
 }
 
@@ -834,6 +914,7 @@ class NotificationItemComponent extends StatelessWidget {
       case 'comment':
         return Icons.chat_bubble_outline;
       case 'follow':
+      case 'followrequest':
         return Icons.person_add_outlined;
       case 'like':
         return Icons.favorite_outline;
@@ -869,6 +950,8 @@ class NotificationItemComponent extends StatelessWidget {
         return 'Comments';
       case 'follow':
         return 'Social';
+      case 'followrequest':
+        return 'Follow request';
       case 'like':
         return 'Likes';
       default:

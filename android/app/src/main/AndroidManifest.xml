@@ -73,19 +73,17 @@
                 <data android:scheme="sepmedia" android:host="profile" android:pathPrefix="/" />
             </intent-filter>
             
-            <!-- Universal Links (if you have a web domain) -->
-            <!-- Uncomment and replace with your domain -->
-            <!--
+            <!-- App Links: Firebase Hosting URL for post shares. When user opens
+                 https://sep-app-9b95e.web.app/post/ID, opens in app if installed.
+                 Requires .well-known/assetlinks.json on hosting with your SHA256. -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                
                 <data android:scheme="https" />
-                <data android:host="sepmedia.app" />
+                <data android:host="sep-app-9b95e.web.app" />
                 <data android:pathPrefix="/post" />
             </intent-filter>
-            -->
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

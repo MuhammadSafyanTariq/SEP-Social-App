@@ -35,6 +35,7 @@ import '../../data/models/dataModels/story_model.dart';
 import '../Home/story/story_view_screen_new.dart';
 import '../screens/post_browsing_listing.dart';
 import 'followers.dart';
+import 'pending_follow_requests_screen.dart';
 import 'setting/following.dart';
 import 'setting/editProfile.dart';
 
@@ -249,6 +250,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                       StoryViewScreenNew(
                         storyGroups: [storyGroup],
                         initialGroupIndex: 0,
+                        canDeleteStories: true,
                       ),
                     );
                   },
@@ -423,54 +425,76 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   Widget _buildStatsSection() {
     return Obx(
-      () => Padding(
-        padding: EdgeInsets.symmetric(horizontal: 20),
-        child: Center(
+      () {
+        final isPrivate = profileData.isPrivate == true;
+        final statRow = Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildStatItem(
+              '${profileCtrl.adjustedPostCount}',
+              'Posts',
+              null,
+            ),
+            Container(
+              height: 30,
+              width: 1,
+              color: Colors.grey[400],
+              margin: EdgeInsets.symmetric(horizontal: 16),
+            ),
+            _buildStatItem(
+              '${(profileData.followers ?? []).length}',
+              'Linked Me',
+              () {
+                context.pushNavigator(MyFollowersListScreen());
+              },
+            ),
+            Container(
+              height: 30,
+              width: 1,
+              color: Colors.grey[400],
+              margin: EdgeInsets.symmetric(horizontal: 16),
+            ),
+            _buildStatItem(
+              '${(profileData.following ?? []).length}',
+              'Link Ups',
+              () {
+                context.pushNavigator(MyFollowingListScreen());
+              },
+            ),
+            if (isPrivate) ...[
+              Container(
+                height: 30,
+                width: 1,
+                color: Colors.grey[400],
+                margin: EdgeInsets.symmetric(horizontal: 16),
+              ),
+              _buildStatItem(
+                '${(profileData.pendingFollowRequests ?? []).length}',
+                'Requests',
+                () {
+                  context.pushNavigator(PendingFollowRequestsScreen());
+                },
+              ),
+            ],
+          ],
+        );
+        return Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20),
           child: Container(
-            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
             decoration: BoxDecoration(
               color: Colors.grey[100],
               borderRadius: BorderRadius.circular(20),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildStatItem(
-                  '${profileCtrl.adjustedPostCount}',
-                  'Posts',
-                  null,
-                ),
-                Container(
-                  height: 30,
-                  width: 1,
-                  color: Colors.grey[400],
-                  margin: EdgeInsets.symmetric(horizontal: 20),
-                ),
-                _buildStatItem(
-                  '${(profileData.followers ?? []).length}',
-                  'Linked Me',
-                  () {
-                    context.pushNavigator(MyFollowersListScreen());
-                  },
-                ),
-                Container(
-                  height: 30,
-                  width: 1,
-                  color: Colors.grey[400],
-                  margin: EdgeInsets.symmetric(horizontal: 20),
-                ),
-                _buildStatItem(
-                  '${(profileData.following ?? []).length}',
-                  'Link Ups',
-                  () {
-                    context.pushNavigator(MyFollowingListScreen());
-                  },
-                ),
-              ],
-            ),
+            child: isPrivate
+                ? SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: statRow,
+                  )
+                : Center(child: statRow),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 

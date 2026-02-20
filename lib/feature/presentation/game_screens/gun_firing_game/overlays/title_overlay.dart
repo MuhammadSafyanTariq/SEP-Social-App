@@ -3,7 +3,6 @@ import 'package:sep/components/dialogs/game_start_dialog.dart';
 import 'package:sep/feature/presentation/wallet/packages_screen.dart';
 import 'package:sep/services/game/game_manager.dart';
 import 'package:sep/utils/appUtils.dart';
-import 'package:sep/utils/extensions/contextExtensions.dart';
 
 import '../my_game.dart';
 
@@ -41,8 +40,10 @@ class _TitleOverlayState extends State<TitleOverlay> {
         context: context,
         tokensRequired: status.tokensRequired,
         onBuyTokens: () {
-          Navigator.of(context).pop(); // Close dialog first
-          context.pushNavigator(PackagesScreen());
+          // Dialog closes itself; push packages on root navigator
+          Navigator.of(context, rootNavigator: true).push(
+            MaterialPageRoute(builder: (_) => PackagesScreen()),
+          );
         },
       );
       // Exit game screen after dialog is closed

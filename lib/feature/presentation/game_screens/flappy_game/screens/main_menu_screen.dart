@@ -24,8 +24,10 @@ class MainMenuScreen extends StatelessWidget {
         context: context,
         tokensRequired: status.tokensRequired,
         onBuyTokens: () {
-          Navigator.of(context).pop(); // Close dialog first
-          context.pushNavigator(PackagesScreen());
+          // Dialog closes itself; push packages on root navigator
+          Navigator.of(context, rootNavigator: true).push(
+            MaterialPageRoute(builder: (_) => PackagesScreen()),
+          );
         },
       );
       // Exit game screen after dialog is closed

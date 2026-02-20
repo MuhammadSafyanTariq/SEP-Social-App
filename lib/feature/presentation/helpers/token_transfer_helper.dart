@@ -13,19 +13,11 @@ class TokenTransferHelper {
       final netTokensToReceiver =
           responseData['netTokensToReceiver'] ?? (tokensSent - commission);
       final dollarValue = responseData['dollarValue'] ?? 0.0;
-      final dollarCommission = responseData['dollarCommission'] ?? 0.0;
 
-      String message =
-          'Sent $tokensSent tokens (\$${dollarValue.toStringAsFixed(2)})';
-
-      if (commission > 0) {
-        message += '\n$recipientType receives $netTokensToReceiver tokens';
-        message +=
-            '\nCommission: $commission tokens (\$${dollarCommission.toStringAsFixed(2)})';
-      } else {
-        message += '\n$recipientType receives $netTokensToReceiver tokens';
-      }
-
+      // Platform fee removed: commission is always 0; no need to show fee to users.
+      final message =
+          'Sent $tokensSent tokens (\$${dollarValue.toStringAsFixed(2)})\n'
+          '$recipientType receives $netTokensToReceiver tokens';
       AppUtils.toast(message);
     } else {
       AppUtils.toast('Tokens sent successfully!');
@@ -37,15 +29,12 @@ class TokenTransferHelper {
     if (responseData == null) return 'No response data';
 
     final tokenAmount = responseData['tokenAmount'] ?? 0;
-    final commission = responseData['commissionTokens'] ?? 0;
-    final netTokens = responseData['netTokensToReceiver'] ?? 0;
+    final netTokens = responseData['netTokensToReceiver'] ?? tokenAmount;
     final dollarValue = responseData['dollarValue'] ?? 0.0;
-    final dollarCommission = responseData['dollarCommission'] ?? 0.0;
 
     return '''
 Token Transfer Details:
 - Tokens Sent: $tokenAmount
-- Commission: $commission tokens (\$${dollarCommission.toStringAsFixed(2)})
 - Net Tokens to Receiver: $netTokens
 - Total Value: \$${dollarValue.toStringAsFixed(2)}
 ''';

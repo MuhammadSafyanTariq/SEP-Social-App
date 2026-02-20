@@ -144,6 +144,8 @@ class AppImages {
   static const String shootinggameImag = '${_path}shootinggameImag.webp';
   static const String fruitNinja = '${_path}fruitNinja.png';
   static const String game2048 = '${_path}2048.png';
+  static const String ticTacToeImg = 'assets/car_race/images/ticklogo.png';
+  static const String carRaceImg = 'assets/car_race/images/cargamelogo.png';
   static const String snakeImg = '${_path}snakeImg.jpeg';
   static const String sportImg = '${_path}sportImg.webp';
   static const String walletImg = '${_path}walletImg.png';
@@ -158,6 +160,7 @@ class AppImages {
   static const heartLikeLottie = '${_path}heart_like.json';
   static const coinAnimationLottie = '${_path}coinAnimation.json';
 
+  // Short names for Flame.images (default prefix is assets/images/)
   static const backgorund = 'background.png';
   static const ground = 'ground.png';
   static const clouds = 'clouds.png';

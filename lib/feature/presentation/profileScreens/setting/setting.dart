@@ -148,19 +148,31 @@ class _SettingState extends State<Setting> {
                   // Notifications Section
                   _buildSectionHeader(AppStrings.notification.tr),
                   _buildSettingsCard([
-                    _buildSettingsTile(
+                    Obx(() => _buildSettingsTile(
                       title: AppStrings.notificat.tr,
                       icon: Icons.notifications_outlined,
                       onTap: () {},
                       showToggle: true,
                       toggleValue: isNotificationOn.value,
                       onToggleChanged: toggleNotification,
-                    ),
+                    )),
                   ]),
 
                   // Privacy & Security Section
                   _buildSectionHeader(AppStrings.privacyAndSecurity.tr),
                   _buildSettingsCard([
+                    Obx(() => _buildSettingsTile(
+                      title: 'Private account',
+                      subtitle: 'Only approved followers can see your posts, stories and profile',
+                      icon: Icons.lock_outline,
+                      onTap: () {},
+                      showToggle: true,
+                      toggleValue: ProfileCtrl.find.profileData.value.isPrivate ?? false,
+                      onToggleChanged: (value) async {
+                        await ProfileCtrl.find.updatePrivateAccount(value);
+                      },
+                    )),
+                    Divider(height: 1, color: AppColors.grey.withOpacity(0.3)),
                     _buildSettingsTile(
                       title: AppStrings.whoCanSeeMyProfile.tr,
                       icon: Icons.visibility_outlined,
@@ -330,6 +342,7 @@ class _SettingState extends State<Setting> {
 
   Widget _buildSettingsTile({
     required String title,
+    String? subtitle,
     required VoidCallback onTap,
     required bool showToggle,
     IconData? icon,
@@ -352,20 +365,31 @@ class _SettingState extends State<Setting> {
               12.width,
             ],
             Expanded(
-              child: TextView(
-                text: title,
-                style: 16.txtMediumBlack.copyWith(
-                  color: titleColor ?? AppColors.blackText,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextView(
+                    text: title,
+                    style: 16.txtMediumBlack.copyWith(
+                      color: titleColor ?? AppColors.blackText,
+                    ),
+                  ),
+                  if (subtitle != null && subtitle.isNotEmpty) ...[
+                    4.height,
+                    TextView(
+                      text: subtitle,
+                      style: 14.txtRegularGrey,
+                    ),
+                  ],
+                ],
               ),
             ),
             if (showToggle && toggleValue != null && onToggleChanged != null)
-              Obx(
-                () => Switch(
-                  value: isNotificationOn.value,
-                  activeColor: AppColors.greenlight,
-                  onChanged: onToggleChanged,
-                ),
+              Switch(
+                value: toggleValue ?? false,
+                activeColor: AppColors.greenlight,
+                onChanged: onToggleChanged,
               )
             else
               SvgPicture.asset(

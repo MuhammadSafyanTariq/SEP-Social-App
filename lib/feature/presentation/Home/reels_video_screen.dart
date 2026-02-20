@@ -317,8 +317,7 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
   }
 
   void _toggleLike(PostData post) async {
-    await profileCtrl.likePostWithData(post);
-
+    // Optimistic update: change UI immediately, then sync with backend
     final updatedPost = post.copyWith(
       isLikedByUser: !(post.isLikedByUser ?? false),
       likeCount: (post.isLikedByUser ?? false)
@@ -333,7 +332,6 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
       }
     });
 
-    // Update the globalPostList to reflect changes when returning to home screen
     final globalIndex = profileCtrl.globalPostList.indexWhere(
       (p) => p.id == post.id,
     );
@@ -341,6 +339,8 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
       profileCtrl.globalPostList[globalIndex] = updatedPost;
       profileCtrl.globalPostList.refresh();
     }
+
+    await profileCtrl.likePostWithData(post);
   }
 
   Future<void> _sharePost(PostData post) async {

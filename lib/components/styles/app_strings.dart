@@ -327,6 +327,8 @@ class AppStrings {
   static const String featuredGames = 'Featured Games';
   static const String flappyBird = 'Flappy Bird';
   static const String shootingRush = 'Shooting Rush';
+  static const String ticTacToe = 'Tic Tac Toe';
+  static const String carRace = 'Car Race';
 
   // Referral strings
   static const String referFriend = 'Refer a Friend';

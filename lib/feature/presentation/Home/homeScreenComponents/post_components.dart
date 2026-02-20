@@ -89,7 +89,7 @@ void _showShareToFriendsDialog(BuildContext context, PostData postData) {
                 ],
               ),
               Divider(),
-              
+
               // External Share Options
               Container(
                 margin: EdgeInsets.only(bottom: 16),
@@ -158,12 +158,9 @@ void _showShareToFriendsDialog(BuildContext context, PostData postData) {
                   ],
                 ),
               ),
-              
+
               // Share to Chat Section
-              TextView(
-                text: 'Share to Chat',
-                style: 14.txtSBoldprimary,
-              ),
+              TextView(text: 'Share to Chat', style: 14.txtSBoldprimary),
               SizedBox(height: 8),
               Expanded(
                 child: chatCtrl.recentChat.isEmpty
@@ -243,7 +240,7 @@ void _sharePostExternally(BuildContext context, PostData postData) async {
     }
 
     AppUtils.log('🔗 Sharing post externally: ${postData.id}');
-    
+
     // Get post caption (limit to 200 chars)
     String caption = postData.content ?? '';
     if (caption.length > 200) {

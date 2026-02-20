@@ -42,6 +42,10 @@ _$ProfileDataModelImpl _$$ProfileDataModelImplFromJson(
   bio: json['bio'] as String?,
   website: json['website'] as String?,
   userName: json['username'] as String?,
+  isPrivate: json['isPrivate'] as bool?,
+  pendingFollowRequests: (json['pendingFollowRequests'] as List<dynamic>?)
+      ?.map((e) => PendingFollowRequestItem.fromJson(e as Map<String, dynamic>))
+      .toList(),
   v: (json['__v'] as num?)?.toInt(),
 );
 
@@ -77,5 +81,7 @@ Map<String, dynamic> _$$ProfileDataModelImplToJson(
   'bio': instance.bio,
   'website': instance.website,
   'username': instance.userName,
+  'isPrivate': instance.isPrivate,
+  'pendingFollowRequests': instance.pendingFollowRequests,
   '__v': instance.v,
 };
