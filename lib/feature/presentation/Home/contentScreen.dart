@@ -262,47 +262,117 @@ class _HomeScreenState extends State<Contentscreen> {
             ),
             // Story section
             SliverToBoxAdapter(child: StoryListWidgetNew()),
-            // Live Stream section
+            // Live Stream discovery section (horizontal strip injected into feed)
             Obx(
               () => AgoraChatCtrl.find.liveStreamChannels.isNotEmpty
                   ? SliverToBoxAdapter(
                       child: Container(
                         margin: EdgeInsets.symmetric(vertical: 10),
-                        height: 65,
-                        child: ListView.separated(
-                          padding: EdgeInsets.symmetric(horizontal: 16),
-                          scrollDirection: Axis.horizontal,
-                          itemBuilder: (context, index) {
-                            final item =
-                                AgoraChatCtrl.find.liveStreamChannels[index];
-                            return SizedBox(
-                              width: 50,
-                              child: Column(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 16),
+                              child: Row(
                                 children: [
-                                  ProfileImage(
-                                    size: 40,
-                                    image: item.hostImage.fileUrl,
-                                    uid: item.hostId,
-                                    socketConnection: socketConnectionFlag,
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red,
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: const Text(
+                                      'LIVE',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
                                   ),
+                                  const SizedBox(width: 8),
                                   TextView(
-                                    margin: EdgeInsets.only(top: 3),
-                                    text: item.hostName ?? '',
-                                    maxlines: 1,
-                                    style: 12.txtRegularMainBlack,
+                                    text: 'Live now',
+                                    style: 14.txtSBoldprimary,
                                   ),
                                 ],
                               ),
-                            );
-                          },
-                          separatorBuilder: (context, index) =>
-                              SizedBox(width: 20),
-                          itemCount:
-                              AgoraChatCtrl.find.liveStreamChannels.length,
+                            ),
+                            const SizedBox(height: 8),
+                            SizedBox(
+                              height: 65,
+                              child: ListView.separated(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 16),
+                                scrollDirection: Axis.horizontal,
+                                itemBuilder: (context, index) {
+                                  final item = AgoraChatCtrl
+                                      .find.liveStreamChannels[index];
+                                  return SizedBox(
+                                    width: 56,
+                                    child: Column(
+                                      children: [
+                                        Stack(
+                                          clipBehavior: Clip.none,
+                                          children: [
+                                            ProfileImage(
+                                              size: 44,
+                                              image: item.hostImage.fileUrl,
+                                              uid: item.hostId,
+                                              socketConnection:
+                                                  socketConnectionFlag,
+                                            ),
+                                            Positioned(
+                                              bottom: -2,
+                                              right: -2,
+                                              child: Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                  horizontal: 6,
+                                                  vertical: 2,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.red,
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                ),
+                                                child: const Text(
+                                                  'LIVE',
+                                                  style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 8,
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        TextView(
+                                          margin: const EdgeInsets.only(top: 3),
+                                          text: item.hostName ?? '',
+                                          maxlines: 1,
+                                          style: 12.txtRegularMainBlack,
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                                separatorBuilder: (context, index) =>
+                                    const SizedBox(width: 16),
+                                itemCount: AgoraChatCtrl
+                                    .find.liveStreamChannels.length,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     )
-                  : SliverToBoxAdapter(child: SizedBox.shrink()),
+                  : const SliverToBoxAdapter(child: SizedBox.shrink()),
             ),
             // Category Filter
             SliverToBoxAdapter(

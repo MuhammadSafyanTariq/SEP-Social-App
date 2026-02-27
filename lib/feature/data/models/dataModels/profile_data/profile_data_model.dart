@@ -51,6 +51,9 @@ class ProfileDataModel with _$ProfileDataModel {
     @JsonKey(name: "walletBalance") int? walletBalance,
     @JsonKey(name: "tokenBalance") int? tokenBalance,
     @JsonKey(name: "walletTokens") int? walletTokens,
+    @JsonKey(name: "balance") double? balance,
+    @JsonKey(name: "withdrawalBalance") double? withdrawalBalance,
+    @JsonKey(name: "monetized") bool? monetized,
     @JsonKey(name: "name") String? name,
     @JsonKey(name: "_id") String? id,
     @JsonKey(name: "email") String? email,
@@ -113,6 +116,15 @@ extension ProfileDataExt on ProfileDataModel {
 
   // Helper getter to handle both tokenBalance and walletTokens field names
   int get actualTokenBalance => walletTokens ?? tokenBalance ?? 0;
+
+  /// New USD-based balance (gifting/top-up). Falls back to legacy walletBalance.
+  double get balanceUsd => (balance ?? walletBalance ?? 0).toDouble();
+
+  /// Amount available for withdrawal in USD (already split).
+  double get withdrawalBalanceUsd => (withdrawalBalance ?? 0).toDouble();
+
+  /// Whether this account is monetized/eligible for gifting earnings.
+  bool get isMonetized => monetized ?? false;
 }
 
 /// Item from getPendingFollowRequests / user profile: { requesterId: { _id, name, image, username } }

@@ -781,6 +781,95 @@ class ITempRepository implements TempRepository {
   }
 
   @override
+  Future<ResponseData<Map<String, dynamic>>> sendGift({
+    required String receiverId,
+    required String giftName,
+    required String contextType,
+    required String contentId,
+  }) async {
+    final authToken = Preferences.authToken?.bearer;
+
+    if (authToken == null || authToken.isEmpty) {
+      return ResponseData<Map<String, dynamic>>(
+        isSuccess: false,
+        error: Exception('Not authenticated'),
+      );
+    }
+
+    try {
+      final body = <String, dynamic>{
+        'receiverId': receiverId,
+        'giftName': giftName,
+        'contextType': contextType,
+        'contentId': contentId,
+      };
+
+      final result = await _apiMethod.post(
+        url: Urls.sendGift,
+        authToken: authToken,
+        body: body,
+        headers: {},
+      );
+
+      if (result.isSuccess) {
+        return ResponseData<Map<String, dynamic>>(
+          isSuccess: true,
+          data: result.data ?? <String, dynamic>{},
+        );
+      } else {
+        return ResponseData<Map<String, dynamic>>(
+          isSuccess: false,
+          error: result.getError,
+        );
+      }
+    } catch (e) {
+      AppUtils.log('Error sending gift: $e');
+      return ResponseData<Map<String, dynamic>>(
+        isSuccess: false,
+        error: Exception('Failed to send gift: $e'),
+      );
+    }
+  }
+
+  @override
+  Future<ResponseData<Map<String, dynamic>>> getContentGiftTotal({
+    required String contentId,
+  }) async {
+    final authToken = Preferences.authToken?.bearer;
+    if (authToken == null || authToken.isEmpty) {
+      return ResponseData<Map<String, dynamic>>(
+        isSuccess: false,
+        error: Exception('Not authenticated'),
+      );
+    }
+
+    try {
+      final result = await _apiMethod.get(
+        url: Urls.giftContentTotal(contentId),
+        authToken: authToken,
+      );
+
+      if (result.isSuccess) {
+        return ResponseData<Map<String, dynamic>>(
+          isSuccess: true,
+          data: result.data ?? <String, dynamic>{},
+        );
+      } else {
+        return ResponseData<Map<String, dynamic>>(
+          isSuccess: false,
+          error: result.getError,
+        );
+      }
+    } catch (e) {
+      AppUtils.log('Error loading content gift total: $e');
+      return ResponseData<Map<String, dynamic>>(
+        isSuccess: false,
+        error: Exception('Failed to load content gift total: $e'),
+      );
+    }
+  }
+
+  @override
   Future<ResponseData<List<PostData>>> getMyProfilePosts({
     String? userId,
     required String postType,
@@ -873,6 +962,90 @@ class ITempRepository implements TempRepository {
       return ResponseData(
         isSuccess: false,
         error: Exception('Search failed due to an exception: $e'),
+      );
+    }
+  }
+
+  @override
+  Future<ResponseData<Map<String, dynamic>>> getReceivedGifts({
+    String status = 'all',
+    int page = 1,
+    int limit = 20,
+  }) async {
+    final authToken = Preferences.authToken?.bearer;
+    if (authToken == null || authToken.isEmpty) {
+      return ResponseData<Map<String, dynamic>>(
+        isSuccess: false,
+        error: Exception('Not authenticated'),
+      );
+    }
+
+    final query = <String, String>{
+      if (status != 'all') 'status': status,
+      'page': page.toString(),
+      'limit': limit.toString(),
+    };
+
+    try {
+      final result = await _apiMethod.get(
+        url: Urls.getReceivedGifts,
+        authToken: authToken,
+        query: query,
+      );
+
+      if (result.isSuccess) {
+        return ResponseData<Map<String, dynamic>>(
+          isSuccess: true,
+          data: result.data ?? <String, dynamic>{},
+        );
+      } else {
+        return ResponseData<Map<String, dynamic>>(
+          isSuccess: false,
+          error: result.getError,
+        );
+      }
+    } catch (e) {
+      AppUtils.log('Error loading received gifts: $e');
+      return ResponseData<Map<String, dynamic>>(
+        isSuccess: false,
+        error: Exception('Failed to load received gifts: $e'),
+      );
+    }
+  }
+
+  @override
+  Future<ResponseData<Map<String, dynamic>>> cashoutGifts() async {
+    final authToken = Preferences.authToken?.bearer;
+    if (authToken == null || authToken.isEmpty) {
+      return ResponseData<Map<String, dynamic>>(
+        isSuccess: false,
+        error: Exception('Not authenticated'),
+      );
+    }
+
+    try {
+      final result = await _apiMethod.post(
+        url: Urls.cashoutGifts,
+        authToken: authToken,
+        headers: {},
+      );
+
+      if (result.isSuccess) {
+        return ResponseData<Map<String, dynamic>>(
+          isSuccess: true,
+          data: result.data ?? <String, dynamic>{},
+        );
+      } else {
+        return ResponseData<Map<String, dynamic>>(
+          isSuccess: false,
+          error: result.getError,
+        );
+      }
+    } catch (e) {
+      AppUtils.log('Error cashing out gifts: $e');
+      return ResponseData<Map<String, dynamic>>(
+        isSuccess: false,
+        error: Exception('Failed to cashout gifts: $e'),
       );
     }
   }

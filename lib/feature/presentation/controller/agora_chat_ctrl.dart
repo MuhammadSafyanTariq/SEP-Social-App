@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:get/get.dart';
+import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:sep/feature/data/repository/i_agora_chat_repo.dart';
 import 'package:sep/feature/domain/respository/agora_chat_repo.dart';
 import 'package:sep/feature/presentation/liveStreaming_screen/live_stream_ctrl.dart';
@@ -55,6 +56,11 @@ class AgoraChatCtrl extends GetxController {
   RxInt hostGiftAmountTotal = RxInt(0);
 
   RxList<LiveStreamMessageModel> chatList = RxList();
+
+  // Live gifts over Socket.IO
+  IO.Socket? _liveGiftSocket;
+  RxDouble liveGiftTotalAmount = 0.0.obs;
+  RxInt liveGiftTotalCount = 0.obs;
 
   // Get the current live stream title from backend data only
   String get currentStreamTitle {
@@ -150,6 +156,111 @@ class AgoraChatCtrl extends GetxController {
       // _onConnect();
       return;
     });
+  }
+
+  //----------------------------------------------------------------------------
+  // Live gift socket (USD gift system, separate from token-based chat)
+  //----------------------------------------------------------------------------
+
+  void connectLiveGiftSocket() {
+    if (_liveGiftSocket != null && _liveGiftSocket!.connected) {
+      return;
+    }
+
+    _liveGiftSocket = IO.io(
+      baseUrl,
+      IO.OptionBuilder()
+          .setTransports(['websocket'])
+          .enableAutoConnect()
+          .build(),
+    );
+
+    _liveGiftSocket!.onConnect((_) {
+      AppUtils.log('Live gift socket connected');
+    });
+
+    _liveGiftSocket!.onDisconnect((_) {
+      AppUtils.log('Live gift socket disconnected');
+    });
+
+    _registerGiftListeners();
+  }
+
+  void _registerGiftListeners() {
+    final socket = _liveGiftSocket;
+    if (socket == null) return;
+
+    socket.on('giftReceived', (data) {
+      AppUtils.log({'event': 'giftReceived', 'data': data});
+      final amount = (data['amount'] ?? 0).toString().getDouble ?? 0.0;
+      liveGiftTotalAmount.value = (liveGiftTotalAmount.value) + amount;
+      // Reuse existing animation counter for visual feedback
+      coinsAnimationList.value = coinsAnimationList.value + 1;
+    });
+
+    socket.on('liveGiftUpdate', (data) {
+      AppUtils.log({'event': 'liveGiftUpdate', 'data': data});
+      final total = (data['totalGifts'] ?? 0).toString().getDouble ?? 0.0;
+      final count = (data['totalGiftCount'] ?? 0) as int? ?? 0;
+      liveGiftTotalAmount.value = total;
+      liveGiftTotalCount.value = count;
+      hostGiftAmountTotal.value = total.toInt();
+    });
+
+    socket.on('giftSent', (data) {
+      AppUtils.log({'event': 'giftSent', 'data': data});
+      final msg = data['message']?.toString() ?? 'Gift sent successfully!';
+      AppUtils.toast(msg);
+    });
+
+    socket.on('giftReceivedPersonal', (data) {
+      AppUtils.log({'event': 'giftReceivedPersonal', 'data': data});
+      final msg =
+          data['message']?.toString() ?? 'You received a gift during live';
+      AppUtils.toast(msg);
+    });
+
+    socket.on('giftError', (data) {
+      AppUtils.log({'event': 'giftError', 'data': data});
+      final msg =
+          data['message']?.toString() ?? 'Unable to send live gift right now';
+      AppUtils.toastError(msg);
+    });
+  }
+
+  void sendLiveGift({required String giftName}) {
+    // Ensure socket is created and connecting; allow socket_io_client to queue emissions
+    if (_liveGiftSocket == null) {
+      connectLiveGiftSocket();
+    }
+
+    final socket = _liveGiftSocket;
+    if (socket == null) {
+      AppUtils.toastError('Unable to connect to live gifts');
+      return;
+    }
+
+    final senderId = Preferences.uid;
+    final room = roomId ?? liveStreamCtrl.streamCtrl.value.channelId ?? '';
+    final receiver = hostId ?? liveStreamCtrl.hostProfileData.value.id ?? '';
+
+    if (senderId == null ||
+        senderId.isEmpty ||
+        room.isEmpty ||
+        receiver.isEmpty) {
+      AppUtils.toastError('Unable to send live gift - invalid session');
+      return;
+    }
+
+    final payload = {
+      'senderId': senderId,
+      'receiverId': receiver,
+      'roomId': room,
+      'giftName': giftName,
+    };
+
+    AppUtils.log({'event': 'sendGiftLive', 'data': payload});
+    socket.emit('sendGiftLive', payload);
   }
 
   void hitParticipantsList(String roomId) =>

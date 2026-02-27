@@ -9,6 +9,7 @@ import 'package:sep/services/networking/urls.dart';
 import 'package:sep/services/storage/preferences.dart';
 import 'package:sep/utils/appUtils.dart';
 import 'package:sep/feature/presentation/controller/auth_Controller/profileCtrl.dart';
+import '../../data/models/dataModels/profile_data/profile_data_model.dart';
 import 'package:sep/services/networking/urls.dart' show Urls;
 
 class CheckoutScreen extends StatefulWidget {
@@ -214,8 +215,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         "${_streetController.text.trim()}, ${_cityController.text.trim()}(${_postalCodeController.text.trim()}), ${_countryController.text.trim()}";
 
     // Check wallet balance
-    final walletBalance =
-        _profileCtrl.profileData.value.walletBalance?.toDouble() ?? 0.0;
+    final walletBalance = _profileCtrl.profileData.value.balanceUsd;
     if (walletBalance < widget.totalAmount) {
       AppUtils.toastError(
         "Insufficient wallet balance. Your balance: \$${walletBalance.toStringAsFixed(2)}",
@@ -594,9 +594,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       title: "Payment Method",
                       child: Obx(() {
                         final walletBalance =
-                            _profileCtrl.profileData.value.walletBalance
-                                ?.toDouble() ??
-                            0.0;
+                            _profileCtrl.profileData.value.balanceUsd;
                         final hasEnoughBalance =
                             walletBalance >= widget.totalAmount;
 

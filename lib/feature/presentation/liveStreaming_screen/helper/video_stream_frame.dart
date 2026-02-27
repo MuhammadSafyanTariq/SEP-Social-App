@@ -107,6 +107,9 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
   void initState() {
     super.initState();
     onJoinHandler();
+    // Connect live gift socket when live screen opens so
+    // gift events/animations work for all viewers immediately.
+    chatCtrl.connectLiveGiftSocket();
     chatCtrl.incomingLiveRequestToHostStream.listen((data) {
       if (!_inComingRequestFlag) {
         openIncomingLiveRequestBS(data);
@@ -739,11 +742,11 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
             // Spacing
             SizedBox(width: isSmallScreen ? 6 : 8),
 
-            // Token button (for non-hosts)
+            // Live gift button (USD gifts, for non-hosts)
             Visibility(
               visible: !ctrl.isHost,
               child: GestureDetector(
-                onTap: openTokenBottomSheet,
+                onTap: _openLiveGiftPicker,
                 child: Container(
                   padding: EdgeInsets.all(isSmallScreen ? 5 : 6),
                   decoration: BoxDecoration(
@@ -754,9 +757,10 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
                     ),
                     color: Colors.black.withOpacity(0.3),
                   ),
-                  child: ImageView(
-                    url: AppImages.token,
-                    size: isSmallScreen ? 18 : 20,
+                  child: const Icon(
+                    Icons.card_giftcard_outlined,
+                    color: Colors.white,
+                    size: 20,
                   ),
                 ),
               ),
@@ -1091,11 +1095,11 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
                 ),
               );
             }
+            // Regular chat message – fully transparent background so video is not dimmed.
             return Container(
               padding: EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(8),
+              decoration: const BoxDecoration(
+                color: Colors.transparent,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1466,6 +1470,81 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
     // This method is kept for future customization if needed
   }
 
+  void _openLiveGiftPicker() {
+    if (!mounted) return;
+
+    final gifts = [
+      {'name': 'Cake', 'price': '\$2.00'},
+      {'name': 'Flowers', 'price': '\$10.00'},
+      {'name': 'Vehicles', 'price': '\$3.00'},
+      {'name': 'Money', 'price': '\$5.00'},
+      {'name': 'Hearts', 'price': '\$1.00'},
+      {'name': 'Applause', 'price': '\$0.50'},
+    ];
+
+    context.openBottomSheet(
+      Container(
+        padding: const EdgeInsets.all(16),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const TextView(
+                  text: 'Send Gift',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.blackText,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            const TextView(
+              text: 'Choose a premium gift to send',
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.grey,
+              ),
+            ),
+            const SizedBox(height: 12),
+            ...gifts.map(
+              (g) => ListTile(
+                leading: const Icon(Icons.card_giftcard_outlined),
+                title: TextView(
+                  text: g['name'] as String,
+                  style: 14.txtMediumprimary,
+                ),
+                subtitle: TextView(
+                  text: g['price'] as String,
+                  style: 12.txtRegularGrey,
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  chatCtrl.sendLiveGift(giftName: g['name'] as String);
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _openInviteBottomSheet({
     bool forInviteFriend = false,
     bool forGetLiveBroadcaster = false,
@@ -1626,15 +1705,19 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
                               _openInviteBottomSheet(forInviteFriend: true),
                         ),
                         SizedBox(height: 12),
-                        // Token display with updated icon
+                        // Live gifts total (USD)
                         Column(
                           children: [
-                            ImageView(url: AppImages.token, size: 40),
+                            const Icon(
+                              Icons.card_giftcard,
+                              size: 32,
+                              color: Colors.white,
+                            ),
                             SizedBox(height: 4),
                             Obx(
                               () => TextView(
                                 text:
-                                    '${AgoraChatCtrl.find.hostGiftAmountTotal}',
+                                    '${AgoraChatCtrl.find.liveGiftTotalAmount.value.toStringAsFixed(2)}',
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,

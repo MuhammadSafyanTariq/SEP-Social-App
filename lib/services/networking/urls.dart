@@ -206,6 +206,16 @@ class Urls {
       '${_Collection.paypal}/process-payment';
   static const String paypalCancel = '${_Collection.paypal}/cancel';
 
+  // Monetization & Gifting
+  static const String monetizeAccount = '/api/monetize-account';
+
+  static const String sendGift = '/api/gift/send';
+  static const String getReceivedGifts = '/api/gift/received';
+  static const String cashoutGifts = '/api/gift/cashout';
+  // Aggregated gift totals for a specific content/post
+  static String giftContentTotal(String contentId) =>
+      '/api/gift/content-total/$contentId';
+
   // Token Purchase
   static const String tokenPurchase = '/api/tokenPurchase/purchase';
   static const String customTokenPurchase = '/api/tokenPurchase/custom';

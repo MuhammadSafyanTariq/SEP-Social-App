@@ -42,6 +42,7 @@ class PostData with _$PostData {
     // New fields for rich API response
     @Default([]) List<dynamic>? likes,
     @Default([]) List<dynamic>? comments,
+
   }) = _PostData;
 
   factory PostData.fromJson(Map<String, dynamic> json) =>

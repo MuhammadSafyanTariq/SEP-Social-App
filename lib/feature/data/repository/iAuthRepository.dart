@@ -866,6 +866,46 @@ class IAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<ResponseData<Map<String, dynamic>>> monetizeAccount() async {
+    final authToken = Preferences.authToken?.bearer;
+
+    if (authToken == null || authToken.isEmpty) {
+      return ResponseData<Map<String, dynamic>>(
+        isSuccess: false,
+        error: Exception('Not authenticated'),
+      );
+    }
+
+    try {
+      // Backend expects a valid JSON body; send an empty JSON object.
+      final response = await _apiMethod.post(
+        url: Urls.monetizeAccount,
+        body: const <String, dynamic>{},
+        headers: {},
+        authToken: authToken,
+      );
+
+      if (response.isSuccess) {
+        return ResponseData<Map<String, dynamic>>(
+          isSuccess: true,
+          data: response.data ?? <String, dynamic>{},
+        );
+      } else {
+        return ResponseData<Map<String, dynamic>>(
+          isSuccess: false,
+          error: response.getError,
+        );
+      }
+    } catch (e) {
+      AppUtils.log('Error monetizing account: $e');
+      return ResponseData<Map<String, dynamic>>(
+        isSuccess: false,
+        error: Exception('Failed to monetize account: $e'),
+      );
+    }
+  }
+
+  @override
   Future<ResponseData<Map<String, dynamic>>> profileUpdate({
     required String name,
     required String email,

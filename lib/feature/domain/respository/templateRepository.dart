@@ -54,6 +54,19 @@ abstract class TempRepository {
 
   Future<ResponseData<PostData>> videoCount({required String postId});
 
+  /// Send a USD-based gift on feed/video/live.
+  Future<ResponseData<Map<String, dynamic>>> sendGift({
+    required String receiverId,
+    required String giftName,
+    required String contextType,
+    required String contentId,
+  });
+
+  /// Get aggregated gift totals for a specific content/post.
+  Future<ResponseData<Map<String, dynamic>>> getContentGiftTotal({
+    required String contentId,
+  });
+
   Future<ResponseData<CommentsListModel>> postcomment({
     required String postId,
     required String? content,
@@ -107,4 +120,14 @@ abstract class TempRepository {
   Future<ResponseData<SeemyprofileModel>> notificationallow({
     required bool isNotification,
   });
+
+  /// List received gifts for the current user.
+  Future<ResponseData<Map<String, dynamic>>> getReceivedGifts({
+    String status,
+    int page,
+    int limit,
+  });
+
+  /// Cashout all pending gifts for the current user.
+  Future<ResponseData<Map<String, dynamic>>> cashoutGifts();
 }

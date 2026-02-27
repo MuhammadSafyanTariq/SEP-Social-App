@@ -20,11 +20,15 @@ import 'package:sep/utils/extensions/contextExtensions.dart';
 class ReelsVideoScreen extends StatefulWidget {
   final List<PostData> initialPosts;
   final int initialIndex;
+  /// When opening from a profile (yours or another user's), pass the profile owner
+  /// so we can show their name/avatar when the single-post API returns 403.
+  final ProfileDataModel? profileOwner;
 
   const ReelsVideoScreen({
     Key? key,
     required this.initialPosts,
     required this.initialIndex,
+    this.profileOwner,
   }) : super(key: key);
 
   @override
@@ -55,22 +59,129 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
   // Track saved status for each post
   final Map<String, bool> _savedStatusMap = {};
 
+  PostData _normalizePost(PostData post) {
+    // Prefer global list data (same as home) when available
+    PostData? globalMatch;
+    try {
+      final found = profileCtrl.globalPostList
+          .where((p) => p.id != null && p.id == post.id)
+          .toList();
+      if (found.isNotEmpty) globalMatch = found.first;
+    } catch (_) {}
+    final source = globalMatch ?? post;
+
+    final likesCount = source.likeCount ?? (source.likes?.length ?? 0);
+    final commentsCount =
+        source.commentCount ?? (source.comments?.length ?? 0);
+    final fromPost = post.likeCount ?? (post.likes?.length ?? 0);
+    final fromPostComments =
+        post.commentCount ?? (post.comments?.length ?? 0);
+    final likeCount = likesCount >= fromPost ? likesCount : fromPost;
+    final commentCount =
+        commentsCount >= fromPostComments ? commentsCount : fromPostComments;
+
+    // Prefer global list's isLikedByUser so if user liked on home, reels shows filled heart
+    final isLikedByUser = source.isLikedByUser ?? post.isLikedByUser;
+
+    if (likeCount == (post.likeCount ?? 0) &&
+        commentCount == (post.commentCount ?? 0) &&
+        post.user.isNotEmpty &&
+        isLikedByUser == post.isLikedByUser) {
+      return (globalMatch != null && source.isLikedByUser != null)
+          ? post.copyWith(isLikedByUser: source.isLikedByUser)
+          : post;
+    }
+
+    return post.copyWith(
+      likeCount: likeCount,
+      commentCount: commentCount,
+      user: source.user.isNotEmpty ? source.user : post.user,
+      isLikedByUser: isLikedByUser,
+    );
+  }
+
+  /// Enrich posts that have no like/comment data by fetching full post (same API as home uses for single post).
+  Future<void> _enrichPostsWithFullData() async {
+    if (!mounted) return;
+    for (int i = 0; i < _posts.length; i++) {
+      final p = _posts[i];
+      if (p.id == null || p.id!.isEmpty) continue;
+      // Only skip enrichment when we already have non‑zero like/comment counts.
+      // Even if user data is present (e.g. on your own profile), we still want
+      // to fetch full counts so reels matches the home feed.
+      final hasCounts =
+          (p.likeCount != null && p.likeCount! > 0) ||
+          (p.commentCount != null && p.commentCount! > 0);
+      if (hasCounts) continue;
+      try {
+        final full = await profileCtrl.getSinglePostData(p.id!);
+        if (!mounted) return;
+        setState(() {
+          _posts[i] = p.copyWith(
+            likeCount: full.likeCount ?? p.likeCount ?? 0,
+            commentCount: full.commentCount ?? p.commentCount ?? 0,
+            isLikedByUser: full.isLikedByUser ?? p.isLikedByUser,
+            user: full.user.isNotEmpty ? full.user : p.user,
+          );
+        });
+      } catch (_) {}
+    }
+  }
+
+  User? _resolveUser(PostData post) {
+    if (post.user.isNotEmpty && (post.user.first.name?.isNotEmpty ?? false)) {
+      return post.user.first;
+    }
+
+    try {
+      final globalPost = profileCtrl.globalPostList.firstWhere(
+        (p) => p.id == post.id,
+        orElse: () => PostData(),
+      );
+
+      if (globalPost.user.isNotEmpty &&
+          (globalPost.user.first.name?.isNotEmpty ?? false)) {
+        return globalPost.user.first;
+      }
+    } catch (_) {}
+
+    // When opened from a profile, single-post API may return 403 for other users' posts.
+    // Use the profile owner we're viewing so name/avatar still show instead of "Unknown User".
+    final owner = widget.profileOwner;
+    if (owner != null &&
+        ((owner.name?.isNotEmpty ?? false) || (owner.userName?.isNotEmpty ?? false)) &&
+        (post.userId == null || post.userId == owner.id)) {
+      return User(
+        id: owner.id,
+        name: owner.name ?? owner.userName,
+        image: owner.image,
+      );
+    }
+
+    return null;
+  }
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _posts = List.from(widget.initialPosts);
+    _posts = widget.initialPosts.map(_normalizePost).toList();
     _pageController = PageController(initialPage: widget.initialIndex);
     _currentIndex = widget.initialIndex;
-    
+
     // Initialize saved status map
     for (var post in _posts) {
       if (post.id != null) {
         _savedStatusMap[post.id!] = post.isSaved ?? false;
       }
     }
-    
+
     _initializeAndPlay(_currentIndex);
+
+    // Enrich with full post data (likeCount, commentCount, user) when opened from profile – same source as home
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _enrichPostsWithFullData();
+    });
   }
 
   @override
@@ -263,7 +374,7 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
         }
         
         setState(() {
-          _posts.addAll(newVideoPosts);
+          _posts.addAll(newVideoPosts.map(_normalizePost));
           _currentPage++;
         });
       }
@@ -418,6 +529,224 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
     context.pushNavigator(FriendProfileScreen(data: profileData));
   }
 
+  void _showGiftPicker(BuildContext context, PostData post) {
+    final gifts = [
+      {'name': 'Cake', 'price': '\$2.00'},
+      {'name': 'Flowers', 'price': '\$10.00'},
+      {'name': 'Vehicles', 'price': '\$3.00'},
+      {'name': 'Money', 'price': '\$5.00'},
+      {'name': 'Hearts', 'price': '\$1.00'},
+      {'name': 'Applause', 'price': '\$0.50'},
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      backgroundColor: Colors.black,
+      builder: (ctx) {
+        return SafeArea(
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.grey.shade900,
+                  Colors.black,
+                ],
+              ),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Send Premium Gift',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Choose a premium gift to send',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate:
+                      const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    mainAxisSpacing: 12,
+                    crossAxisSpacing: 12,
+                    childAspectRatio: 1.1,
+                  ),
+                  itemCount: gifts.length,
+                  itemBuilder: (context, index) {
+                    final g = gifts[index];
+                    final name = g['name'] as String;
+                    final price = g['price'] as String;
+
+                    final icon = index == 0
+                        ? Icons.cake
+                        : index == 1
+                            ? Icons.local_florist
+                            : index == 2
+                                ? Icons.directions_car
+                                : index == 3
+                                    ? Icons.attach_money
+                                    : index == 4
+                                        ? Icons.favorite
+                                        : Icons.emoji_emotions;
+
+                    return InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        profileCtrl.sendGiftOnPost(
+                          post: post,
+                          giftName: name,
+                          contextType: 'video',
+                        );
+                        _showReelGiftExplosionOverlay(context);
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.white.withOpacity(0.08),
+                              Colors.white.withOpacity(0.02),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.15),
+                          ),
+                        ),
+                        padding: const EdgeInsets.all(10),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Colors.pinkAccent,
+                                    Colors.deepPurpleAccent,
+                                  ],
+                                ),
+                              ),
+                              padding: const EdgeInsets.all(8),
+                              child: Icon(
+                                icon,
+                                color: Colors.white,
+                                size: 24,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              name,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              price,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Colors.white60,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showReelGiftExplosionOverlay(BuildContext context) {
+    final overlay = Overlay.of(context);
+
+    final entry = OverlayEntry(
+      builder: (ctx) => Positioned.fill(
+        child: IgnorePointer(
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0.0, end: 1.0),
+            duration: const Duration(milliseconds: 600),
+            builder: (context, value, child) {
+              final opacity = value < 0.5 ? value * 2 : (1 - value) * 2;
+              final scale = 0.8 + value * 0.4;
+              return Opacity(
+                opacity: opacity,
+                child: Transform.scale(
+                  scale: scale,
+                  child: child,
+                ),
+              );
+            },
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.all(40),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      Colors.pinkAccent.withOpacity(0.9),
+                      Colors.pinkAccent.withOpacity(0.0),
+                    ],
+                  ),
+                ),
+                child: const Icon(
+                  Icons.card_giftcard,
+                  color: Colors.white,
+                  size: 56,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    overlay.insert(entry);
+    Future.delayed(const Duration(milliseconds: 650), () {
+      entry.remove();
+    });
+  }
+
   void _openComments(BuildContext context, PostData post) {
     final postId = post.id ?? '';
     if (postId.isEmpty) {
@@ -528,7 +857,7 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
           }
 
           final post = _posts[index];
-          final user = post.user.isNotEmpty ? post.user.first : null;
+          final user = _resolveUser(post);
 
           return Stack(
             children: [
@@ -881,6 +1210,23 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
                     ),
                     SizedBox(height: 24),
 
+                    // Gift summary (per-post)
+                    if ((post.id ?? '').isNotEmpty)
+                      Obx(() {
+                        final postId = post.id!;
+                        profileCtrl.fetchPostGiftTotal(postId);
+                        final total = profileCtrl.postGiftTotals[postId] ?? 0;
+                        if (total <= 0) return const SizedBox.shrink();
+
+                        return _buildActionButton(
+                          icon: Icons.card_giftcard,
+                          color: Colors.white,
+                          label: '$total Gifts',
+                          onTap: null,
+                        );
+                      }),
+                    if ((post.id ?? '').isNotEmpty) SizedBox(height: 24),
+
                     // Share button
                     _buildActionButton(
                       icon: Icons.share,
@@ -889,6 +1235,17 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
                       onTap: () => _sharePost(post),
                     ),
                     SizedBox(height: 24),
+
+                    // Gift button (only for other users' posts)
+                    if (post.userId != profileCtrl.profileData.value.id)
+                      _buildActionButton(
+                        icon: Icons.card_giftcard,
+                        color: Colors.white,
+                        label: 'Gift',
+                        onTap: () => _showGiftPicker(context, post),
+                      ),
+                    if (post.userId != profileCtrl.profileData.value.id)
+                      const SizedBox(height: 24),
 
                     // Save button
                     _buildActionButton(

@@ -1895,6 +1895,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
           PostImageBrowsingListing(
             initialIndex: index,
             list: profileImagePostListFriend,
+            profileOwner: profileData.value,
             onRemovePost: (index) {
               profileImagePostListFriend.removeAt(index);
               profileImagePostListFriend.refresh();
@@ -1992,6 +1993,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
             ReelsVideoScreen(
               initialPosts: allVideoPosts,
               initialIndex: initialIndex,
+              profileOwner: profileData.value,
             ),
           );
         }
@@ -2157,6 +2159,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
               PostImageBrowsingListing(
                 initialIndex: index,
                 list: profileImagePostListFriend,
+                profileOwner: profileData.value,
                 onRemovePost: (index) {
                   removePost(index);
                 },
@@ -2286,6 +2289,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
                     ReelsVideoScreen(
                       initialPosts: validVideoPosts,
                       initialIndex: initialIndex,
+                      profileOwner: profileData.value,
                     ),
                   );
                 },

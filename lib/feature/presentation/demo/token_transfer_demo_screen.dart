@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:sep/feature/presentation/controller/auth_Controller/auth_ctrl.dart';
 import 'package:sep/feature/presentation/controller/auth_Controller/profileCtrl.dart';
+import 'package:sep/feature/data/models/dataModels/profile_data/profile_data_model.dart';
 import 'package:sep/feature/presentation/helpers/token_transfer_helper.dart';
 import 'package:sep/utils/appUtils.dart';
 import 'package:sep/components/coreComponents/TextView.dart';
@@ -34,7 +35,7 @@ class _TokenTransferDemoScreenState extends State<TokenTransferDemoScreen> {
             Obx(() {
               final profileData = ProfileCtrl.find.profileData.value;
               final tokenBalance = profileData.walletTokens ?? 0;
-              final dollarBalance = profileData.walletBalance ?? 0;
+              final dollarBalance = profileData.balanceUsd;
 
               return Container(
                 padding: EdgeInsets.all(16),
@@ -60,7 +61,7 @@ class _TokenTransferDemoScreenState extends State<TokenTransferDemoScreen> {
                       style: TextStyle(fontSize: 16),
                     ),
                     TextView(
-                      text: 'Wallet: \$${dollarBalance}',
+                      text: 'Wallet (USD): \$${dollarBalance.toStringAsFixed(2)}',
                       style: TextStyle(fontSize: 16),
                     ),
                   ],

@@ -38,6 +38,7 @@ import 'followers.dart';
 import 'pending_follow_requests_screen.dart';
 import 'setting/following.dart';
 import 'setting/editProfile.dart';
+import 'gift_history_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -284,6 +285,8 @@ class _ProfileScreenState extends State<ProfileScreen>
               SliverToBoxAdapter(child: _buildProfileInfoSection()),
               // Stats Section
               SliverToBoxAdapter(child: _buildStatsSection()),
+              // Monetization / Earnings Section
+              SliverToBoxAdapter(child: _buildMonetizationSection()),
               // Edit Profile Button
               SliverToBoxAdapter(child: _buildEditProfileButton()),
               // Tabs Section
@@ -424,78 +427,72 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Widget _buildStatsSection() {
-    return Obx(
-      () {
-        final isPrivate = profileData.isPrivate == true;
-        final statRow = Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildStatItem(
-              '${profileCtrl.adjustedPostCount}',
-              'Posts',
-              null,
-            ),
-            Container(
-              height: 30,
-              width: 1,
-              color: Colors.grey[400],
-              margin: EdgeInsets.symmetric(horizontal: 16),
-            ),
-            _buildStatItem(
-              '${(profileData.followers ?? []).length}',
-              'Linked Me',
-              () {
-                context.pushNavigator(MyFollowersListScreen());
-              },
-            ),
-            Container(
-              height: 30,
-              width: 1,
-              color: Colors.grey[400],
-              margin: EdgeInsets.symmetric(horizontal: 16),
-            ),
-            _buildStatItem(
-              '${(profileData.following ?? []).length}',
-              'Link Ups',
-              () {
-                context.pushNavigator(MyFollowingListScreen());
-              },
-            ),
-            if (isPrivate) ...[
-              Container(
-                height: 30,
-                width: 1,
-                color: Colors.grey[400],
-                margin: EdgeInsets.symmetric(horizontal: 16),
-              ),
-              _buildStatItem(
-                '${(profileData.pendingFollowRequests ?? []).length}',
-                'Requests',
-                () {
-                  context.pushNavigator(PendingFollowRequestsScreen());
-                },
-              ),
-            ],
-          ],
-        );
-        return Padding(
-          padding: EdgeInsets.symmetric(horizontal: 20),
-          child: Container(
-            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-            decoration: BoxDecoration(
-              color: Colors.grey[100],
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: isPrivate
-                ? SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: statRow,
-                  )
-                : Center(child: statRow),
+    return Obx(() {
+      final isPrivate = profileData.isPrivate == true;
+      final statRow = Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildStatItem('${profileCtrl.adjustedPostCount}', 'Posts', null),
+          Container(
+            height: 30,
+            width: 1,
+            color: Colors.grey[400],
+            margin: EdgeInsets.symmetric(horizontal: 16),
           ),
-        );
-      },
-    );
+          _buildStatItem(
+            '${(profileData.followers ?? []).length}',
+            'Linked Me',
+            () {
+              context.pushNavigator(MyFollowersListScreen());
+            },
+          ),
+          Container(
+            height: 30,
+            width: 1,
+            color: Colors.grey[400],
+            margin: EdgeInsets.symmetric(horizontal: 16),
+          ),
+          _buildStatItem(
+            '${(profileData.following ?? []).length}',
+            'Link Ups',
+            () {
+              context.pushNavigator(MyFollowingListScreen());
+            },
+          ),
+          if (isPrivate) ...[
+            Container(
+              height: 30,
+              width: 1,
+              color: Colors.grey[400],
+              margin: EdgeInsets.symmetric(horizontal: 16),
+            ),
+            _buildStatItem(
+              '${(profileData.pendingFollowRequests ?? []).length}',
+              'Requests',
+              () {
+                context.pushNavigator(PendingFollowRequestsScreen());
+              },
+            ),
+          ],
+        ],
+      );
+      return Padding(
+        padding: EdgeInsets.symmetric(horizontal: 20),
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+          decoration: BoxDecoration(
+            color: Colors.grey[100],
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: isPrivate
+              ? SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: statRow,
+                )
+              : Center(child: statRow),
+        ),
+      );
+    });
   }
 
   Widget _buildStatItem(String count, String label, [VoidCallback? onTap]) {
@@ -897,6 +894,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             initialIndex: profileCtrl.profileImagePostList.indexWhere(
               (p) => p.id == post.id,
             ),
+            profileOwner: profileCtrl.profileData.value,
             onRemovePost: (index) {},
           ),
         );
@@ -1044,6 +1042,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             ReelsVideoScreen(
               initialPosts: allVideoPosts,
               initialIndex: initialIndex,
+              profileOwner: profileCtrl.profileData.value,
             ),
           );
         }
@@ -1223,5 +1222,152 @@ class _ProfileScreenState extends State<ProfileScreen>
       AppUtils.log('Stack trace: $stackTrace');
       return null;
     }
+  }
+
+  /// Earnings card: full card (balance, withdrawable) only for monetized users.
+  /// Non-monetized users see a single "Apply for Monetization" row.
+  Widget _buildMonetizationSection() {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      child: Obx(() {
+        final isMonetized = profileCtrl.isMonetized;
+        final isLoading = profileCtrl.isMonetizationLoading.value;
+        final balance = profileData.balanceUsd;
+        final withdrawal = profileData.withdrawalBalanceUsd;
+
+        // Non-monetized: only show apply CTA (no balance/earnings)
+        if (!isMonetized) {
+          return Container(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: AppColors.newgrey,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: SizedBox(
+              width: double.infinity,
+              child: AppButton(
+                label: isLoading ? 'Applying...' : 'Apply for Monetization',
+                buttonColor: AppColors.btnColor,
+                onTap: isLoading
+                    ? null
+                    : () {
+                        profileCtrl.applyForMonetization();
+                      },
+              ),
+            ),
+          );
+        }
+
+        // Monetized: full earnings card + cashout action
+        final canCashout = withdrawal >= 50;
+
+        return Container(
+          padding: EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.newgrey,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.verified, color: AppColors.greenlight, size: 18),
+                  SizedBox(width: 6),
+                  TextView(
+                    text: 'Earnings',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.blackText,
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextView(
+                        text: 'Wallet balance',
+                        style: TextStyle(fontSize: 12, color: AppColors.grey),
+                      ),
+                      SizedBox(height: 2),
+                      TextView(
+                        text: '\$${balance.toStringAsFixed(2)}',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.blackText,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextView(
+                        text: 'Withdrawable',
+                        style: TextStyle(fontSize: 12, color: AppColors.grey),
+                      ),
+                      SizedBox(height: 2),
+                      TextView(
+                        text: '\$${withdrawal.toStringAsFixed(2)}',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.blackText,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              SizedBox(height: 12),
+              if (canCashout)
+                SizedBox(
+                  width: double.infinity,
+                  child: AppButton(
+                    label: profileCtrl.isCashoutLoading.value
+                        ? 'Cashout...'
+                        : 'Cashout gifts',
+                    buttonColor: AppColors.btnColor,
+                    onTap: profileCtrl.isCashoutLoading.value
+                        ? null
+                        : () {
+                            profileCtrl.cashoutGifts();
+                          },
+                  ),
+                )
+              else
+                TextView(
+                  text:
+                      'You can cash out once you reach at least \$50 in withdrawable balance.',
+                  style: TextStyle(fontSize: 12, color: AppColors.grey),
+                ),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () {
+                    context.pushNavigator(const GiftHistoryScreen());
+                  },
+                  child: const Text(
+                    'View gift history',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.primaryColor,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      }),
+    );
   }
 }

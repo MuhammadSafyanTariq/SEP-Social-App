@@ -66,6 +66,9 @@ class ProfileCtrl extends GetxController {
 
   var isLoading = false.obs;
   var isProfilePostsLoading = false.obs;
+  var isMonetizationLoading = false.obs;
+  var isCashoutLoading = false.obs;
+  var isGiftHistoryLoading = false.obs;
   var errorMessage = ''.obs;
   var postList = <PostData>[].obs;
   var globalPostList = <PostData>[].obs;
@@ -81,6 +84,9 @@ class ProfileCtrl extends GetxController {
   var commentList = <CommentsListModel>[].obs;
 
   var comentslistdata = <CommentsListModel>[].obs;
+
+  /// Raw list of received gifts from /api/gift/received.
+  var giftHistory = <Map<String, dynamic>>[].obs;
 
   // bool get hasMoreData => _hasMoreData.value;
   // bool get hasMoreData => globalPostList.length % 5 == 0 && globalPostList.isNotEmpty;
@@ -109,6 +115,225 @@ class ProfileCtrl extends GetxController {
     getProfileDetails();
     getPostList();
     globalList();
+  }
+
+  bool get isMonetized => profileData.value.isMonetized;
+
+  /// Calls backend /api/monetize-account and updates local profile state.
+  Future<void> applyForMonetization() async {
+    // If already monetized, just show info and skip API call.
+    if (isMonetized) {
+      AppUtils.toast('Your account is already monetized');
+      return;
+    }
+
+    isMonetizationLoading.value = true;
+    try {
+      final result = await _authRepository.monetizeAccount();
+      String message;
+
+      if (result.isSuccess) {
+        // Prefer backend message when available
+        final raw = result.data ?? const <String, dynamic>{};
+        message =
+            raw['message'] as String? ??
+            'Your account is monetized successfully';
+
+        // Refetch profile so we get monetized (and balance) from backend
+        await getProfileDetails();
+        final updated = profileData.value;
+        Preferences.profile = updated;
+        Preferences.savePrefOnLogin = updated;
+
+        AppUtils.toast(message);
+      } else {
+        // For 4xx backend errors, ApiUtils puts the API message into getError
+        final err = result.getError;
+        final errText = err?.toString().replaceFirst('Exception: ', '');
+        message = errText?.isNotEmpty == true
+            ? errText!
+            : 'Something went wrong';
+        AppUtils.toastError(message);
+      }
+    } catch (e) {
+      AppUtils.toastError('Failed to apply for monetization');
+      AppUtils.log('applyForMonetization error: $e');
+    } finally {
+      isMonetizationLoading.value = false;
+    }
+  }
+
+  /// Send a gift on feed/video for a given post.
+  Future<void> sendGiftOnPost({
+    required PostData post,
+    required String giftName,
+    String? contextType,
+  }) async {
+    final postId = post.id ?? '';
+    if (postId.isEmpty) {
+      AppUtils.toastError('Unable to send gift - invalid post');
+      return;
+    }
+
+    // Determine receiver (creator) of the post
+    String? receiverId;
+    if (post.user.isNotEmpty) {
+      receiverId = post.user.first.id ?? post.userId;
+    } else {
+      receiverId = post.userId;
+    }
+
+    if (receiverId == null || receiverId.isEmpty) {
+      AppUtils.toastError('Unable to send gift - missing receiver');
+      return;
+    }
+
+    // Don't allow gifting to self
+    if (receiverId == Preferences.uid) {
+      AppUtils.toastError('You cannot send a gift to yourself');
+      return;
+    }
+
+    final ctxType =
+        contextType ??
+        (post.files.any((f) => (f.type ?? '').toLowerCase() == 'video')
+            ? 'video'
+            : 'feed');
+
+    try {
+      final result = await _itemRepository.sendGift(
+        receiverId: receiverId,
+        giftName: giftName,
+        contextType: ctxType,
+        contentId: postId,
+      );
+
+      if (result.isSuccess) {
+        final raw = result.data ?? const <String, dynamic>{};
+        final msg = raw['message'] as String? ?? 'Gift sent successfully';
+        AppUtils.toast(msg);
+
+        // Optionally refresh profile to update balance
+        await getProfileDetails();
+      } else {
+        final err = result.getError;
+        final msg =
+            err?.toString().replaceFirst('Exception: ', '') ??
+            'Failed to send gift';
+        AppUtils.toastError(msg);
+      }
+    } catch (e) {
+      AppUtils.toastError('Failed to send gift');
+      AppUtils.log('sendGiftOnPost error: $e');
+    }
+  }
+
+  // Cache of per-post gift totals (number of gifts or total amount, depending on backend)
+  final RxMap<String, int> postGiftTotals = <String, int>{}.obs;
+  final Set<String> _postGiftTotalsLoading = <String>{};
+
+  /// Load aggregated gift total for a specific post/reel.
+  Future<void> fetchPostGiftTotal(String postId) async {
+    if (postId.isEmpty) return;
+    if (postGiftTotals.containsKey(postId)) return;
+    if (_postGiftTotalsLoading.contains(postId)) return;
+
+    _postGiftTotalsLoading.add(postId);
+    try {
+      final result = await _itemRepository.getContentGiftTotal(
+        contentId: postId,
+      );
+
+      if (result.isSuccess) {
+        final raw = result.data ?? const <String, dynamic>{};
+        // Try a few common shapes: { data: { totalGifts } } or { totalGifts } or { totalAmount }
+        final data = raw['data'] as Map<String, dynamic>? ?? raw;
+        final value = data['totalGifts'] ?? data['totalAmount'] ?? 0;
+        final count = value is num
+            ? value.toInt()
+            : int.tryParse(value.toString()) ?? 0;
+        postGiftTotals[postId] = count;
+      } else {
+        AppUtils.log('fetchPostGiftTotal error: ${result.getError}');
+      }
+    } catch (e) {
+      AppUtils.log('fetchPostGiftTotal exception: $e');
+    } finally {
+      _postGiftTotalsLoading.remove(postId);
+    }
+  }
+
+  /// Cashout all pending gifts for the current user.
+  Future<void> cashoutGifts() async {
+    // Enforce $50 minimum withdrawal threshold
+    if (profileData.value.withdrawalBalanceUsd < 50) {
+      AppUtils.toastError(
+        'You need at least \$50 in withdrawable balance to cash out',
+      );
+      return;
+    }
+
+    if (isCashoutLoading.value) return;
+    isCashoutLoading.value = true;
+
+    try {
+      final result = await _itemRepository.cashoutGifts();
+      if (result.isSuccess) {
+        final raw = result.data ?? const <String, dynamic>{};
+        final msg =
+            raw['message'] as String? ?? 'Gifts cashed out successfully';
+        AppUtils.toast(msg);
+
+        // Refresh profile to update wallet & withdrawal balances
+        await getProfileDetails();
+      } else {
+        final err = result.getError;
+        final msg =
+            err?.toString().replaceFirst('Exception: ', '') ??
+            'Failed to cashout gifts';
+        AppUtils.toastError(msg);
+      }
+    } catch (e) {
+      AppUtils.toastError('Failed to cashout gifts');
+      AppUtils.log('cashoutGifts error: $e');
+    } finally {
+      isCashoutLoading.value = false;
+    }
+  }
+
+  /// Load received gifts into [giftHistory] from backend.
+  Future<void> loadReceivedGifts({String status = 'all'}) async {
+    if (isGiftHistoryLoading.value) return;
+    isGiftHistoryLoading.value = true;
+
+    try {
+      final result = await _itemRepository.getReceivedGifts(
+        status: status,
+        page: 1,
+        limit: 50,
+      );
+
+      if (result.isSuccess) {
+        final raw = result.data ?? const <String, dynamic>{};
+        final data =
+            raw['data'] as Map<String, dynamic>? ?? const <String, dynamic>{};
+        final gifts = (data['gifts'] as List<dynamic>? ?? [])
+            .whereType<Map<String, dynamic>>()
+            .toList();
+        giftHistory.assignAll(gifts);
+      } else {
+        final err = result.getError;
+        final msg =
+            err?.toString().replaceFirst('Exception: ', '') ??
+            'Failed to load gifts';
+        AppUtils.toastError(msg);
+      }
+    } catch (e) {
+      AppUtils.toastError('Failed to load gifts');
+      AppUtils.log('loadReceivedGifts error: $e');
+    } finally {
+      isGiftHistoryLoading.value = false;
+    }
   }
 
   Future<Map<String, dynamic>> getUserAgoraToken(
@@ -760,11 +985,15 @@ class ProfileCtrl extends GetxController {
       profileData.value = updated;
       Preferences.profile = updated;
       Preferences.savePrefOnLogin = updated;
-      AppUtils.toast(isPrivate ? 'Private account enabled' : 'Private account disabled');
+      AppUtils.toast(
+        isPrivate ? 'Private account enabled' : 'Private account disabled',
+      );
     } else {
       final err = res.getError?.toString() ?? '';
       AppUtils.toastError(
-        err.contains('false') || err.isEmpty ? 'Failed to update private account' : err,
+        err.contains('false') || err.isEmpty
+            ? 'Failed to update private account'
+            : err,
       );
     }
   }

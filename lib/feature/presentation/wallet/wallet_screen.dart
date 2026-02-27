@@ -4,11 +4,9 @@ import 'package:get/get_core/src/get_main.dart';
 import 'package:get/get_state_manager/src/rx_flutter/rx_obx_widget.dart';
 import 'package:sep/components/appLoader.dart';
 import 'package:sep/components/coreComponents/AppButton.dart';
-import 'package:sep/components/coreComponents/ImageView.dart';
 import 'package:sep/components/coreComponents/TextView.dart';
 import 'package:sep/components/coreComponents/appBar2.dart';
 import 'package:sep/components/styles/appColors.dart';
-import 'package:sep/components/styles/appImages.dart';
 import 'package:sep/components/styles/textStyles.dart';
 import 'package:sep/feature/presentation/controller/auth_Controller/profileCtrl.dart';
 import 'package:sep/utils/extensions/contextExtensions.dart';
@@ -16,10 +14,12 @@ import 'package:sep/utils/extensions/size.dart';
 import 'package:sep/services/storage/preferences.dart';
 import 'package:sep/utils/appUtils.dart';
 import 'package:sep/services/networking/urls.dart';
+import '../../data/models/dataModels/profile_data/profile_data_model.dart';
 import '../controller/auth_Controller/get_stripe_ctrl.dart';
-import 'add_card_screen.dart';
 import 'packages_screen.dart';
 import 'paypal_topup_screen.dart';
+import 'package:sep/components/coreComponents/ImageView.dart';
+import 'package:sep/components/styles/appImages.dart';
 
 class WalletScreen extends StatefulWidget {
   const WalletScreen({super.key});
@@ -69,8 +69,8 @@ class _WalletScreenState extends State<WalletScreen>
       backgroundColor: Colors.grey[50],
       body: Obx(() {
         final transactions = stripeCtrl.transactionList;
-        final balance = ProfileCtrl.find.profileData.value.walletBalance ?? '0';
         final profileData = ProfileCtrl.find.profileData.value;
+        final balanceUsd = profileData.balanceUsd;
         final tokenBalance =
             profileData.walletTokens ?? profileData.tokenBalance ?? 0;
 
@@ -100,10 +100,11 @@ class _WalletScreenState extends State<WalletScreen>
                 child: ListView(
                   padding: EdgeInsets.all(20.sdp),
                   children: [
-                    // Balance and Token Cards
+                    // Balance and Game Tokens cards
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Balance Card (Left Half)
+                        // Balance Card (USD – gifts, top-up)
                         Expanded(
                           child: Container(
                             padding: EdgeInsets.all(20.sdp),
@@ -130,9 +131,17 @@ class _WalletScreenState extends State<WalletScreen>
                                     letterSpacing: 1.2,
                                   ),
                                 ),
+                                SizedBox(height: 4.sdp),
+                                TextView(
+                                  text: 'Gifts & purchases',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
                                 SizedBox(height: 8.sdp),
                                 TextView(
-                                  text: '\$${balance}',
+                                  text: '\$${balanceUsd.toStringAsFixed(2)}',
                                   style: TextStyle(
                                     fontSize: 28,
                                     fontWeight: FontWeight.bold,
@@ -164,7 +173,6 @@ class _WalletScreenState extends State<WalletScreen>
                                         },
                                       ),
                                     );
-                                    // Refresh after returning
                                     _refreshData();
                                   },
                                 ),
@@ -172,10 +180,8 @@ class _WalletScreenState extends State<WalletScreen>
                             ),
                           ),
                         ),
-
                         SizedBox(width: 16.sdp),
-
-                        // Token Card (Right Half)
+                        // Game Tokens Card (for games only)
                         Expanded(
                           child: Container(
                             padding: EdgeInsets.all(20.sdp),
@@ -194,7 +200,7 @@ class _WalletScreenState extends State<WalletScreen>
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 TextView(
-                                  text: 'TOKENS',
+                                  text: 'GAME TOKENS',
                                   style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w500,
@@ -202,18 +208,26 @@ class _WalletScreenState extends State<WalletScreen>
                                     letterSpacing: 1.2,
                                   ),
                                 ),
+                                SizedBox(height: 4.sdp),
+                                TextView(
+                                  text: 'Used only in games',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
                                 SizedBox(height: 8.sdp),
                                 Row(
                                   children: [
                                     ImageView(
                                       url: AppImages.token,
-                                      size: 30.sdp,
+                                      size: 28.sdp,
                                     ),
-                                    SizedBox(width: 6.sdp),
+                                    SizedBox(width: 8.sdp),
                                     TextView(
                                       text: tokenBalance.toString(),
                                       style: TextStyle(
-                                        fontSize: 28,
+                                        fontSize: 26,
                                         fontWeight: FontWeight.bold,
                                         color: Colors.black,
                                       ),
@@ -223,16 +237,19 @@ class _WalletScreenState extends State<WalletScreen>
                                 SizedBox(height: 16.sdp),
                                 AppButton(
                                   radius: 20.sdp,
-                                  buttonColor: AppColors.greenlight,
-                                  label: "Add Token",
+                                  buttonColor: AppColors.primaryColor,
+                                  label: "Add Tokens",
                                   labelStyle: const TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w500,
                                     color: Colors.white,
                                   ),
                                   isFilledButton: true,
-                                  onTap: () {
-                                    context.pushNavigator(PackagesScreen());
+                                  onTap: () async {
+                                    await context.pushNavigator(
+                                      const PackagesScreen(),
+                                    );
+                                    _refreshData();
                                   },
                                 ),
                               ],

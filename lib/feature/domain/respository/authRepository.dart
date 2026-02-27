@@ -137,6 +137,9 @@ abstract class AuthRepository {
     required String newPassword,
   });
 
+  /// Apply for account monetization (server validates followers & account age).
+  Future<ResponseData<Map<String, dynamic>>> monetizeAccount();
+
   Future<ResponseData<Map<String, dynamic>>> logout();
 
   Future<ResponseData<Map<String, dynamic>>> profileUpdate({

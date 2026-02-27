@@ -483,11 +483,26 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Container(
                           width: 32,
                           height: 32,
-                          decoration: BoxDecoration(shape: BoxShape.circle),
-                          child: Icon(
-                            Icons.work_outline_rounded,
-                            size: 24,
-                            color: AppColors.primaryColor,
+                          margin: EdgeInsets.only(top: 3),
+                          alignment: Alignment.center,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.work_outline_rounded,
+                                size: 20,
+                                color: AppColors.primaryColor,
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                'Jobs',
+                                style: TextStyle(
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.primaryColor,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
