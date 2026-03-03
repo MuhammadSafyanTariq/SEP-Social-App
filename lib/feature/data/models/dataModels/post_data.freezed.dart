@@ -1004,6 +1004,8 @@ mixin _$User {
   bool? get isNotification => throw _privateConstructorUsedError;
   @JsonKey(name: "otp")
   dynamic get otp => throw _privateConstructorUsedError;
+  @JsonKey(name: "monetized")
+  bool? get monetized => throw _privateConstructorUsedError;
 
   /// Serializes this User to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -1036,6 +1038,7 @@ abstract class $UserCopyWith<$Res> {
     @JsonKey(name: "__v") int? v,
     @JsonKey(name: "isNotification") bool? isNotification,
     @JsonKey(name: "otp") dynamic otp,
+    @JsonKey(name: "monetized") bool? monetized,
   });
 }
 
@@ -1070,6 +1073,7 @@ class _$UserCopyWithImpl<$Res, $Val extends User>
     Object? v = freezed,
     Object? isNotification = freezed,
     Object? otp = freezed,
+    Object? monetized = freezed,
   }) {
     return _then(
       _value.copyWith(
@@ -1137,6 +1141,10 @@ class _$UserCopyWithImpl<$Res, $Val extends User>
                 ? _value.otp
                 : otp // ignore: cast_nullable_to_non_nullable
                       as dynamic,
+            monetized: freezed == monetized
+                ? _value.monetized
+                : monetized // ignore: cast_nullable_to_non_nullable
+                      as bool?,
           )
           as $Val,
     );
@@ -1168,6 +1176,7 @@ abstract class _$$UserImplCopyWith<$Res> implements $UserCopyWith<$Res> {
     @JsonKey(name: "__v") int? v,
     @JsonKey(name: "isNotification") bool? isNotification,
     @JsonKey(name: "otp") dynamic otp,
+    @JsonKey(name: "monetized") bool? monetized,
   });
 }
 
@@ -1199,6 +1208,7 @@ class __$$UserImplCopyWithImpl<$Res>
     Object? v = freezed,
     Object? isNotification = freezed,
     Object? otp = freezed,
+    Object? monetized = freezed,
   }) {
     return _then(
       _$UserImpl(
@@ -1266,6 +1276,10 @@ class __$$UserImplCopyWithImpl<$Res>
             ? _value.otp
             : otp // ignore: cast_nullable_to_non_nullable
                   as dynamic,
+        monetized: freezed == monetized
+            ? _value.monetized
+            : monetized // ignore: cast_nullable_to_non_nullable
+                  as bool?,
       ),
     );
   }
@@ -1291,6 +1305,7 @@ class _$UserImpl implements _User {
     @JsonKey(name: "__v") this.v,
     @JsonKey(name: "isNotification") this.isNotification,
     @JsonKey(name: "otp") this.otp,
+    @JsonKey(name: "monetized") this.monetized,
   });
 
   factory _$UserImpl.fromJson(Map<String, dynamic> json) =>
@@ -1344,10 +1359,13 @@ class _$UserImpl implements _User {
   @override
   @JsonKey(name: "otp")
   final dynamic otp;
+  @override
+  @JsonKey(name: "monetized")
+  final bool? monetized;
 
   @override
   String toString() {
-    return 'User(id: $id, name: $name, email: $email, password: $password, role: $role, phone: $phone, dob: $dob, gender: $gender, seeMyProfile: $seeMyProfile, shareMyPost: $shareMyPost, image: $image, createdAt: $createdAt, updatedAt: $updatedAt, v: $v, isNotification: $isNotification, otp: $otp)';
+    return 'User(id: $id, name: $name, email: $email, password: $password, role: $role, phone: $phone, dob: $dob, gender: $gender, seeMyProfile: $seeMyProfile, shareMyPost: $shareMyPost, image: $image, createdAt: $createdAt, updatedAt: $updatedAt, v: $v, isNotification: $isNotification, otp: $otp, monetized: $monetized)';
   }
 
   @override
@@ -1376,7 +1394,9 @@ class _$UserImpl implements _User {
             (identical(other.v, v) || other.v == v) &&
             (identical(other.isNotification, isNotification) ||
                 other.isNotification == isNotification) &&
-            const DeepCollectionEquality().equals(other.otp, otp));
+            const DeepCollectionEquality().equals(other.otp, otp) &&
+            (identical(other.monetized, monetized) ||
+                other.monetized == monetized));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -1399,6 +1419,7 @@ class _$UserImpl implements _User {
     v,
     isNotification,
     const DeepCollectionEquality().hash(otp),
+    monetized,
   );
 
   /// Create a copy of User
@@ -1433,6 +1454,7 @@ abstract class _User implements User {
     @JsonKey(name: "__v") final int? v,
     @JsonKey(name: "isNotification") final bool? isNotification,
     @JsonKey(name: "otp") final dynamic otp,
+    @JsonKey(name: "monetized") final bool? monetized,
   }) = _$UserImpl;
 
   factory _User.fromJson(Map<String, dynamic> json) = _$UserImpl.fromJson;
@@ -1485,6 +1507,9 @@ abstract class _User implements User {
   @override
   @JsonKey(name: "otp")
   dynamic get otp;
+  @override
+  @JsonKey(name: "monetized")
+  bool? get monetized;
 
   /// Create a copy of User
   /// with the given fields replaced by the non-null parameter values.

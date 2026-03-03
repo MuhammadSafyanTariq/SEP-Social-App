@@ -10,6 +10,7 @@ import 'package:sep/utils/appUtils.dart';
 import 'package:sep/utils/extensions/contextExtensions.dart';
 import 'package:sep/utils/extensions/size.dart';
 import 'package:sep/feature/presentation/controller/auth_Controller/profileCtrl.dart';
+import 'package:sep/services/storage/preferences.dart';
 
 class PayPalTopUpScreen extends StatefulWidget {
   final String userId;
@@ -87,15 +88,44 @@ class _PayPalTopUpScreenState extends State<PayPalTopUpScreen> {
   void _handlePaymentSuccess(Map<String, dynamic> data) {
     AppUtils.log('PayPal Success: $data');
 
-    // Refresh profile to get latest balance
+    // Per guide §3.2.2: update token balance from topUpResult.newWalletTokens (for gifting)
+    // and optionally newWalletBalance (USD) so UI is correct without waiting for refetch.
+    final topUpResult = data['topUpResult'] as Map<String, dynamic>?;
+    if (topUpResult != null) {
+      final newTokensRaw = topUpResult['newWalletTokens'];
+      final newBalanceRaw = topUpResult['newWalletBalance'];
+      if (newTokensRaw != null || newBalanceRaw != null) {
+        try {
+          final current = _profileCtrl.profileData.value;
+          final newTokens = newTokensRaw is num
+              ? newTokensRaw.toInt()
+              : int.tryParse(newTokensRaw?.toString() ?? '');
+          final newBalance = newBalanceRaw is num
+              ? newBalanceRaw.toDouble()
+              : (newBalanceRaw != null
+                  ? double.tryParse(newBalanceRaw.toString())
+                  : null);
+          final updated = current.copyWith(
+            walletTokens: newTokens ?? current.walletTokens,
+            balance: newBalance != null ? newBalance : current.balance,
+          );
+          _profileCtrl.profileData.value = updated;
+          _profileCtrl.profileData.refresh();
+          Preferences.profile = updated;
+          Preferences.savePrefOnLogin = updated;
+        } catch (e) {
+          AppUtils.log('PayPal: Error applying topUpResult: $e');
+        }
+      }
+    }
+
+    // Refresh profile to confirm and get any other updated fields
     _profileCtrl.getProfileDetails();
 
-    // Show simple success message
     _showSuccess(
       'Payment completed successfully! Your wallet has been updated.',
     );
 
-    // Navigate back after a short delay
     Future.delayed(const Duration(seconds: 2), () {
       if (mounted) {
         Navigator.pop(context);

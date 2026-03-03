@@ -1,5 +1,6 @@
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:sep/utils/appUtils.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
@@ -107,5 +108,69 @@ class _BroadCastVideoState extends State<BroadCastVideo> {
       clientRole: widget.clientRole,
       connectChatOnStartLive: widget.isHost ? _createChatConnection : null,
     );
+  }
+}
+
+/// Wrapper screen that lets viewers swipe horizontally between live sessions.
+class LiveSwipeScreen extends StatefulWidget {
+  final int initialIndex;
+
+  const LiveSwipeScreen({super.key, this.initialIndex = 0});
+
+  @override
+  State<LiveSwipeScreen> createState() => _LiveSwipeScreenState();
+}
+
+class _LiveSwipeScreenState extends State<LiveSwipeScreen> {
+  late final PageController _pageController;
+  final AgoraChatCtrl _chatCtrl = AgoraChatCtrl.find;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      final channels = _chatCtrl.liveStreamChannels;
+      if (channels.isEmpty) {
+        return const Scaffold(
+          backgroundColor: Colors.black,
+          body: Center(
+            child: Text(
+              'No live sessions available',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        );
+      }
+
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: PageView.builder(
+          controller: _pageController,
+          itemCount: channels.length,
+          itemBuilder: (context, index) {
+            final ch = channels[index];
+            return BroadCastVideo(
+              key: ValueKey(ch.channelId ?? index),
+              clientRole: ClientRoleType.clientRoleAudience,
+              hostId: ch.hostId,
+              hostName: ch.hostName,
+              isHost: false,
+              title: ch.title,
+            );
+          },
+        ),
+      );
+    });
   }
 }

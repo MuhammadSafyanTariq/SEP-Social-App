@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'package:flutter/material.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:get/get.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:sep/feature/data/repository/i_agora_chat_repo.dart';
 import 'package:sep/feature/domain/respository/agora_chat_repo.dart';
+import 'package:sep/feature/presentation/controller/auth_Controller/profileCtrl.dart';
 import 'package:sep/feature/presentation/liveStreaming_screen/live_stream_ctrl.dart';
 import 'package:sep/main.dart';
 import 'package:sep/services/socket/socket_helper.dart';
@@ -15,6 +17,7 @@ import 'package:sep/utils/extensions/extensions.dart';
 import '../../../services/networking/urls.dart';
 import '../../data/models/dataModels/live_stream_message_model/live_stream_message_model.dart';
 import '../liveStreaming_screen/broad_cast_video.dart';
+import '../widgets/gift_effects_overlay.dart';
 
 bool _showLog = true;
 
@@ -43,6 +46,8 @@ class AgoraChatCtrl extends GetxController {
   // static Future<bool> get clear => Get.delete<AgoraChatCtrl>();
 
   LiveStreamCtrl get liveStreamCtrl => LiveStreamCtrl.find;
+  // Context from the currently visible live video frame; used for gift overlays.
+  BuildContext? liveOverlayContext;
   String? roomId;
   String? hostId;
   RxInt coinsAnimationList = RxInt(0);
@@ -191,11 +196,50 @@ class AgoraChatCtrl extends GetxController {
     if (socket == null) return;
 
     socket.on('giftReceived', (data) {
-      AppUtils.log({'event': 'giftReceived', 'data': data});
+      AppUtils.log({
+        'event': 'giftReceived',
+        'data': data,
+        'viewer_debug': {
+          'isHost': liveStreamCtrl.isHost,
+          'clientRole': liveStreamCtrl.streamCtrl.value.clientRole?.name,
+          'uid': Preferences.uid,
+        },
+      });
+
       final amount = (data['amount'] ?? 0).toString().getDouble ?? 0.0;
       liveGiftTotalAmount.value = (liveGiftTotalAmount.value) + amount;
-      // Reuse existing animation counter for visual feedback
-      coinsAnimationList.value = coinsAnimationList.value + 1;
+      // Show visual gift effect for everyone in the room first,
+      // so even if the coin animation fails, the main overlay still runs.
+      try {
+        final giftName = data['giftName']?.toString();
+        final senderName = data['senderName']?.toString();
+        if (giftName != null && giftName.isNotEmpty) {
+          final ctx =
+              liveOverlayContext ?? Get.context ?? navState.currentContext;
+          if (ctx != null) {
+            showGiftEffectOverlay(
+              ctx,
+              giftCode: giftName,
+              giftLabel: giftName,
+              senderName: senderName,
+            );
+          }
+        }
+      } catch (_) {}
+
+      // Reuse existing animation counter for coin animation visual feedback.
+      try {
+        coinsAnimationList.value = coinsAnimationList.value + 1;
+      } catch (e, stack) {
+        AppUtils.logEr(
+          {
+            'channel': 'liveCoinAnimationError',
+            'error': e.toString(),
+            'stack': stack.toString(),
+          },
+          show: _showLog,
+        );
+      }
     });
 
     socket.on('liveGiftUpdate', (data) {
@@ -211,13 +255,58 @@ class AgoraChatCtrl extends GetxController {
       AppUtils.log({'event': 'giftSent', 'data': data});
       final msg = data['message']?.toString() ?? 'Gift sent successfully!';
       AppUtils.toast(msg);
+      // Update local coin balance per guide: use senderNewTokenBalance
+      final newBalanceRaw = data['senderNewTokenBalance'];
+      if (newBalanceRaw != null) {
+        final newTokens = newBalanceRaw is num
+            ? newBalanceRaw.toInt()
+            : int.tryParse(newBalanceRaw.toString());
+        if (newTokens != null) {
+          try {
+            final profileCtrl = ProfileCtrl.find;
+            final updated = profileCtrl.profileData.value.copyWith(
+              walletTokens: newTokens,
+            );
+            profileCtrl.profileData.value = updated;
+            profileCtrl.profileData.refresh();
+            Preferences.profile = updated;
+            Preferences.savePrefOnLogin = updated;
+          } catch (_) {}
+        }
+      }
     });
 
     socket.on('giftReceivedPersonal', (data) {
-      AppUtils.log({'event': 'giftReceivedPersonal', 'data': data});
+      AppUtils.log({
+        'event': 'giftReceivedPersonal',
+        'data': data,
+        'viewer_debug': {
+          'isHost': liveStreamCtrl.isHost,
+          'clientRole': liveStreamCtrl.streamCtrl.value.clientRole?.name,
+          'uid': Preferences.uid,
+        },
+      });
       final msg =
           data['message']?.toString() ?? 'You received a gift during live';
       AppUtils.toast(msg);
+
+      // Also show the full-screen gift animation for the receiver.
+      try {
+        final giftName = data['giftName']?.toString();
+        final senderName = data['senderName']?.toString();
+        if (giftName != null && giftName.isNotEmpty) {
+          final ctx =
+              liveOverlayContext ?? Get.context ?? navState.currentContext;
+          if (ctx != null) {
+            showGiftEffectOverlay(
+              ctx,
+              giftCode: giftName,
+              giftLabel: giftName,
+              senderName: senderName,
+            );
+          }
+        }
+      } catch (_) {}
     });
 
     socket.on('giftError', (data) {

@@ -17,6 +17,8 @@ import '../../../../components/coreComponents/ImageView.dart';
 import '../../../../components/coreComponents/TextView.dart';
 import '../../../../components/styles/appColors.dart';
 import '../../../../components/styles/appImages.dart';
+import '../../../../components/styles/gift_images.dart';
+import '../../widgets/gift_effects_overlay.dart';
 import '../../../../services/storage/preferences.dart';
 import '../../../data/models/dataModels/live_stream_message_model/live_stream_message_model.dart';
 import '../live_stream_ctrl.dart';
@@ -107,6 +109,9 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
   void initState() {
     super.initState();
     onJoinHandler();
+    // Register this live frame's context so gift overlays show
+    // on top of the active live video screen for host and viewers.
+    chatCtrl.liveOverlayContext = context;
     // Connect live gift socket when live screen opens so
     // gift events/animations work for all viewers immediately.
     chatCtrl.connectLiveGiftSocket();
@@ -132,7 +137,8 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
     //   // }
     // });
 
-    ever(chatCtrl.coinsAnimationList, (list) {
+    ever<int>(chatCtrl.coinsAnimationList, (list) {
+      if (!mounted) return;
       if (list != 0 && !_controller.isAnimating) {
         _playNext();
       }
@@ -160,6 +166,7 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
   // }
 
   void _playNext() {
+    if (!mounted) return;
     if (chatCtrl.coinsAnimationList.value == 0) return;
     _controller
       ..reset()
@@ -205,6 +212,9 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
 
   @override
   void dispose() {
+    if (chatCtrl.liveOverlayContext == context) {
+      chatCtrl.liveOverlayContext = null;
+    }
     _controller.dispose();
     super.dispose();
   }
@@ -321,25 +331,49 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
     if (ctrl.streamCtrl.value.clientRole != ClientRoleType.clientRoleAudience) {
       return Positioned(top: 0, left: 0, child: SizedBox.shrink());
     }
-    // Body already resizes with keyboard, so position from bottom of body
+    // Body already resizes with keyboard, so position from bottom of body.
+    // When the chat overlay is visible, lift the toggle up a bit so it
+    // doesn't overlap the bottom input / video buttons.
     return Positioned(
       right: 16,
-      bottom: 16,
-      child: GestureDetector(
-        onTap: () {
-          setState(() {
-            _showChatOverlay = !_showChatOverlay;
-          });
-        },
-        child: CircleAvatar(
-          radius: 20,
-          backgroundColor: Colors.black.withValues(alpha: 0.5),
-          child: Icon(
-            _showChatOverlay ? Icons.chat_bubble : Icons.chat_bubble_outline,
-            size: 20,
-            color: Colors.white,
+      bottom: _showChatOverlay ? 96 : 16,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Gift icon (opens live gift picker)
+          GestureDetector(
+            onTap: _openLiveGiftPicker,
+            child: CircleAvatar(
+              radius: 20,
+              backgroundColor: Colors.black.withValues(alpha: 0.5),
+              child: const Icon(
+                Icons.card_giftcard_outlined,
+                size: 20,
+                color: Colors.white,
+              ),
+            ),
           ),
-        ),
+          const SizedBox(height: 10),
+          // Chat toggle icon
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                _showChatOverlay = !_showChatOverlay;
+              });
+            },
+            child: CircleAvatar(
+              radius: 20,
+              backgroundColor: Colors.black.withValues(alpha: 0.5),
+              child: Icon(
+                _showChatOverlay
+                    ? Icons.chat_bubble
+                    : Icons.chat_bubble_outline,
+                size: 20,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1473,13 +1507,63 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
   void _openLiveGiftPicker() {
     if (!mounted) return;
 
+    // Token‑priced live gifts (same catalog as feed/video gifting).
     final gifts = [
-      {'name': 'Cake', 'price': '\$2.00'},
-      {'name': 'Flowers', 'price': '\$10.00'},
-      {'name': 'Vehicles', 'price': '\$3.00'},
-      {'name': 'Money', 'price': '\$5.00'},
-      {'name': 'Hearts', 'price': '\$1.00'},
-      {'name': 'Applause', 'price': '\$0.50'},
+      {
+        'code': 'Applause_Hands',
+        'label': 'Applause',
+        'tokens': 1,
+      },
+      {
+        'code': 'Ascending_Smiling_Face_Heart_Eyes',
+        'label': 'Heart Eyes',
+        'tokens': 8,
+      },
+      {
+        'code': 'Beating_Heart',
+        'label': 'Beating Heart',
+        'tokens': 48,
+      },
+      {
+        'code': 'Blooming_Flowers',
+        'label': 'Blooming Flowers',
+        'tokens': 67,
+      },
+      {
+        'code': 'Popping_Champagne',
+        'label': 'Champagne',
+        'tokens': 197,
+      },
+      {
+        'code': 'Birthday_Cake',
+        'label': 'Birthday Cake',
+        'tokens': 498,
+      },
+      {
+        'code': 'Falling_Gold_Coins',
+        'label': 'Gold Coins',
+        'tokens': 997,
+      },
+      {
+        'code': 'Floating_Cash',
+        'label': 'Floating Cash',
+        'tokens': 1998,
+      },
+      {
+        'code': 'Soaring_Eagle',
+        'label': 'Soaring Eagle',
+        'tokens': 4186,
+      },
+      {
+        'code': 'Verde_Mantis_Lamborghini',
+        'label': 'Lamborghini',
+        'tokens': 29998,
+      },
+      {
+        'code': 'Boeing_747_8_VIP_Jet',
+        'label': 'VIP Jet',
+        'tokens': 34998,
+      },
     ];
 
     context.openBottomSheet(
@@ -1492,10 +1576,11 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
             topRight: Radius.circular(20),
           ),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -1523,23 +1608,40 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
             ),
             const SizedBox(height: 12),
             ...gifts.map(
-              (g) => ListTile(
-                leading: const Icon(Icons.card_giftcard_outlined),
-                title: TextView(
-                  text: g['name'] as String,
-                  style: 14.txtMediumprimary,
-                ),
-                subtitle: TextView(
-                  text: g['price'] as String,
-                  style: 12.txtRegularGrey,
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  chatCtrl.sendLiveGift(giftName: g['name'] as String);
-                },
-              ),
+              (g) {
+                final code = g['code'] as String;
+                final label = g['label'] as String;
+                final tokens = g['tokens'] as int;
+                final assetPath = GiftImages.forCode(code);
+
+                return ListTile(
+                  leading: Image.asset(
+                    assetPath,
+                    width: 56,
+                    height: 56,
+                    fit: BoxFit.contain,
+                  ),
+                  title: TextView(
+                    text: label,
+                    style: 14.txtMediumprimary,
+                  ),
+                  subtitle: TextView(
+                    text: '$tokens coins',
+                    style: 12.txtRegularGrey,
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    chatCtrl.sendLiveGift(giftName: code);
+                    showGiftEffectOverlay(
+                      context,
+                      giftCode: code,
+                    );
+                  },
+                );
+              },
             ),
           ],
+        ),
         ),
       ),
     );

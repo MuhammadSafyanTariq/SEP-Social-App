@@ -80,6 +80,7 @@ class User with _$User {
     @JsonKey(name: "__v") int? v,
     @JsonKey(name: "isNotification") bool? isNotification,
     @JsonKey(name: "otp") dynamic otp,
+    @JsonKey(name: "monetized") bool? monetized,
   }) = _User;
 
   factory User.fromJson(Map<String, dynamic> json) => _$UserFromJson(json);

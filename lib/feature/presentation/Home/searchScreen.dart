@@ -17,7 +17,10 @@ import '../../../components/styles/appColors.dart';
 import '../../../components/styles/appImages.dart';
 import '../../../components/styles/app_strings.dart';
 import '../../data/models/dataModels/profile_data/profile_data_model.dart';
+import '../../data/models/dataModels/post_data.dart';
+import 'homeScreenComponents/post_components.dart';
 import '../controller/auth_Controller/auth_ctrl.dart';
+import '../controller/auth_Controller/profileCtrl.dart';
 import '../profileScreens/friend_profile_screen.dart';
 
 class Search extends StatefulWidget {
@@ -54,6 +57,7 @@ class _SearchState extends State<Search> {
       _currentPage = 1;
       _hasMoreData = true;
       _authCtrl.searchUserInProfile(searchText, page: 1, limit: 20);
+      _authCtrl.searchPostsByCaption(searchText, page: 1, limit: 20);
     }, time: const Duration(milliseconds: 500));
 
     _searchController.addListener(() {
@@ -61,6 +65,7 @@ class _SearchState extends State<Search> {
     });
 
     _authCtrl.searchUserInProfile('', page: 1, limit: 20);
+    _authCtrl.searchPostsByCaption('', page: 1, limit: 20);
 
     // Auto focus if requested
     if (widget.autoFocus) {
@@ -117,149 +122,210 @@ class _SearchState extends State<Search> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.white,
-      body: SafeArea(
-        child: Column(
-          children: [
-            AppBar2(
-              prefixImage: AppImages.backBtn,
-              leadIconSize: 16,
-              onPrefixTap: () => Navigator.pop(context),
-              title: AppStrings.search.tr,
-              titleAlign: TextAlign.center,
-              titleStyle: 20.txtSBoldprimary,
-              backgroundColor: AppColors.white,
-            ),
-
-            Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: 20.sdp,
-                vertical: 16.sdp,
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        backgroundColor: AppColors.white,
+        body: SafeArea(
+          child: Column(
+            children: [
+              AppBar2(
+                prefixImage: AppImages.backBtn,
+                leadIconSize: 16,
+                onPrefixTap: () => Navigator.pop(context),
+                title: AppStrings.search.tr,
+                titleAlign: TextAlign.center,
+                titleStyle: 20.txtSBoldprimary,
+                backgroundColor: AppColors.white,
               ),
-              child: EditText(
-                controller: _searchController,
-                node: _focusNode,
-                hint: 'Search users...',
-                hintStyle: 14.txtMediumgrey,
-                radius: 20,
-                prefixIcon: Padding(
-                  padding: EdgeInsets.all(12.sdp),
-                  child: ImageView(
-                    url: AppImages.searchsc,
-                    size: 20.sdp,
-                    tintColor: AppColors.grey,
+
+              Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: 20.sdp,
+                  vertical: 16.sdp,
+                ),
+                child: EditText(
+                  controller: _searchController,
+                  node: _focusNode,
+                  hint: 'Search users or posts...',
+                  hintStyle: 14.txtMediumgrey,
+                  radius: 20,
+                  prefixIcon: Padding(
+                    padding: EdgeInsets.all(12.sdp),
+                    child: ImageView(
+                      url: AppImages.searchsc,
+                      size: 20.sdp,
+                      tintColor: AppColors.grey,
+                    ),
                   ),
                 ),
               ),
-            ),
-            Expanded(
-              child: Obx(() {
-                final currentUserId = Preferences.uid;
-                final users = _authCtrl.searchedUsers
-                    .where((user) => user['_id'] != currentUserId)
-                    .toList();
-                AppUtils.log('User list length: ${users.length}');
 
-                if (users.isEmpty) {
-                  return Center(
-                    child: TextView(
-                      text: 'No users found!',
-                      style: 16.txtMediumgrey,
-                    ),
-                  );
-                }
+              // Tabs for Users / Posts
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20.sdp),
+                child: TabBar(
+                  labelColor: AppColors.primaryColor,
+                  unselectedLabelColor: AppColors.grey,
+                  indicatorColor: AppColors.primaryColor,
+                  tabs: const [
+                    Tab(text: 'Users'),
+                    Tab(text: 'Posts'),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
 
-                return SmartRefresher(
-                  controller: _refreshController,
-                  enablePullDown: true,
-                  enablePullUp: true,
-                  onRefresh: _refreshUsers,
-                  onLoading: _loadMoreUsers,
-                  footer: CustomFooter(
-                    builder: (context, mode) {
-                      Widget body;
-                      if (mode == LoadStatus.loading) {
-                        body = CircularProgressIndicator(
-                          color: AppColors.primaryColor,
-                        );
-                      } else if (mode == LoadStatus.noMore) {
-                        body = Text(
-                          'No more users',
-                          style: TextStyle(color: Colors.grey),
-                        );
-                      } else {
-                        body = SizedBox();
-                      }
-                      return Container(
-                        height: 55.0,
-                        child: Center(child: body),
-                      );
-                    },
-                  ),
-                  child: ListView.separated(
-                    padding: EdgeInsets.symmetric(horizontal: 20.sdp),
-                    itemCount: users.length,
-                    separatorBuilder: (context, index) => 16.height,
-                    itemBuilder: (context, index) {
-                      final user = users[index];
-                      final userName = user['name'] ?? 'Unknown User';
-                      final userImage = user['image'] != null
-                          ? '$baseUrl${user['image']}'
-                          : null;
-                      AppUtils.log(
-                        'User $index => Name: $userName, Image: $userImage',
-                      );
-
-                      return GestureDetector(
-                        onTap: () {
-                          final userId = user['_id'];
-                          if (userId != null) {
-                            Get.to(
-                              () => FriendProfileScreen(
-                                data: ProfileDataModel.fromJson(user),
-                              ),
-                            );
-                          }
-                        },
-                        child: Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 16.sdp,
-                            vertical: 20.sdp,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.grey.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12.sdp),
-                          ),
-                          child: Row(
-                            children: [
-                              ImageView(
-                                url: (user['image'] as String?)?.fileUrl ?? '',
-                                imageType: ImageType.network,
-                                fit: BoxFit.cover,
-                                size: 50.sdp,
-                                radius: 25.sdp,
-                                defaultImage: AppImages.dummyProfile,
-                              ),
-                              16.width,
-                              Expanded(
-                                child: TextView(
-                                  text: userName,
-                                  style: 16.txtMediumprimary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                );
-              }),
-            ),
-          ],
+              Expanded(
+                child: TabBarView(
+                  children: [
+                    _buildUsersTab(),
+                    _buildPostsTab(context),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  Widget _buildUsersTab() {
+    return Obx(() {
+      final currentUserId = Preferences.uid;
+      final users = _authCtrl.searchedUsers
+          .where((user) => user['_id'] != currentUserId)
+          .toList();
+
+      return SmartRefresher(
+        controller: _refreshController,
+        enablePullDown: true,
+        enablePullUp: true,
+        onRefresh: _refreshUsers,
+        onLoading: _loadMoreUsers,
+        footer: CustomFooter(
+          builder: (context, mode) {
+            Widget body;
+            if (mode == LoadStatus.loading) {
+              body = CircularProgressIndicator(
+                color: AppColors.primaryColor,
+              );
+            } else if (mode == LoadStatus.noMore) {
+              body = const Text(
+                'No more users',
+                style: TextStyle(color: Colors.grey),
+              );
+            } else {
+              body = const SizedBox();
+            }
+            return SizedBox(
+              height: 55.0,
+              child: Center(child: body),
+            );
+          },
+        ),
+        child: ListView.builder(
+          padding: EdgeInsets.symmetric(horizontal: 20.sdp, vertical: 16.sdp),
+          itemCount: users.length,
+          itemBuilder: (context, index) {
+            final user = users[index];
+            final userName = user['name'] ?? 'Unknown User';
+            return Padding(
+              padding: EdgeInsets.only(bottom: 12.sdp),
+              child: GestureDetector(
+                onTap: () {
+                  final userId = user['_id'];
+                  if (userId != null) {
+                    Get.to(
+                      () => FriendProfileScreen(
+                        data: ProfileDataModel.fromJson(user),
+                      ),
+                    );
+                  }
+                },
+                child: Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 16.sdp,
+                    vertical: 20.sdp,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.grey.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12.sdp),
+                  ),
+                  child: Row(
+                    children: [
+                      ImageView(
+                        url: (user['image'] as String?)?.fileUrl ?? '',
+                        imageType: ImageType.network,
+                        fit: BoxFit.cover,
+                        size: 50.sdp,
+                        radius: 25.sdp,
+                        defaultImage: AppImages.dummyProfile,
+                      ),
+                      16.width,
+                      Expanded(
+                        child: TextView(
+                          text: userName,
+                          style: 16.txtMediumprimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      );
+    });
+  }
+
+  Widget _buildPostsTab(BuildContext context) {
+    return Obx(() {
+      final posts = _authCtrl.searchedPosts;
+
+      if (posts.isEmpty) {
+        return Center(
+          child: TextView(
+            text: 'No posts found!',
+            style: 16.txtMediumgrey,
+          ),
+        );
+      }
+
+      return ListView.builder(
+        padding: EdgeInsets.symmetric(horizontal: 20.sdp, vertical: 16.sdp),
+        itemCount: posts.length,
+        itemBuilder: (context, index) {
+          final raw = posts[index];
+          final post = PostData.fromJson(raw);
+          final header = postCardHeader(
+            post,
+            onBlockUser: () {},
+            onRemovePostAction: null,
+          );
+
+          return Padding(
+            padding: EdgeInsets.only(bottom: 16.sdp),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                header,
+                postFooter(
+                  item: post,
+                  context: context,
+                  postLiker: (postId) async {
+                    await ProfileCtrl.find.likeposts(postId);
+                  },
+                  updateCommentCount: (_) {},
+                  updatePostOnAction: (_) {},
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    });
   }
 }

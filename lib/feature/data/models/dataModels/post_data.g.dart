@@ -104,6 +104,7 @@ _$UserImpl _$$UserImplFromJson(Map<String, dynamic> json) => _$UserImpl(
   v: (json['__v'] as num?)?.toInt(),
   isNotification: json['isNotification'] as bool?,
   otp: json['otp'],
+  monetized: json['monetized'] as bool?,
 );
 
 Map<String, dynamic> _$$UserImplToJson(_$UserImpl instance) =>
@@ -124,6 +125,7 @@ Map<String, dynamic> _$$UserImplToJson(_$UserImpl instance) =>
       '__v': instance.v,
       'isNotification': instance.isNotification,
       'otp': instance.otp,
+      'monetized': instance.monetized,
     };
 
 _$FileElementImpl _$$FileElementImplFromJson(Map<String, dynamic> json) =>

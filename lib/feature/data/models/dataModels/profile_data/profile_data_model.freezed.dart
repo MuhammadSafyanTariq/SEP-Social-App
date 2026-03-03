@@ -33,6 +33,8 @@ mixin _$ProfileDataModel {
   double? get balance => throw _privateConstructorUsedError;
   @JsonKey(name: "withdrawalBalance")
   double? get withdrawalBalance => throw _privateConstructorUsedError;
+  @JsonKey(name: "giftsBalance")
+  double? get giftsBalance => throw _privateConstructorUsedError;
   @JsonKey(name: "monetized")
   bool? get monetized => throw _privateConstructorUsedError;
   @JsonKey(name: "name")
@@ -120,6 +122,7 @@ abstract class $ProfileDataModelCopyWith<$Res> {
     @JsonKey(name: "walletTokens") int? walletTokens,
     @JsonKey(name: "balance") double? balance,
     @JsonKey(name: "withdrawalBalance") double? withdrawalBalance,
+    @JsonKey(name: "giftsBalance") double? giftsBalance,
     @JsonKey(name: "monetized") bool? monetized,
     @JsonKey(name: "name") String? name,
     @JsonKey(name: "_id") String? id,
@@ -176,6 +179,7 @@ class _$ProfileDataModelCopyWithImpl<$Res, $Val extends ProfileDataModel>
     Object? walletTokens = freezed,
     Object? balance = freezed,
     Object? withdrawalBalance = freezed,
+    Object? giftsBalance = freezed,
     Object? monetized = freezed,
     Object? name = freezed,
     Object? id = freezed,
@@ -232,6 +236,10 @@ class _$ProfileDataModelCopyWithImpl<$Res, $Val extends ProfileDataModel>
             withdrawalBalance: freezed == withdrawalBalance
                 ? _value.withdrawalBalance
                 : withdrawalBalance // ignore: cast_nullable_to_non_nullable
+                      as double?,
+            giftsBalance: freezed == giftsBalance
+                ? _value.giftsBalance
+                : giftsBalance // ignore: cast_nullable_to_non_nullable
                       as double?,
             monetized: freezed == monetized
                 ? _value.monetized
@@ -375,6 +383,7 @@ abstract class _$$ProfileDataModelImplCopyWith<$Res>
     @JsonKey(name: "walletTokens") int? walletTokens,
     @JsonKey(name: "balance") double? balance,
     @JsonKey(name: "withdrawalBalance") double? withdrawalBalance,
+    @JsonKey(name: "giftsBalance") double? giftsBalance,
     @JsonKey(name: "monetized") bool? monetized,
     @JsonKey(name: "name") String? name,
     @JsonKey(name: "_id") String? id,
@@ -430,6 +439,7 @@ class __$$ProfileDataModelImplCopyWithImpl<$Res>
     Object? walletTokens = freezed,
     Object? balance = freezed,
     Object? withdrawalBalance = freezed,
+    Object? giftsBalance = freezed,
     Object? monetized = freezed,
     Object? name = freezed,
     Object? id = freezed,
@@ -486,6 +496,10 @@ class __$$ProfileDataModelImplCopyWithImpl<$Res>
         withdrawalBalance: freezed == withdrawalBalance
             ? _value.withdrawalBalance
             : withdrawalBalance // ignore: cast_nullable_to_non_nullable
+                  as double?,
+        giftsBalance: freezed == giftsBalance
+            ? _value.giftsBalance
+            : giftsBalance // ignore: cast_nullable_to_non_nullable
                   as double?,
         monetized: freezed == monetized
             ? _value.monetized
@@ -622,6 +636,7 @@ class _$ProfileDataModelImpl implements _ProfileDataModel {
     @JsonKey(name: "walletTokens") this.walletTokens,
     @JsonKey(name: "balance") this.balance,
     @JsonKey(name: "withdrawalBalance") this.withdrawalBalance,
+    @JsonKey(name: "giftsBalance") this.giftsBalance,
     @JsonKey(name: "monetized") this.monetized,
     @JsonKey(name: "name") this.name,
     @JsonKey(name: "_id") this.id,
@@ -678,6 +693,9 @@ class _$ProfileDataModelImpl implements _ProfileDataModel {
   @override
   @JsonKey(name: "withdrawalBalance")
   final double? withdrawalBalance;
+  @override
+  @JsonKey(name: "giftsBalance")
+  final double? giftsBalance;
   @override
   @JsonKey(name: "monetized")
   final bool? monetized;
@@ -796,7 +814,7 @@ class _$ProfileDataModelImpl implements _ProfileDataModel {
 
   @override
   String toString() {
-    return 'ProfileDataModel(stripeCustomerId: $stripeCustomerId, walletBalance: $walletBalance, tokenBalance: $tokenBalance, walletTokens: $walletTokens, balance: $balance, withdrawalBalance: $withdrawalBalance, monetized: $monetized, name: $name, id: $id, email: $email, password: $password, role: $role, phone: $phone, countryCode: $countryCode, dob: $dob, country: $country, gender: $gender, image: $image, coverPhoto: $coverPhoto, socialId: $socialId, isActive: $isActive, createdAt: $createdAt, updatedAt: $updatedAt, seeMyProfile: $seeMyProfile, shareMyPost: $shareMyPost, isNotification: $isNotification, followers: $followers, following: $following, postCount: $postCount, bio: $bio, website: $website, userName: $userName, isPrivate: $isPrivate, pendingFollowRequests: $pendingFollowRequests, v: $v, agoraLiveStatus: $agoraLiveStatus)';
+    return 'ProfileDataModel(stripeCustomerId: $stripeCustomerId, walletBalance: $walletBalance, tokenBalance: $tokenBalance, walletTokens: $walletTokens, balance: $balance, withdrawalBalance: $withdrawalBalance, giftsBalance: $giftsBalance, monetized: $monetized, name: $name, id: $id, email: $email, password: $password, role: $role, phone: $phone, countryCode: $countryCode, dob: $dob, country: $country, gender: $gender, image: $image, coverPhoto: $coverPhoto, socialId: $socialId, isActive: $isActive, createdAt: $createdAt, updatedAt: $updatedAt, seeMyProfile: $seeMyProfile, shareMyPost: $shareMyPost, isNotification: $isNotification, followers: $followers, following: $following, postCount: $postCount, bio: $bio, website: $website, userName: $userName, isPrivate: $isPrivate, pendingFollowRequests: $pendingFollowRequests, v: $v, agoraLiveStatus: $agoraLiveStatus)';
   }
 
   @override
@@ -815,6 +833,8 @@ class _$ProfileDataModelImpl implements _ProfileDataModel {
             (identical(other.balance, balance) || other.balance == balance) &&
             (identical(other.withdrawalBalance, withdrawalBalance) ||
                 other.withdrawalBalance == withdrawalBalance) &&
+            (identical(other.giftsBalance, giftsBalance) ||
+                other.giftsBalance == giftsBalance) &&
             (identical(other.monetized, monetized) ||
                 other.monetized == monetized) &&
             (identical(other.name, name) || other.name == name) &&
@@ -881,6 +901,7 @@ class _$ProfileDataModelImpl implements _ProfileDataModel {
     walletTokens,
     balance,
     withdrawalBalance,
+    giftsBalance,
     monetized,
     name,
     id,
@@ -938,6 +959,7 @@ abstract class _ProfileDataModel implements ProfileDataModel {
     @JsonKey(name: "walletTokens") final int? walletTokens,
     @JsonKey(name: "balance") final double? balance,
     @JsonKey(name: "withdrawalBalance") final double? withdrawalBalance,
+    @JsonKey(name: "giftsBalance") final double? giftsBalance,
     @JsonKey(name: "monetized") final bool? monetized,
     @JsonKey(name: "name") final String? name,
     @JsonKey(name: "_id") final String? id,
@@ -993,6 +1015,9 @@ abstract class _ProfileDataModel implements ProfileDataModel {
   @override
   @JsonKey(name: "withdrawalBalance")
   double? get withdrawalBalance;
+  @override
+  @JsonKey(name: "giftsBalance")
+  double? get giftsBalance;
   @override
   @JsonKey(name: "monetized")
   bool? get monetized;

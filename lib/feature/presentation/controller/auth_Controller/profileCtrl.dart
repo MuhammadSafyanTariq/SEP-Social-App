@@ -88,6 +88,15 @@ class ProfileCtrl extends GetxController {
   /// Raw list of received gifts from /api/gift/received.
   var giftHistory = <Map<String, dynamic>>[].obs;
 
+  /// Lifetime creator earnings and withdrawals (USD), from profile.
+  RxDouble totalEarningsUsd = 0.0.obs;
+  RxDouble totalWithdrawUsd = 0.0.obs;
+
+  /// Payout (PayPal) state.
+  RxBool isPayoutLoading = false.obs;
+  RxList<Map<String, dynamic>> payoutTransactions =
+      <Map<String, dynamic>>[].obs;
+
   // bool get hasMoreData => _hasMoreData.value;
   // bool get hasMoreData => globalPostList.length % 5 == 0 && globalPostList.isNotEmpty;
   //
@@ -213,8 +222,21 @@ class ProfileCtrl extends GetxController {
         final msg = raw['message'] as String? ?? 'Gift sent successfully';
         AppUtils.toast(msg);
 
-        // Optionally refresh profile to update balance
-        await getProfileDetails();
+        // Update local token balance using senderNewTokenBalance when available.
+        final data = raw['data'] as Map<String, dynamic>?;
+        final newTokenBalanceRaw = data?['senderNewTokenBalance'];
+        if (newTokenBalanceRaw != null) {
+          final newTokens = newTokenBalanceRaw is num
+              ? newTokenBalanceRaw.toInt()
+              : int.tryParse(newTokenBalanceRaw.toString());
+          if (newTokens != null) {
+            final updated = profileData.value.copyWith(walletTokens: newTokens);
+            profileData.value = updated;
+            profileData.refresh();
+            Preferences.profile = updated;
+            Preferences.savePrefOnLogin = updated;
+          }
+        }
       } else {
         final err = result.getError;
         final msg =
@@ -264,11 +286,11 @@ class ProfileCtrl extends GetxController {
   }
 
   /// Cashout all pending gifts for the current user.
+  /// Backend requires giftsBalance >= \$50 (per FRONTEND_INTEGRATION_GUIDE).
   Future<void> cashoutGifts() async {
-    // Enforce $50 minimum withdrawal threshold
-    if (profileData.value.withdrawalBalanceUsd < 50) {
+    if (profileData.value.giftsBalanceUsd < 50) {
       AppUtils.toastError(
-        'You need at least \$50 in withdrawable balance to cash out',
+        'You need at least \$50 in gifts balance to cash out',
       );
       return;
     }
@@ -282,9 +304,37 @@ class ProfileCtrl extends GetxController {
         final raw = result.data ?? const <String, dynamic>{};
         final msg =
             raw['message'] as String? ?? 'Gifts cashed out successfully';
-        AppUtils.toast(msg);
+        final data = raw['data'] as Map<String, dynamic>?;
+        // Per guide §6.2: "No pending gifts" is success with friendly message, not error
+        final noPending = (msg.toLowerCase().contains('no pending') ||
+            msg.toLowerCase().contains('no active'));
+        if (noPending) {
+          AppUtils.toast('You have no active gifts to cash out.');
+        } else {
+          AppUtils.toast(msg);
+          // Optionally apply response balances; getProfileDetails will refresh anyway
+          if (data != null) {
+            final newGiftsBalance = data['receiverGiftsBalance'];
+            final newWithdrawal = data['receiverWithdrawalBalance'];
+            if (newGiftsBalance != null || newWithdrawal != null) {
+              try {
+                final updated = profileData.value.copyWith(
+                  giftsBalance: newGiftsBalance is num
+                      ? (newGiftsBalance as num).toDouble()
+                      : profileData.value.giftsBalance,
+                  withdrawalBalance: newWithdrawal is num
+                      ? (newWithdrawal as num).toDouble()
+                      : profileData.value.withdrawalBalance,
+                );
+                profileData.value = updated;
+                profileData.refresh();
+                Preferences.profile = updated;
+                Preferences.savePrefOnLogin = updated;
+              } catch (_) {}
+            }
+          }
+        }
 
-        // Refresh profile to update wallet & withdrawal balances
         await getProfileDetails();
       } else {
         final err = result.getError;
@@ -474,6 +524,18 @@ class ProfileCtrl extends GetxController {
 
         final userDetails = ProfileDataModel.fromJson(extractedData);
 
+        // Update earnings aggregates if backend provides them.
+        try {
+          final totalEarningsRaw = extractedData['totalEarnings'];
+          final totalWithdrawRaw = extractedData['totalWithdraw'];
+          totalEarningsUsd.value = (totalEarningsRaw is num)
+              ? totalEarningsRaw.toDouble()
+              : double.tryParse(totalEarningsRaw?.toString() ?? '') ?? 0.0;
+          totalWithdrawUsd.value = (totalWithdrawRaw is num)
+              ? totalWithdrawRaw.toDouble()
+              : double.tryParse(totalWithdrawRaw?.toString() ?? '') ?? 0.0;
+        } catch (_) {}
+
         // Debug logging for token balance updates
         final oldTokenBalance = profileData.value.tokenBalance ?? 0;
         final oldWalletTokens = profileData.value.walletTokens ?? 0;
@@ -506,6 +568,110 @@ class ProfileCtrl extends GetxController {
       // AppUtils.log("Error fetching profile: $e");
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  /// Request a PayPal payout from the withdrawal balance.
+  Future<void> requestPaypalPayout({
+    required double amount,
+    String? paypalEmail,
+  }) async {
+    if (amount <= 0) {
+      AppUtils.toastError('Enter a valid amount to withdraw');
+      return;
+    }
+
+    if (amount < 50) {
+      AppUtils.toastError('Minimum withdrawal amount is \$50');
+      return;
+    }
+
+    if (profileData.value.withdrawalBalanceUsd < amount) {
+      AppUtils.toastError('Insufficient withdrawable balance');
+      return;
+    }
+
+    if (isPayoutLoading.value) return;
+    isPayoutLoading.value = true;
+
+    try {
+      final result = await _itemRepository.requestPaypalPayout(
+        amount: amount,
+        paypalEmail: paypalEmail,
+      );
+
+      if (result.isSuccess) {
+        final raw = result.data ?? const <String, dynamic>{};
+        final msg =
+            raw['message'] as String? ?? 'Payout requested successfully';
+        final data = raw['data'] as Map<String, dynamic>?;
+
+        if (data != null) {
+          final newWithdrawal = data['withdrawalBalance'];
+          final newTotalWithdraw = data['totalWithdraw'];
+
+          // Apply updated balances to profile & local aggregates.
+          try {
+            final updated = profileData.value.copyWith(
+              withdrawalBalance: newWithdrawal is num
+                  ? newWithdrawal.toDouble()
+                  : profileData.value.withdrawalBalance,
+            );
+            profileData.value = updated;
+            profileData.refresh();
+
+            if (newTotalWithdraw is num) {
+              totalWithdrawUsd.value = newTotalWithdraw.toDouble();
+            }
+          } catch (_) {}
+        }
+
+        AppUtils.toast(msg);
+        await getProfileDetails();
+      } else {
+        final err = result.getError;
+        final msg =
+            err?.toString().replaceFirst('Exception: ', '') ??
+            'Payout request failed';
+        AppUtils.toastError(msg);
+      }
+    } catch (e) {
+      AppUtils.toastError('Payout request failed');
+      AppUtils.log('requestPaypalPayout error: $e');
+    } finally {
+      isPayoutLoading.value = false;
+    }
+  }
+
+  /// Load payout / withdrawal transactions for the current user.
+  Future<void> loadPayoutTransactions({
+    int page = 1,
+    int limit = 20,
+  }) async {
+    try {
+      final result = await _itemRepository.getPayoutTransactions(
+        page: page,
+        limit: limit,
+      );
+
+      if (result.isSuccess) {
+        final raw = result.data ?? const <String, dynamic>{};
+        final data =
+            raw['data'] as Map<String, dynamic>? ?? const <String, dynamic>{};
+        final list = (data['transactions'] as List<dynamic>? ?? [])
+            .whereType<Map<String, dynamic>>()
+            .toList();
+        payoutTransactions.assignAll(list);
+      } else {
+        final err = result.getError;
+        final msg =
+            err?.toString().replaceFirst('Exception: ', '') ??
+            'Failed to load payout history';
+        AppUtils.toastError(msg);
+      }
+    } catch (e) {
+      AppUtils.toastError('Failed to load payout history');
+      AppUtils.log('loadPayoutTransactions error: $e');
     }
   }
 

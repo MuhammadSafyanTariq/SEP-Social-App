@@ -34,7 +34,7 @@ void main() async {
     // Handle GPU errors through our handler
     final wasGpuError = GpuErrorHandler.instance.isGpuDeviceLost;
     GpuErrorHandler.instance.handleFlutterError(details);
-    
+
     // Only present error if it wasn't a GPU error (GPU errors are suppressed)
     if (!wasGpuError || !GpuErrorHandler.instance.isGpuDeviceLost) {
       FlutterError.presentError(details);
@@ -190,7 +190,7 @@ class _InitialScreenState extends State<InitialScreen> {
 
     // Show home screen immediately
     if (!mounted) return;
-    
+
     setState(() {
       _shouldShowHome = Preferences.authToken != null;
     });
@@ -200,7 +200,7 @@ class _InitialScreenState extends State<InitialScreen> {
 
     // Navigate if needed (only if not showing home)
     if (!mounted) return;
-    
+
     if (!_shouldShowHome) {
       context.pushAndClearNavigator(Language());
     }
@@ -212,13 +212,11 @@ class _InitialScreenState extends State<InitialScreen> {
     if (_shouldShowHome) {
       return const HomeScreen();
     }
-    
+
     // While checking login status, show loading spinner
     return Scaffold(
       backgroundColor: Colors.white,
-      body: const Center(
-        child: CircularProgressIndicator(),
-      ),
+      body: const Center(child: CircularProgressIndicator()),
     );
   }
 }

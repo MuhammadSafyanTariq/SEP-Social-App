@@ -139,13 +139,22 @@ class AppUtils {
       msg = '$error';
     }
 
+    // Normalize some low-level / backend error messages into user-friendly text
+    if (msg.contains("Cannot read properties of null (reading 'includes'")) {
+      msg = 'Something went wrong while deleting the chat. Please try again.';
+    }
+
     // Handle special cases
-    final errorValue = msg.contains('Connection closed before full header was received') ||
-        msg.contains('FormatException: Unexpected character (at character 1)')
+    final errorValue = msg.contains(
+              'Connection closed before full header was received',
+            ) ||
+            msg.contains(
+              'FormatException: Unexpected character (at character 1)',
+            )
         ? 'Something went wrong! Please try again.'
         : msg.contains('Exception:')
-        ? msg.replaceAll('Exception:', '').trim()
-        : (msg.isEmpty ? 'An unknown error occurred' : msg);
+            ? msg.replaceAll('Exception:', '').trim()
+            : (msg.isEmpty ? 'An unknown error occurred' : msg);
 
     Fluttertoast.showToast(
       msg: errorValue,

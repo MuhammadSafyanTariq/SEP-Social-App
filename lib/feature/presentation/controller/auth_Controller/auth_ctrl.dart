@@ -17,6 +17,7 @@ class AuthCtrl extends GetxController {
   AuthRepository get getRepo => _repo;
 
   var searchedUsers = <Map<String, dynamic>>[].obs;
+  var searchedPosts = <Map<String, dynamic>>[].obs;
   RxList<Map<String, dynamic>> pollList = <Map<String, dynamic>>[].obs;
 
   RxBool isLoading = false.obs;
@@ -254,6 +255,9 @@ class AuthCtrl extends GetxController {
     int page = 1,
     int limit = 10,
   }) async {
+    AppUtils.log(
+      '🔎 searchUserInProfile query="$query" page=$page limit=$limit',
+    );
     isLoading.value = true;
 
     final response = await repo.searchUsers(
@@ -263,11 +267,12 @@ class AuthCtrl extends GetxController {
     );
 
     if (response.isSuccess) {
-      AppUtils.log("API Raw Response:::::: ${response.data}");
+      AppUtils.log("👤 User search raw response: ${response.data}");
       final users = response.data?['data']?['users'] as List<dynamic>?;
-      AppUtils.log("API Raw Respons???????? ${users}");
-
       final newUsers = users?.cast<Map<String, dynamic>>() ?? [];
+      AppUtils.log(
+        "👤 Parsed users count=${newUsers.length} (page=$page, query=\"$query\")",
+      );
 
       if (page == 1) {
         // First page or new search - replace the list
@@ -276,9 +281,62 @@ class AuthCtrl extends GetxController {
         // Loading more pages - append to existing list
         searchedUsers.addAll(newUsers);
       }
+      AppUtils.log(
+        "👤 Total users in list=${searchedUsers.length} after merge",
+      );
+    } else {
+      AppUtils.log("❌ User search failed: ${response.getError}");
     }
 
     isLoading.value = false;
+  }
+
+  Future<void> searchPostsByCaption(
+    String query, {
+    int page = 1,
+    int limit = 20,
+  }) async {
+    if (query.trim().isEmpty) {
+      if (page == 1) {
+        searchedPosts.clear();
+      }
+      return;
+    }
+
+    try {
+      AppUtils.log(
+        '🔍 searchPostsByCaption query="$query" page=$page limit=$limit',
+      );
+      final response = await repo.searchPosts(
+        query: query,
+        page: page,
+        limit: limit,
+      );
+
+      if (response.isSuccess) {
+        final data = response.data?['data'] as Map<String, dynamic>? ?? {};
+        final posts = (data['data'] as List<dynamic>? ?? [])
+            .whereType<Map<String, dynamic>>()
+            .toList();
+        AppUtils.log(
+          "📝 Parsed posts count=${posts.length} (page=$page, query=\"$query\")",
+        );
+
+        if (page == 1) {
+          searchedPosts.value = posts;
+        } else {
+          searchedPosts.addAll(posts);
+        }
+        AppUtils.log(
+          "📝 Total posts in list=${searchedPosts.length} after merge",
+        );
+      } else {
+        final err = response.getError;
+        AppUtils.log('❌ searchPosts error: $err');
+      }
+    } catch (e) {
+      AppUtils.log('💥 searchPosts exception: $e');
+    }
   }
 
   Future<List<Map<String, dynamic>>> getPollList(

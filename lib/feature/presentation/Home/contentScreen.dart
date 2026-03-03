@@ -21,6 +21,7 @@ import 'homeScreenComponents/postVideo.dart';
 import 'homeScreenComponents/post_components.dart';
 import 'homeScreenComponents/celebrationCard.dart';
 import 'searchScreen.dart';
+import '../liveStreaming_screen/broad_cast_video.dart';
 import 'story/story_list_widget_new.dart';
 
 class Contentscreen extends StatefulWidget {
@@ -38,6 +39,136 @@ class _HomeScreenState extends State<Contentscreen> {
     setState(() {
       commentCount = newCount;
     });
+  }
+
+  Widget _buildLiveDiscoveryCard(
+    BuildContext context,
+    List<LiveStreamChannelModel> channels,
+  ) {
+    if (channels.isEmpty) return const SizedBox.shrink();
+    final primary = channels.first;
+    final liveCount = channels.length;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () {
+          // Open first live instantly; allow swipe between sessions inside.
+          context.pushNavigator(
+            const LiveSwipeScreen(initialIndex: 0),
+          );
+        },
+        child: Row(
+          children: [
+            // Thumbnail / host image
+            ClipRRect(
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                bottomLeft: Radius.circular(16),
+              ),
+              child: AspectRatio(
+                aspectRatio: 9 / 12,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Image.network(
+                      primary.hostImage?.fileUrl ?? '',
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        color: Colors.black12,
+                        child: const Icon(
+                          Icons.videocam,
+                          color: Colors.white70,
+                          size: 40,
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      top: 8,
+                      left: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const TextView(
+                          text: 'LIVE',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.live_tv,
+                          size: 18,
+                          color: AppColors.btnColor,
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: TextView(
+                            text: primary.title?.isNotEmpty == true
+                                ? primary.title!
+                                : 'Live now',
+                            maxlines: 1,
+                            style: 14.txtSBoldprimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    TextView(
+                      text: primary.hostName ?? '',
+                      maxlines: 1,
+                      style: 12.txtRegularGrey,
+                    ),
+                    const SizedBox(height: 8),
+                    TextView(
+                      text: liveCount == 1
+                          ? 'Tap to join this live. Swipe inside to explore more.'
+                          : 'Tap to join. $liveCount live sessions available – swipe to switch.',
+                      maxlines: 2,
+                      style: 11.txtRegularGrey,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   var globalPostList = <PostData>[].obs;
@@ -262,117 +393,47 @@ class _HomeScreenState extends State<Contentscreen> {
             ),
             // Story section
             SliverToBoxAdapter(child: StoryListWidgetNew()),
-            // Live Stream discovery section (horizontal strip injected into feed)
+            // Live Stream section
             Obx(
               () => AgoraChatCtrl.find.liveStreamChannels.isNotEmpty
                   ? SliverToBoxAdapter(
                       child: Container(
                         margin: EdgeInsets.symmetric(vertical: 10),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 16),
-                              child: Row(
+                        height: 65,
+                        child: ListView.separated(
+                          padding: EdgeInsets.symmetric(horizontal: 16),
+                          scrollDirection: Axis.horizontal,
+                          itemBuilder: (context, index) {
+                            final item =
+                                AgoraChatCtrl.find.liveStreamChannels[index];
+                            return SizedBox(
+                              width: 50,
+                              child: Column(
                                 children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.red,
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    child: const Text(
-                                      'LIVE',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
+                                  ProfileImage(
+                                    size: 40,
+                                    image: item.hostImage.fileUrl,
+                                    uid: item.hostId,
+                                    socketConnection: socketConnectionFlag,
                                   ),
-                                  const SizedBox(width: 8),
                                   TextView(
-                                    text: 'Live now',
-                                    style: 14.txtSBoldprimary,
+                                    margin: EdgeInsets.only(top: 3),
+                                    text: item.hostName ?? '',
+                                    maxlines: 1,
+                                    style: 12.txtRegularMainBlack,
                                   ),
                                 ],
                               ),
-                            ),
-                            const SizedBox(height: 8),
-                            SizedBox(
-                              height: 65,
-                              child: ListView.separated(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 16),
-                                scrollDirection: Axis.horizontal,
-                                itemBuilder: (context, index) {
-                                  final item = AgoraChatCtrl
-                                      .find.liveStreamChannels[index];
-                                  return SizedBox(
-                                    width: 56,
-                                    child: Column(
-                                      children: [
-                                        Stack(
-                                          clipBehavior: Clip.none,
-                                          children: [
-                                            ProfileImage(
-                                              size: 44,
-                                              image: item.hostImage.fileUrl,
-                                              uid: item.hostId,
-                                              socketConnection:
-                                                  socketConnectionFlag,
-                                            ),
-                                            Positioned(
-                                              bottom: -2,
-                                              right: -2,
-                                              child: Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                  horizontal: 6,
-                                                  vertical: 2,
-                                                ),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.red,
-                                                  borderRadius:
-                                                      BorderRadius.circular(10),
-                                                ),
-                                                child: const Text(
-                                                  'LIVE',
-                                                  style: TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 8,
-                                                    fontWeight: FontWeight.w700,
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        TextView(
-                                          margin: const EdgeInsets.only(top: 3),
-                                          text: item.hostName ?? '',
-                                          maxlines: 1,
-                                          style: 12.txtRegularMainBlack,
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                },
-                                separatorBuilder: (context, index) =>
-                                    const SizedBox(width: 16),
-                                itemCount: AgoraChatCtrl
-                                    .find.liveStreamChannels.length,
-                              ),
-                            ),
-                          ],
+                            );
+                          },
+                          separatorBuilder: (context, index) =>
+                              SizedBox(width: 20),
+                          itemCount:
+                              AgoraChatCtrl.find.liveStreamChannels.length,
                         ),
                       ),
                     )
-                  : const SliverToBoxAdapter(child: SizedBox.shrink()),
+                  : SliverToBoxAdapter(child: SizedBox.shrink()),
             ),
             // Category Filter
             SliverToBoxAdapter(
@@ -446,20 +507,47 @@ class _HomeScreenState extends State<Contentscreen> {
             Obx(
               () => SliverList(
                 delegate: profileCtrl.postsWithoutStories.isNotEmpty
-                    ? SliverChildBuilderDelegate((context, index) {
-                        if (index < _getFilteredPosts().length) {
-                          final post = _getFilteredPosts()[index];
-                          // Find original index for state management
+                    ? SliverChildBuilderDelegate(
+                        (context, index) {
+                          final posts = _getFilteredPosts();
+                          final liveChannels =
+                              AgoraChatCtrl.find.liveStreamChannels;
+                          final hasLive =
+                              liveChannels.isNotEmpty && posts.length > 3;
+
+                          final totalCount =
+                              posts.length + (hasLive ? 1 : 0);
+                          if (index >= totalCount) return const SizedBox();
+
+                          const insertIndex = 3;
+                          if (hasLive && index == insertIndex) {
+                            return _buildLiveDiscoveryCard(
+                              context,
+                              liveChannels,
+                            );
+                          }
+
+                          final postIndex = hasLive && index > insertIndex
+                              ? index - 1
+                              : index;
+                          final post = posts[postIndex];
                           final originalIndex = profileCtrl.postsWithoutStories
                               .indexOf(post);
                           return _buildPostWidget(
                             post,
                             () => _loadInitialPosts(),
-                            originalIndex >= 0 ? originalIndex : index,
+                            originalIndex >= 0 ? originalIndex : postIndex,
                           );
-                        }
-                        return Container();
-                      }, childCount: _getFilteredPosts().length)
+                        },
+                        childCount: (() {
+                          final posts = _getFilteredPosts();
+                          final liveChannels =
+                              AgoraChatCtrl.find.liveStreamChannels;
+                          final hasLive =
+                              liveChannels.isNotEmpty && posts.length > 3;
+                          return posts.length + (hasLive ? 1 : 0);
+                        })(),
+                      )
                     : SliverChildBuilderDelegate(
                         (context, index) => Center(
                           child: TextView(

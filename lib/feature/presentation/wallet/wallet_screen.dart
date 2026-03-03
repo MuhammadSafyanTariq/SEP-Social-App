@@ -38,7 +38,7 @@ class _WalletScreenState extends State<WalletScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     stripeCtrl.getTransactionList();
-    // Refresh profile data to get latest token balance
+    // Refresh profile data to get latest coin balance
     profileCtrl.getProfileDetails();
   }
 
@@ -70,20 +70,12 @@ class _WalletScreenState extends State<WalletScreen>
       body: Obx(() {
         final transactions = stripeCtrl.transactionList;
         final profileData = ProfileCtrl.find.profileData.value;
-        final balanceUsd = profileData.balanceUsd;
-        final tokenBalance =
+        // Coins (backend: walletTokens) used for gifts & games.
+        final coinBalance =
             profileData.walletTokens ?? profileData.tokenBalance ?? 0;
-
-        // Debug logging to track balance updates
-        print(
-          "Wallet Screen - tokenBalance: ${profileData.tokenBalance}, walletTokens: ${profileData.walletTokens}",
-        );
-        print("Wallet Screen - Using token balance: $tokenBalance");
-        print("Wallet Screen - Profile Image URL: ${profileData.image}");
 
         return Column(
           children: [
-            // Custom AppBar2
             AppBar2(
               title: 'Wallet',
               titleStyle: 20.txtBoldBlack,
@@ -91,7 +83,6 @@ class _WalletScreenState extends State<WalletScreen>
               onPrefixTap: () => context.pop(),
               backgroundColor: Colors.white,
             ),
-            // Main content
             Expanded(
               child: RefreshIndicator(
                 onRefresh: () async {
@@ -100,163 +91,89 @@ class _WalletScreenState extends State<WalletScreen>
                 child: ListView(
                   padding: EdgeInsets.all(20.sdp),
                   children: [
-                    // Balance and Game Tokens cards
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Balance Card (USD – gifts, top-up)
-                        Expanded(
-                          child: Container(
-                            padding: EdgeInsets.all(20.sdp),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(16.sdp),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.05),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
+                    // Coins card only (USD balance removed)
+                    Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.all(20.sdp),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16.sdp),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          TextView(
+                            text: 'COINS',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.greenlight,
+                              letterSpacing: 1.2,
                             ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                TextView(
-                                  text: 'BALANCE',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                    color: AppColors.greenlight,
-                                    letterSpacing: 1.2,
-                                  ),
+                          ),
+                          SizedBox(height: 4.sdp),
+                          TextView(
+                            text: 'Used for gifts & games',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                          SizedBox(height: 8.sdp),
+                          Row(
+                            children: [
+                              ImageView(
+                                url: AppImages.token,
+                                size: 28.sdp,
+                              ),
+                              SizedBox(width: 8.sdp),
+                              TextView(
+                                text: coinBalance.toString(),
+                                style: TextStyle(
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black,
                                 ),
-                                SizedBox(height: 4.sdp),
-                                TextView(
-                                  text: 'Gifts & purchases',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                                SizedBox(height: 8.sdp),
-                                TextView(
-                                  text: '\$${balanceUsd.toStringAsFixed(2)}',
-                                  style: TextStyle(
-                                    fontSize: 28,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black,
-                                  ),
-                                ),
-                                SizedBox(height: 16.sdp),
-                                AppButton(
-                                  radius: 20.sdp,
-                                  buttonColor: AppColors.greenlight,
-                                  label: "Add Balance",
-                                  labelStyle: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.white,
-                                  ),
-                                  isFilledButton: true,
-                                  onTap: () async {
-                                    final userId = Preferences.uid ?? "";
-                                    if (userId.isEmpty) {
-                                      AppUtils.toastError("User ID not found");
-                                      return;
-                                    }
-                                    await context.pushNavigator(
-                                      PayPalTopUpScreen(
-                                        userId: userId,
-                                        onBalanceUpdated: (newBalance) {
-                                          _refreshData();
-                                        },
-                                      ),
-                                    );
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 16.sdp),
+                          AppButton(
+                            radius: 20.sdp,
+                            buttonColor: AppColors.primaryColor,
+                            label: "Add Coins",
+                            labelStyle: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.white,
+                            ),
+                            isFilledButton: true,
+                            onTap: () async {
+                              final userId = Preferences.uid ?? "";
+                              if (userId.isEmpty) {
+                                AppUtils.toastError("User ID not found");
+                                return;
+                              }
+                              await context.pushNavigator(
+                                PayPalTopUpScreen(
+                                  userId: userId,
+                                  onBalanceUpdated: (_) {
                                     _refreshData();
                                   },
                                 ),
-                              ],
-                            ),
+                              );
+                              _refreshData();
+                            },
                           ),
-                        ),
-                        SizedBox(width: 16.sdp),
-                        // Game Tokens Card (for games only)
-                        Expanded(
-                          child: Container(
-                            padding: EdgeInsets.all(20.sdp),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(16.sdp),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.05),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                TextView(
-                                  text: 'GAME TOKENS',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                    color: AppColors.greenlight,
-                                    letterSpacing: 1.2,
-                                  ),
-                                ),
-                                SizedBox(height: 4.sdp),
-                                TextView(
-                                  text: 'Used only in games',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                                SizedBox(height: 8.sdp),
-                                Row(
-                                  children: [
-                                    ImageView(
-                                      url: AppImages.token,
-                                      size: 28.sdp,
-                                    ),
-                                    SizedBox(width: 8.sdp),
-                                    TextView(
-                                      text: tokenBalance.toString(),
-                                      style: TextStyle(
-                                        fontSize: 26,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.black,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                SizedBox(height: 16.sdp),
-                                AppButton(
-                                  radius: 20.sdp,
-                                  buttonColor: AppColors.primaryColor,
-                                  label: "Add Tokens",
-                                  labelStyle: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.white,
-                                  ),
-                                  isFilledButton: true,
-                                  onTap: () async {
-                                    await context.pushNavigator(
-                                      const PackagesScreen(),
-                                    );
-                                    _refreshData();
-                                  },
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
 
                     SizedBox(height: 32.sdp),

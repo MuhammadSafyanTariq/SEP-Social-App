@@ -1051,6 +1051,139 @@ class ITempRepository implements TempRepository {
   }
 
   @override
+  Future<ResponseData<Map<String, dynamic>>> requestPaypalPayout({
+    required double amount,
+    String? paypalEmail,
+  }) async {
+    final authToken = Preferences.authToken?.bearer;
+    if (authToken == null || authToken.isEmpty) {
+      return ResponseData<Map<String, dynamic>>(
+        isSuccess: false,
+        error: Exception('Not authenticated'),
+      );
+    }
+
+    try {
+      final result = await _apiMethod.post(
+        url: Urls.requestPaypalPayout,
+        authToken: authToken,
+        headers: {'Content-Type': 'application/json'},
+        body: {
+          'amount': amount,
+          if (paypalEmail != null && paypalEmail.isNotEmpty)
+            'paypalEmail': paypalEmail,
+        },
+      );
+
+      if (result.isSuccess) {
+        return ResponseData<Map<String, dynamic>>(
+          isSuccess: true,
+          data: result.data ?? <String, dynamic>{},
+        );
+      } else {
+        return ResponseData<Map<String, dynamic>>(
+          isSuccess: false,
+          error: result.getError,
+        );
+      }
+    } catch (e) {
+      AppUtils.log('Error requesting PayPal payout: $e');
+      return ResponseData<Map<String, dynamic>>(
+        isSuccess: false,
+        error: Exception('Failed to request PayPal payout: $e'),
+      );
+    }
+  }
+
+  @override
+  Future<ResponseData<Map<String, dynamic>>> getPayoutTransactions({
+    int page = 1,
+    int limit = 20,
+  }) async {
+    final authToken = Preferences.authToken?.bearer;
+    if (authToken == null || authToken.isEmpty) {
+      return ResponseData<Map<String, dynamic>>(
+        isSuccess: false,
+        error: Exception('Not authenticated'),
+      );
+    }
+
+    try {
+      final result = await _apiMethod.get(
+        url: Urls.payoutTransactions,
+        authToken: authToken,
+        query: {
+          'page': page.toString(),
+          'limit': limit.toString(),
+        },
+      );
+
+      if (result.isSuccess) {
+        return ResponseData<Map<String, dynamic>>(
+          isSuccess: true,
+          data: result.data ?? <String, dynamic>{},
+        );
+      } else {
+        return ResponseData<Map<String, dynamic>>(
+          isSuccess: false,
+          error: result.getError,
+        );
+      }
+    } catch (e) {
+      AppUtils.log('Error fetching payout transactions: $e');
+      return ResponseData<Map<String, dynamic>>(
+        isSuccess: false,
+        error: Exception('Failed to fetch payout transactions: $e'),
+      );
+    }
+  }
+
+  @override
+  Future<ResponseData<Map<String, dynamic>>> searchPosts({
+    required String query,
+    int page = 1,
+    int limit = 20,
+  }) async {
+    final authToken = Preferences.authToken?.bearer;
+    if (authToken == null || authToken.isEmpty) {
+      return ResponseData<Map<String, dynamic>>(
+        isSuccess: false,
+        error: Exception('Not authenticated'),
+      );
+    }
+
+    try {
+      final result = await _apiMethod.get(
+        url: Urls.searchPosts,
+        authToken: authToken,
+        query: {
+          'q': query,
+          'page': page.toString(),
+          'limit': limit.toString(),
+        },
+      );
+
+      if (result.isSuccess) {
+        return ResponseData<Map<String, dynamic>>(
+          isSuccess: true,
+          data: result.data ?? <String, dynamic>{},
+        );
+      } else {
+        return ResponseData<Map<String, dynamic>>(
+          isSuccess: false,
+          error: result.getError,
+        );
+      }
+    } catch (e) {
+      AppUtils.log('Error searching posts: $e');
+      return ResponseData<Map<String, dynamic>>(
+        isSuccess: false,
+        error: Exception('Failed to search posts: $e'),
+      );
+    }
+  }
+
+  @override
   Future<ResponseData<Map<String, dynamic>>> getPollList({
     required String type,
     int page = 1,

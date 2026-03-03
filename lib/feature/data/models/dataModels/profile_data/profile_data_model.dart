@@ -53,6 +53,7 @@ class ProfileDataModel with _$ProfileDataModel {
     @JsonKey(name: "walletTokens") int? walletTokens,
     @JsonKey(name: "balance") double? balance,
     @JsonKey(name: "withdrawalBalance") double? withdrawalBalance,
+    @JsonKey(name: "giftsBalance") double? giftsBalance,
     @JsonKey(name: "monetized") bool? monetized,
     @JsonKey(name: "name") String? name,
     @JsonKey(name: "_id") String? id,
@@ -122,6 +123,9 @@ extension ProfileDataExt on ProfileDataModel {
 
   /// Amount available for withdrawal in USD (already split).
   double get withdrawalBalanceUsd => (withdrawalBalance ?? 0).toDouble();
+
+  /// Un-cashed gift earnings (creator share) in USD. Cashout when >= \$50.
+  double get giftsBalanceUsd => (giftsBalance ?? 0).toDouble();
 
   /// Whether this account is monetized/eligible for gifting earnings.
   bool get isMonetized => monetized ?? false;

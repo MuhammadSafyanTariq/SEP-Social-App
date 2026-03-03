@@ -194,6 +194,7 @@ class _PostImageBrowsingListingState extends State<PostImageBrowsingListing> {
                   }
                 });
               },
+              profileOwnerIsMonetized: widget.profileOwner?.isMonetized,
             );
 
             return PostCard(

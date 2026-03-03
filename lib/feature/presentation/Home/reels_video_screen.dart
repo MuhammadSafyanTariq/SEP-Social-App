@@ -15,11 +15,15 @@ import 'package:sep/services/saved_post_service.dart';
 import 'package:sep/services/deep_link_service.dart';
 import 'package:sep/feature/presentation/profileScreens/friend_profile_screen.dart';
 import 'package:sep/feature/data/models/dataModels/profile_data/profile_data_model.dart';
+import 'package:sep/components/styles/gift_images.dart';
+import 'package:sep/feature/presentation/widgets/gift_effects_overlay.dart';
+import 'package:sep/services/storage/preferences.dart';
 import 'package:sep/utils/extensions/contextExtensions.dart';
 
 class ReelsVideoScreen extends StatefulWidget {
   final List<PostData> initialPosts;
   final int initialIndex;
+
   /// When opening from a profile (yours or another user's), pass the profile owner
   /// so we can show their name/avatar when the single-post API returns 403.
   final ProfileDataModel? profileOwner;
@@ -71,14 +75,13 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
     final source = globalMatch ?? post;
 
     final likesCount = source.likeCount ?? (source.likes?.length ?? 0);
-    final commentsCount =
-        source.commentCount ?? (source.comments?.length ?? 0);
+    final commentsCount = source.commentCount ?? (source.comments?.length ?? 0);
     final fromPost = post.likeCount ?? (post.likes?.length ?? 0);
-    final fromPostComments =
-        post.commentCount ?? (post.comments?.length ?? 0);
+    final fromPostComments = post.commentCount ?? (post.comments?.length ?? 0);
     final likeCount = likesCount >= fromPost ? likesCount : fromPost;
-    final commentCount =
-        commentsCount >= fromPostComments ? commentsCount : fromPostComments;
+    final commentCount = commentsCount >= fromPostComments
+        ? commentsCount
+        : fromPostComments;
 
     // Prefer global list's isLikedByUser so if user liked on home, reels shows filled heart
     final isLikedByUser = source.isLikedByUser ?? post.isLikedByUser;
@@ -149,7 +152,8 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
     // Use the profile owner we're viewing so name/avatar still show instead of "Unknown User".
     final owner = widget.profileOwner;
     if (owner != null &&
-        ((owner.name?.isNotEmpty ?? false) || (owner.userName?.isNotEmpty ?? false)) &&
+        ((owner.name?.isNotEmpty ?? false) ||
+            (owner.userName?.isNotEmpty ?? false)) &&
         (post.userId == null || post.userId == owner.id)) {
       return User(
         id: owner.id,
@@ -159,6 +163,14 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
     }
 
     return null;
+  }
+
+  /// True when the reel's creator is monetized.
+  /// When user list is empty (e.g. old API or not populated), we show gift and let backend reject if not monetized – so old monetized users still get the icon.
+  bool _isReelCreatorMonetized(PostData post) {
+    if (post.user.isEmpty)
+      return true; // Fallback: show gift; backend will reject if not monetized
+    return post.user.first.monetized == true;
   }
 
   @override
@@ -214,7 +226,9 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
     if (_controller != null && _controller!.value.isInitialized) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         // Check if still mounted and controller is still valid
-        if (mounted && _controller != null && _controller!.value.isInitialized) {
+        if (mounted &&
+            _controller != null &&
+            _controller!.value.isInitialized) {
           try {
             _controller!.pause();
           } catch (e) {
@@ -372,7 +386,7 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
             _savedStatusMap[post.id!] = post.isSaved ?? false;
           }
         }
-        
+
         setState(() {
           _posts.addAll(newVideoPosts.map(_normalizePost));
           _currentPage++;
@@ -513,7 +527,9 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
         _savedStatusMap[postId] = isCurrentlySaved;
       });
       AppUtils.log('Error toggling save: $e');
-      AppUtils.toastError('Failed to ${isCurrentlySaved ? 'unsave' : 'save'} post');
+      AppUtils.toastError(
+        'Failed to ${isCurrentlySaved ? 'unsave' : 'save'} post',
+      );
     }
   }
 
@@ -530,13 +546,27 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
   }
 
   void _showGiftPicker(BuildContext context, PostData post) {
+    // Gift catalog must match backend exactly (FRONTEND_INTEGRATION_GUIDE §4.1).
     final gifts = [
-      {'name': 'Cake', 'price': '\$2.00'},
-      {'name': 'Flowers', 'price': '\$10.00'},
-      {'name': 'Vehicles', 'price': '\$3.00'},
-      {'name': 'Money', 'price': '\$5.00'},
-      {'name': 'Hearts', 'price': '\$1.00'},
-      {'name': 'Applause', 'price': '\$0.50'},
+      {'code': 'Applause_Hands', 'label': 'Applause', 'tokens': 1},
+      {
+        'code': 'Ascending_Smiling_Face_Heart_Eyes',
+        'label': 'Heart Eyes',
+        'tokens': 8,
+      },
+      {'code': 'Beating_Heart', 'label': 'Beating Heart', 'tokens': 48},
+      {'code': 'Blooming_Flowers', 'label': 'Blooming Flowers', 'tokens': 67},
+      {'code': 'Popping_Champagne', 'label': 'Champagne', 'tokens': 197},
+      {'code': 'Birthday_Cake', 'label': 'Birthday Cake', 'tokens': 498},
+      {'code': 'Falling_Gold_Coins', 'label': 'Gold Coins', 'tokens': 997},
+      {'code': 'Floating_Cash', 'label': 'Floating Cash', 'tokens': 1998},
+      {'code': 'Soaring_Eagle', 'label': 'Soaring Eagle', 'tokens': 4186},
+      {
+        'code': 'Verde_Mantis_Lamborghini',
+        'label': 'Lamborghini',
+        'tokens': 29998,
+      },
+      {'code': 'Boeing_747_8_VIP_Jet', 'label': 'VIP Jet', 'tokens': 34998},
     ];
 
     showModalBottomSheet(
@@ -553,18 +583,17 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [
-                  Colors.grey.shade900,
-                  Colors.black,
-                ],
+                colors: [Colors.grey.shade900, Colors.black],
               ),
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(20)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(20),
+              ),
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -585,10 +614,7 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
                 const SizedBox(height: 4),
                 const Text(
                   'Choose a premium gift to send',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: Colors.white70, fontSize: 12),
                 ),
                 const SizedBox(height: 16),
                 GridView.builder(
@@ -604,20 +630,10 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
                   itemCount: gifts.length,
                   itemBuilder: (context, index) {
                     final g = gifts[index];
-                    final name = g['name'] as String;
-                    final price = g['price'] as String;
-
-                    final icon = index == 0
-                        ? Icons.cake
-                        : index == 1
-                            ? Icons.local_florist
-                            : index == 2
-                                ? Icons.directions_car
-                                : index == 3
-                                    ? Icons.attach_money
-                                    : index == 4
-                                        ? Icons.favorite
-                                        : Icons.emoji_emotions;
+                    final code = g['code'] as String;
+                    final label = g['label'] as String;
+                    final tokens = g['tokens'] as int;
+                    final price = '$tokens coins';
 
                     return InkWell(
                       borderRadius: BorderRadius.circular(16),
@@ -625,10 +641,15 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
                         Navigator.pop(ctx);
                         profileCtrl.sendGiftOnPost(
                           post: post,
-                          giftName: name,
+                          giftName: code,
                           contextType: 'video',
                         );
-                        _showReelGiftExplosionOverlay(context);
+                        showGiftEffectOverlay(
+                          context,
+                          giftCode: code,
+                          giftLabel: label,
+                          senderName: Preferences.profile?.name,
+                        );
                       },
                       child: Container(
                         decoration: BoxDecoration(
@@ -645,30 +666,22 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
                             color: Colors.white.withOpacity(0.15),
                           ),
                         ),
-                        padding: const EdgeInsets.all(10),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 0,
+                          vertical: 0,
+                        ),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Container(
-                              decoration: const BoxDecoration(
-                                shape: BoxShape.circle,
-                                gradient: LinearGradient(
-                                  colors: [
-                                    Colors.pinkAccent,
-                                    Colors.deepPurpleAccent,
-                                  ],
-                                ),
-                              ),
-                              padding: const EdgeInsets.all(8),
-                              child: Icon(
-                                icon,
-                                color: Colors.white,
-                                size: 24,
-                              ),
+                            Image.asset(
+                              GiftImages.forCode(code),
+                              width: 100,
+                              height: 100,
+                              fit: BoxFit.contain,
                             ),
-                            const SizedBox(height: 6),
+                            const SizedBox(height: 3),
                             Text(
-                              name,
+                              label,
                               style: const TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
@@ -691,60 +704,11 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
                 ),
               ],
             ),
+            ),
           ),
         );
       },
     );
-  }
-
-  void _showReelGiftExplosionOverlay(BuildContext context) {
-    final overlay = Overlay.of(context);
-
-    final entry = OverlayEntry(
-      builder: (ctx) => Positioned.fill(
-        child: IgnorePointer(
-          child: TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0.0, end: 1.0),
-            duration: const Duration(milliseconds: 600),
-            builder: (context, value, child) {
-              final opacity = value < 0.5 ? value * 2 : (1 - value) * 2;
-              final scale = 0.8 + value * 0.4;
-              return Opacity(
-                opacity: opacity,
-                child: Transform.scale(
-                  scale: scale,
-                  child: child,
-                ),
-              );
-            },
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.all(40),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      Colors.pinkAccent.withOpacity(0.9),
-                      Colors.pinkAccent.withOpacity(0.0),
-                    ],
-                  ),
-                ),
-                child: const Icon(
-                  Icons.card_giftcard,
-                  color: Colors.white,
-                  size: 56,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-
-    overlay.insert(entry);
-    Future.delayed(const Duration(milliseconds: 650), () {
-      entry.remove();
-    });
   }
 
   void _openComments(BuildContext context, PostData post) {
@@ -1113,14 +1077,16 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
                               radius: 20,
                               backgroundColor: Colors.grey[300],
                               backgroundImage:
-                                  (user?.image != null && user!.image!.isNotEmpty)
+                                  (user?.image != null &&
+                                      user!.image!.isNotEmpty)
                                   ? NetworkImage(
                                       user.image!.startsWith('http')
                                           ? user.image!
                                           : '$baseUrl${user.image}',
                                     )
                                   : null,
-                              child: (user?.image == null || user!.image!.isEmpty)
+                              child:
+                                  (user?.image == null || user!.image!.isEmpty)
                                   ? Icon(Icons.person, color: Colors.grey[600])
                                   : null,
                             ),
@@ -1210,8 +1176,9 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
                     ),
                     SizedBox(height: 24),
 
-                    // Gift summary (per-post)
-                    if ((post.id ?? '').isNotEmpty)
+                    // Gift summary (per-post) – only for monetized creators
+                    if ((post.id ?? '').isNotEmpty &&
+                        _isReelCreatorMonetized(post))
                       Obx(() {
                         final postId = post.id!;
                         profileCtrl.fetchPostGiftTotal(postId);
@@ -1225,7 +1192,9 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
                           onTap: null,
                         );
                       }),
-                    if ((post.id ?? '').isNotEmpty) SizedBox(height: 24),
+                    if ((post.id ?? '').isNotEmpty &&
+                        _isReelCreatorMonetized(post))
+                      SizedBox(height: 24),
 
                     // Share button
                     _buildActionButton(
@@ -1236,23 +1205,29 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
                     ),
                     SizedBox(height: 24),
 
-                    // Gift button (only for other users' posts)
-                    if (post.userId != profileCtrl.profileData.value.id)
+                    // Gift button (only for other users' posts and only when creator is monetized)
+                    if (post.userId != profileCtrl.profileData.value.id &&
+                        _isReelCreatorMonetized(post))
                       _buildActionButton(
                         icon: Icons.card_giftcard,
                         color: Colors.white,
                         label: 'Gift',
                         onTap: () => _showGiftPicker(context, post),
                       ),
-                    if (post.userId != profileCtrl.profileData.value.id)
+                    if (post.userId != profileCtrl.profileData.value.id &&
+                        _isReelCreatorMonetized(post))
                       const SizedBox(height: 24),
 
                     // Save button
                     _buildActionButton(
-                      icon: (_savedStatusMap[post.id ?? ''] ?? (post.isSaved ?? false))
+                      icon:
+                          (_savedStatusMap[post.id ?? ''] ??
+                              (post.isSaved ?? false))
                           ? Icons.bookmark
                           : Icons.bookmark_border,
-                      color: (_savedStatusMap[post.id ?? ''] ?? (post.isSaved ?? false))
+                      color:
+                          (_savedStatusMap[post.id ?? ''] ??
+                              (post.isSaved ?? false))
                           ? Colors.yellow
                           : Colors.white,
                       label: 'Save',

@@ -130,4 +130,23 @@ abstract class TempRepository {
 
   /// Cashout all pending gifts for the current user.
   Future<ResponseData<Map<String, dynamic>>> cashoutGifts();
+
+  /// Request a PayPal payout from the user's withdrawal balance.
+  Future<ResponseData<Map<String, dynamic>>> requestPaypalPayout({
+    required double amount,
+    String? paypalEmail,
+  });
+
+  /// Fetch payout / withdrawal wallet transactions for the current user.
+  Future<ResponseData<Map<String, dynamic>>> getPayoutTransactions({
+    int page,
+    int limit,
+  });
+
+  /// Search posts by caption/content.
+  Future<ResponseData<Map<String, dynamic>>> searchPosts({
+    required String query,
+    int page,
+    int limit,
+  });
 }

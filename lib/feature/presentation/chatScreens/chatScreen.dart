@@ -38,8 +38,9 @@ class _ChatScreenState extends State<ChatScreen> {
 
   List<RecentChatModel> filteredChatList = [];
 
-  // Toggle between Slidable and Dismissible modes (kept for existing logic)
-  bool useSlidableMode = true;
+  // Controls whether Slidable rows are used.
+  // Keep false so chats are non-slideable in the UI.
+  bool useSlidableMode = false;
 
   // Currently long-pressed/selected chat id for toolbar delete
   String? _selectedChatId;
@@ -50,6 +51,9 @@ class _ChatScreenState extends State<ChatScreen> {
 
     ctrl.fireRecentChatEvent();
     filteredChatList = ctrl.recentChat;
+    debugPrint(
+      'ChatScreen init: recentChatCount=${ctrl.recentChat.length}',
+    );
     searchController.addListener(_applySearchFilter);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       setState(() {
@@ -210,12 +214,21 @@ class _ChatScreenState extends State<ChatScreen> {
                     : Expanded(
                         child: LayoutBuilder(
                           builder: (context, constraints) {
-                            final estimatedItemHeight = 90.0;
+                            const estimatedItemHeight = 90.0;
                             final totalContentHeight =
                                 filteredChatList.length * estimatedItemHeight;
 
                             final shouldScroll =
                                 totalContentHeight > constraints.maxHeight;
+
+                            debugPrint(
+                              'ChatScreen layout: filtered=${filteredChatList.length}, '
+                              'estimatedItemHeight=$estimatedItemHeight, '
+                              'totalContentHeight=$totalContentHeight, '
+                              'maxHeight=${constraints.maxHeight}, '
+                              'shouldScroll=$shouldScroll, '
+                              'useSlidableMode=$useSlidableMode',
+                            );
 
                             if (shouldScroll) {
                               return ListView.builder(
@@ -229,6 +242,11 @@ class _ChatScreenState extends State<ChatScreen> {
                                   );
                                   final int unread =
                                       data.unreadCount?[Preferences.uid] ?? 0;
+
+                                  debugPrint(
+                                    'ChatScreen ListView item: index=$index, chatId=${data.id}, '
+                                    'userId=${user?.id}, unread=$unread',
+                                  );
                                   return useSlidableMode
                                       ? Slidable(
                                           // Specify a key if the Slidable is dismissible.
@@ -363,9 +381,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                         )
                                       : Dismissible(
                                           key: Key(data.id ?? ''),
-
-                                          direction:
-                                              DismissDirection.endToStart,
+                                          direction: DismissDirection.none,
                                           onDismissed: (direction) async {
                                             final shouldDelete = await showDialog<bool>(
                                               context: context,
@@ -720,6 +736,11 @@ class _ChatScreenState extends State<ChatScreen> {
 
                                     final int unread =
                                         data.unreadCount?[Preferences.uid] ?? 0;
+
+                                    debugPrint(
+                                      'ChatScreen Column item: index=$index, chatId=${data.id}, '
+                                      'userId=${user?.id}, unread=$unread',
+                                    );
 
                                     return useSlidableMode
                                         ? Slidable(
@@ -1099,8 +1120,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                           )
                                         : Dismissible(
                                             key: Key(data.id ?? ''),
-                                            direction:
-                                                DismissDirection.endToStart,
+                                            direction: DismissDirection.none,
                                             onDismissed: (direction) async {
                                               final shouldDelete = await showDialog<bool>(
                                                 context: context,

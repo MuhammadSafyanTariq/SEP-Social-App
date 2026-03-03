@@ -1873,6 +1873,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
                 }
               });
             },
+            profileOwnerIsMonetized: profileData.value.isMonetized,
           ),
         );
       },
@@ -2365,6 +2366,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
                 }
               });
             },
+            profileOwnerIsMonetized: profileData.value.isMonetized,
           ),
           data: post,
         );
@@ -2441,6 +2443,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen>
                 }
               });
             },
+            profileOwnerIsMonetized: profileData.value.isMonetized,
           );
           ;
 

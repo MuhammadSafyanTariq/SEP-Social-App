@@ -4,6 +4,7 @@ import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
 import 'package:sep/components/coreComponents/ImageView.dart';
 import 'package:sep/components/styles/appImages.dart';
+import 'package:sep/components/styles/gift_images.dart';
 import 'package:sep/components/styles/textStyles.dart';
 import 'package:sep/feature/data/models/dataModels/post_data.dart';
 import 'package:sep/feature/presentation/Home/homeScreenComponents/post_card_header.dart';
@@ -24,6 +25,7 @@ import '../../widgets/fav_button.dart';
 import '../comment.dart';
 import '../../controller/chat_ctrl.dart';
 import '../../controller/auth_Controller/profileCtrl.dart';
+import '../../widgets/gift_effects_overlay.dart';
 
 ProfileDataModel userProfile(PostData item) {
   if (item.userId == Preferences.uid) {
@@ -41,6 +43,14 @@ ProfileDataModel userProfile(PostData item) {
 
   // 3. Fallback – at least return the id
   return ProfileDataModel(id: item.userId ?? '');
+}
+
+/// True when the post's creator is monetized (backend sends monetized on user in post response).
+/// When user list is empty (backend not populating), we allow showing gift so backend can reject if not monetized.
+bool _isCreatorMonetized(PostData item) {
+  if (item.user.isEmpty)
+    return true; // Fallback: show gift; backend will reject if not monetized
+  return item.user.first.monetized == true;
 }
 
 PostCardHeader postCardHeader(
@@ -326,212 +336,227 @@ Widget postFooter({
   required Function(int?) updatePostOnAction,
   Function(PostData)?
   postLikerWithData, // New callback for handling PostData directly
-}) => Column(
-  children: [
-    SizedBox(height: 10),
-    Padding(
-      padding: const EdgeInsets.only(left: 10, bottom: 20),
-      child: Container(
-        height: 20,
-        width: double.infinity,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            12.width,
-            FavButton(
-              initialState: item.isLikedByUser ?? false,
-              initialCount: item.likeCount ?? 0,
-              onTap: () {
-                // Try to use direct post ID first
-                final postId = item.id ?? '';
-                if (postId.isNotEmpty) {
-                  postLiker(postId);
-                } else {
-                  // If direct ID is not available, use PostData callback if provided
-                  if (postLikerWithData != null) {
-                    AppUtils.log("Using PostData callback for like action");
-                    postLikerWithData(item);
-                  } else {
-                    AppUtils.log(
-                      "Warning: Cannot like post - missing post ID and no PostData callback",
-                    );
-                    AppUtils.toastError(
-                      "Unable to like post - invalid post data",
-                    );
-                  }
-                }
-              },
-              postId: item.id ?? '',
-            ),
-            Padding(
-              padding: 15.left,
-              child: InkWell(
+  /// When viewing a profile, pass true if the profile owner is monetized so the gift icon is shown on their posts.
+  bool? profileOwnerIsMonetized,
+}) {
+  final showGift =
+      item.userId != Preferences.uid &&
+      (profileOwnerIsMonetized == true || _isCreatorMonetized(item));
+  return Column(
+    children: [
+      SizedBox(height: 10),
+      Padding(
+        padding: const EdgeInsets.only(left: 10, bottom: 20),
+        child: Container(
+          height: 20,
+          width: double.infinity,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              12.width,
+              FavButton(
+                initialState: item.isLikedByUser ?? false,
+                initialCount: item.likeCount ?? 0,
                 onTap: () {
+                  // Try to use direct post ID first
                   final postId = item.id ?? '';
-                  if (postId.isEmpty) {
-                    AppUtils.log(
-                      "Warning: Cannot open comments - missing post ID",
-                    );
-                    return;
+                  if (postId.isNotEmpty) {
+                    postLiker(postId);
+                  } else {
+                    // If direct ID is not available, use PostData callback if provided
+                    if (postLikerWithData != null) {
+                      AppUtils.log("Using PostData callback for like action");
+                      postLikerWithData(item);
+                    } else {
+                      AppUtils.log(
+                        "Warning: Cannot like post - missing post ID and no PostData callback",
+                      );
+                      AppUtils.toastError(
+                        "Unable to like post - invalid post data",
+                      );
+                    }
                   }
-
-                  final height = MediaQuery.of(context).size.height * 0.6;
-
-                  context.openBottomSheet(
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(20),
-                          topRight: Radius.circular(20),
-                        ),
-                      ),
-                      child: SizedBox(
-                        height: height,
-                        child: CommentScreen(
-                          onCommentAdded: updateCommentCount,
-                          postId: postId,
-                          updatePostOnAction: updatePostOnAction,
-                        ),
-                      ),
-                    ),
-                  );
                 },
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    SvgPicture.asset("assets/images/mesgsvg.svg"),
-                    5.width,
-                    TextView(
-                      text: '${item.commentCount ?? 0}',
-                      style: 12.txtRegularprimary,
-                    ),
-                    TextView(text: " Comments", style: 12.txtRegularGrey),
-                  ],
-                ),
-              ),
-            ),
-            Padding(
-              padding: 15.left,
-              child: InkWell(
-                onTap: () {
-                  _showShareToFriendsDialog(context, item);
-                },
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.share_outlined,
-                      size: 20,
-                      color: AppColors.primaryColor,
-                    ),
-                    5.width,
-                    TextView(text: "Share", style: 12.txtRegularprimary),
-                  ],
-                ),
-              ),
-            ),
-            Padding(
-              padding: 15.left,
-              child: SavePostButton(
                 postId: item.id ?? '',
-                initialSavedState: item.isSaved ?? false,
               ),
-            ),
-            Spacer(),
-            10.width,
-          ],
-        ),
-      ),
-    ),
-    // One row: Gift (other users) | Views (video) | X Gifts summary
-    Padding(
-      padding: const EdgeInsets.only(left: 22, bottom: 10, top: 2),
-      child: Row(
-        children: [
-          if (item.userId != Preferences.uid)
-            InkWell(
-              onTap: () => _showGiftPicker(context, item),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.card_giftcard_outlined,
-                    size: 18,
-                    color: AppColors.primaryColor,
-                  ),
-                  5.width,
-                  TextView(text: 'Gift', style: 12.txtRegularprimary),
-                ],
-              ),
-            ),
-          if (item.userId != Preferences.uid &&
-              (item.files.any(
-                    (f) =>
-                        f.type == 'video' ||
-                        (f.type != null &&
-                            (f.file?.toString().endsWith(".mp4") == true ||
-                                f.file?.toString().endsWith(".MOV") == true ||
-                                f.file?.toString().endsWith(".avi") == true))) ||
-                  (item.id ?? '').isNotEmpty))
-            10.width,
-          if (item.files.any(
-            (file) =>
-                file.type == 'video' ||
-                (file.type != null &&
-                    (file.file.toString().endsWith(".mp4") ||
-                        file.file.toString().endsWith(".MOV") ||
-                        file.file.toString().endsWith(".avi"))),
-          ))...[
-            ImageView(url: AppImages.eyeImg, size: 18),
-            5.width,
-            TextView(
-              text: '${item.videoCount ?? 0}',
-              style: 12.txtRegularprimary,
-            ),
-            5.width,
-            TextView(text: "Views", style: 12.txtRegularGrey),
-          ],
-          if (item.files.any(
-            (file) =>
-                file.type == 'video' ||
-                (file.type != null &&
-                    (file.file.toString().endsWith(".mp4") ||
-                        file.file.toString().endsWith(".MOV") ||
-                        file.file.toString().endsWith(".avi"))),
-          ))
-            10.width,
-          if ((item.id ?? '').isNotEmpty)
-            Builder(
-              builder: (context) {
-                final postId = item.id!;
-                ProfileCtrl.find.fetchPostGiftTotal(postId);
-                return Obx(() {
-                  final total = ProfileCtrl.find.postGiftTotals[postId] ?? 0;
-                  if (total <= 0) return const SizedBox.shrink();
-                  return Row(
-                    mainAxisSize: MainAxisSize.min,
+              Padding(
+                padding: 15.left,
+                child: InkWell(
+                  onTap: () {
+                    final postId = item.id ?? '';
+                    if (postId.isEmpty) {
+                      AppUtils.log(
+                        "Warning: Cannot open comments - missing post ID",
+                      );
+                      return;
+                    }
+
+                    final height = MediaQuery.of(context).size.height * 0.6;
+
+                    context.openBottomSheet(
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(20),
+                            topRight: Radius.circular(20),
+                          ),
+                        ),
+                        child: SizedBox(
+                          height: height,
+                          child: CommentScreen(
+                            onCommentAdded: updateCommentCount,
+                            postId: postId,
+                            updatePostOnAction: updatePostOnAction,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      const Icon(
-                        Icons.card_giftcard,
-                        size: 18,
+                      SvgPicture.asset("assets/images/mesgsvg.svg"),
+                      5.width,
+                      TextView(
+                        text: '${item.commentCount ?? 0}',
+                        style: 12.txtRegularprimary,
+                      ),
+                      TextView(text: " Comments", style: 12.txtRegularGrey),
+                    ],
+                  ),
+                ),
+              ),
+              Padding(
+                padding: 15.left,
+                child: InkWell(
+                  onTap: () {
+                    _showShareToFriendsDialog(context, item);
+                  },
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.share_outlined,
+                        size: 20,
                         color: AppColors.primaryColor,
                       ),
                       5.width,
-                      TextView(
-                        text: '$total Gifts',
-                        style: 12.txtRegularprimary,
-                      ),
+                      TextView(text: "Share", style: 12.txtRegularprimary),
                     ],
-                  );
-                });
-              },
-            ),
-        ],
+                  ),
+                ),
+              ),
+              Padding(
+                padding: 15.left,
+                child: SavePostButton(
+                  postId: item.id ?? '',
+                  initialSavedState: item.isSaved ?? false,
+                ),
+              ),
+              Spacer(),
+              10.width,
+            ],
+          ),
+        ),
       ),
-    ),
-  ],
-);
+      // One row: Gift (monetized creators only) | Views (video) | X Gifts summary
+      Padding(
+        padding: const EdgeInsets.only(left: 22, bottom: 10, top: 2),
+        child: Row(
+          children: [
+            if (showGift)
+              InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: () => _showGiftPicker(context, item),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.card_giftcard_outlined,
+                        size: 18,
+                        color: AppColors.primaryColor,
+                      ),
+                      6.width,
+                      TextView(text: 'Gift', style: 12.txtRegularprimary),
+                    ],
+                  ),
+                ),
+              ),
+            if (showGift &&
+                (item.files.any(
+                      (f) =>
+                          f.type == 'video' ||
+                          (f.type != null &&
+                              (f.file?.toString().endsWith(".mp4") == true ||
+                                  f.file?.toString().endsWith(".MOV") == true ||
+                                  f.file?.toString().endsWith(".avi") == true)),
+                    ) ||
+                    (item.id ?? '').isNotEmpty))
+              10.width,
+            if (item.files.any(
+              (file) =>
+                  file.type == 'video' ||
+                  (file.type != null &&
+                      (file.file.toString().endsWith(".mp4") ||
+                          file.file.toString().endsWith(".MOV") ||
+                          file.file.toString().endsWith(".avi"))),
+            )) ...[
+              ImageView(url: AppImages.eyeImg, size: 18),
+              5.width,
+              TextView(
+                text: '${item.videoCount ?? 0}',
+                style: 12.txtRegularprimary,
+              ),
+              5.width,
+              TextView(text: "Views", style: 12.txtRegularGrey),
+            ],
+            if (item.files.any(
+              (file) =>
+                  file.type == 'video' ||
+                  (file.type != null &&
+                      (file.file.toString().endsWith(".mp4") ||
+                          file.file.toString().endsWith(".MOV") ||
+                          file.file.toString().endsWith(".avi"))),
+            ))
+              10.width,
+            if ((item.id ?? '').isNotEmpty && showGift)
+              Builder(
+                builder: (context) {
+                  final postId = item.id!;
+                  ProfileCtrl.find.fetchPostGiftTotal(postId);
+                  return Obx(() {
+                    final total = ProfileCtrl.find.postGiftTotals[postId] ?? 0;
+                    if (total <= 0) return const SizedBox.shrink();
+                    return Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.card_giftcard,
+                          size: 18,
+                          color: AppColors.primaryColor,
+                        ),
+                        5.width,
+                        TextView(
+                          text: '$total Gifts',
+                          style: 12.txtRegularprimary,
+                        ),
+                      ],
+                    );
+                  });
+                },
+              ),
+          ],
+        ),
+      ),
+    ],
+  );
+}
 
 void _showGiftPicker(BuildContext context, PostData post) {
   final profileCtrl = ProfileCtrl.find;
@@ -542,13 +567,28 @@ void _showGiftPicker(BuildContext context, PostData post) {
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
     builder: (ctx) {
+      // Token‑priced gifts catalog (1 token = $0.01).
+      // giftName codes must match backend exactly (see FRONTEND_INTEGRATION_GUIDE).
       final gifts = [
-        {'name': 'Cake', 'price': '\$2.00'},
-        {'name': 'Flowers', 'price': '\$10.00'},
-        {'name': 'Vehicles', 'price': '\$3.00'},
-        {'name': 'Money', 'price': '\$5.00'},
-        {'name': 'Hearts', 'price': '\$1.00'},
-        {'name': 'Applause', 'price': '\$0.50'},
+        {'code': 'Applause_Hands', 'label': 'Applause', 'tokens': 1},
+        {
+          'code': 'Ascending_Smiling_Face_Heart_Eyes',
+          'label': 'Heart Eyes',
+          'tokens': 8,
+        },
+        {'code': 'Beating_Heart', 'label': 'Beating Heart', 'tokens': 48},
+        {'code': 'Blooming_Flowers', 'label': 'Blooming Flowers', 'tokens': 67},
+        {'code': 'Popping_Champagne', 'label': 'Champagne', 'tokens': 197},
+        {'code': 'Birthday_Cake', 'label': 'Birthday Cake', 'tokens': 498},
+        {'code': 'Falling_Gold_Coins', 'label': 'Gold Coins', 'tokens': 997},
+        {'code': 'Floating_Cash', 'label': 'Floating Cash', 'tokens': 1998},
+        {'code': 'Soaring_Eagle', 'label': 'Soaring Eagle', 'tokens': 4186},
+        {
+          'code': 'Verde_Mantis_Lamborghini',
+          'label': 'Lamborghini',
+          'tokens': 29998,
+        },
+        {'code': 'Boeing_747_8_VIP_Jet', 'label': 'VIP Jet', 'tokens': 34998},
       ];
 
       return SafeArea(
@@ -557,262 +597,112 @@ void _showGiftPicker(BuildContext context, PostData post) {
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [
-                Colors.white,
-                Colors.grey.shade100,
-              ],
+              colors: [Colors.white, Colors.grey.shade100],
             ),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
           ),
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  TextView(
-                    text: 'Send Premium Gift',
-                    style: 18.txtSBoldprimary,
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(ctx),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              TextView(
-                text: 'Support this creator with a premium gift',
-                style: 12.txtRegularGrey,
-              ),
-              const SizedBox(height: 16),
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 12,
-                  childAspectRatio: 1.1,
-                ),
-                itemCount: gifts.length,
-                itemBuilder: (context, index) {
-                  final g = gifts[index];
-                  final name = g['name'] as String;
-                  final price = g['price'] as String;
-
-                  final icon = index == 0
-                      ? Icons.cake
-                      : index == 1
-                          ? Icons.local_florist
-                          : index == 2
-                              ? Icons.directions_car
-                              : index == 3
-                                  ? Icons.attach_money
-                                  : index == 4
-                                      ? Icons.favorite
-                                      : Icons.emoji_emotions;
-
-                  return InkWell(
-                    borderRadius: BorderRadius.circular(16),
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      profileCtrl.sendGiftOnPost(
-                        post: post,
-                        giftName: name,
-                      );
-                      _showGiftExplosionOverlay(context);
-                    },
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        gradient: LinearGradient(
-                          colors: [
-                            AppColors.primaryColor.withOpacity(0.08),
-                            Colors.white,
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        border: Border.all(
-                          color: AppColors.primaryColor.withOpacity(0.2),
-                        ),
-                      ),
-                      padding: const EdgeInsets.all(10),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: LinearGradient(
-                                colors: [
-                                  AppColors.primaryColor,
-                                  AppColors.primaryColor.withOpacity(0.7),
-                                ],
-                              ),
-                            ),
-                            padding: const EdgeInsets.all(8),
-                            child: Icon(
-                              icon,
-                              color: Colors.white,
-                              size: 24,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          TextView(
-                            text: name,
-                            style: 12.txtMediumprimary,
-                          ),
-                          const SizedBox(height: 2),
-                          TextView(
-                            text: price,
-                            style: 11.txtRegularGrey,
-                          ),
-                        ],
-                      ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextView(
+                      text: 'Send Premium Gift',
+                      style: 18.txtSBoldprimary,
                     ),
-                  );
-                },
-              ),
-            ],
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                TextView(
+                  text: 'Support this creator with a premium gift',
+                  style: 12.txtRegularGrey,
+                ),
+                const SizedBox(height: 16),
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    mainAxisSpacing: 12,
+                    crossAxisSpacing: 12,
+                    childAspectRatio: 0.85,
+                  ),
+                  itemCount: gifts.length,
+                  itemBuilder: (context, index) {
+                    final g = gifts[index];
+                    final code = g['code'] as String;
+                    final label = g['label'] as String;
+                    final tokens = g['tokens'] as int;
+
+                    return InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        profileCtrl.sendGiftOnPost(post: post, giftName: code);
+                        showGiftEffectOverlay(
+                          context,
+                          giftCode: code,
+                          giftLabel: label,
+                          senderName: Preferences.profile?.name,
+                        );
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          gradient: LinearGradient(
+                            colors: [
+                              AppColors.primaryColor.withOpacity(0.08),
+                              Colors.white,
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          border: Border.all(
+                            color: AppColors.primaryColor.withOpacity(0.2),
+                          ),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 0,
+                          vertical: 0,
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Image.asset(
+                              GiftImages.forCode(code),
+                              width: 100,
+                              height: 100,
+                              fit: BoxFit.contain,
+                            ),
+                            const SizedBox(height: 1),
+                            TextView(text: label, style: 12.txtMediumprimary),
+                            const SizedBox(height: 2),
+                            TextView(
+                              text: '$tokens coins',
+                              style: 11.txtRegularGrey,
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
         ),
       );
     },
   );
-}
-
-void _showGiftExplosionOverlay(BuildContext context) {
-  final overlay = Overlay.of(context);
-  const duration = Duration(milliseconds: 1200);
-
-  final entry = OverlayEntry(
-    builder: (ctx) => Positioned.fill(
-      child: IgnorePointer(
-        child: TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0, end: 1),
-          duration: duration,
-          curve: Curves.easeOut,
-          builder: (context, value, _) {
-            // Burst rings: expand and fade
-            final ring1 = (value < 0.5) ? (value / 0.5) : 0.0;
-            final ring2 = (value >= 0.1 && value < 0.6) ? ((value - 0.1) / 0.5) : 0.0;
-            final ring3 = (value >= 0.2 && value < 0.7) ? ((value - 0.2) / 0.5) : 0.0;
-            final ring1Opacity = (value < 0.5) ? (1 - value / 0.5) * 0.5 : 0.0;
-            final ring2Opacity = (value >= 0.1 && value < 0.6) ? (1 - (value - 0.1) / 0.5) * 0.4 : 0.0;
-            final ring3Opacity = (value >= 0.2 && value < 0.7) ? (1 - (value - 0.2) / 0.5) * 0.3 : 0.0;
-            // Center icon: pop in then hold and gentle scale
-            final iconScale = value < 0.2
-                ? (value / 0.2) * 1.2
-                : value < 0.4
-                    ? 1.2 + (value - 0.2) / 0.2 * 0.15
-                    : 1.35 - (value - 0.4) / 0.6 * 0.35;
-            final iconOpacity = value < 0.15 ? (value / 0.15) : (value > 0.85 ? (1 - value) / 0.15 : 1.0);
-
-            return Stack(
-              alignment: Alignment.center,
-              children: [
-                // Outer burst ring
-                if (ring1 > 0)
-                  Transform.scale(
-                    scale: 0.3 + ring1 * 1.4,
-                    child: Container(
-                      width: 120,
-                      height: 120,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: AppColors.primaryColor.withOpacity(ring1Opacity),
-                          width: 4,
-                        ),
-                      ),
-                    ),
-                  ),
-                if (ring2 > 0)
-                  Transform.scale(
-                    scale: 0.25 + ring2 * 1.2,
-                    child: Container(
-                      width: 100,
-                      height: 100,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: AppColors.primaryColor.withOpacity(ring2Opacity),
-                          width: 3,
-                        ),
-                      ),
-                    ),
-                  ),
-                if (ring3 > 0)
-                  Transform.scale(
-                    scale: 0.2 + ring3 * 1.0,
-                    child: Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: RadialGradient(
-                          colors: [
-                            AppColors.primaryColor.withOpacity(ring3Opacity * 0.8),
-                            AppColors.primaryColor.withOpacity(0),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                // Center gift icon with glow
-                Opacity(
-                  opacity: iconOpacity.clamp(0.0, 1.0),
-                  child: Transform.scale(
-                    scale: iconScale,
-                    child: Container(
-                      padding: const EdgeInsets.all(32),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.primaryColor.withOpacity(0.4),
-                            blurRadius: 24,
-                            spreadRadius: 4,
-                          ),
-                          BoxShadow(
-                            color: AppColors.primaryColor.withOpacity(0.2),
-                            blurRadius: 40,
-                            spreadRadius: 8,
-                          ),
-                        ],
-                        gradient: RadialGradient(
-                          colors: [
-                            AppColors.primaryColor,
-                            AppColors.primaryColor.withOpacity(0.85),
-                            AppColors.primaryColor.withOpacity(0.6),
-                          ],
-                          stops: const [0.0, 0.6, 1.0],
-                        ),
-                      ),
-                      child: const Icon(
-                        Icons.card_giftcard_rounded,
-                        color: Colors.white,
-                        size: 52,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-      ),
-    ),
-  );
-
-  overlay.insert(entry);
-  Future.delayed(const Duration(milliseconds: 1250), () {
-    entry.remove();
-  });
 }
 
 String formatTimeAgo(String createdAt) {
@@ -830,14 +720,24 @@ String formatTimeAgo(String createdAt) {
 
   Duration difference = DateTime.now().difference(postTime);
 
-  if (difference.inSeconds < 60) return '${difference.inSeconds} seconds ago';
-  if (difference.inMinutes < 60) return '${difference.inMinutes} minutes ago';
-  if (difference.inHours < 24) return '${difference.inHours} hours ago';
-  if (difference.inDays < 7) return '${difference.inDays} days ago';
-  if (difference.inDays < 30)
+  if (difference.inSeconds < 60) {
+    return '${difference.inSeconds} seconds ago';
+  }
+  if (difference.inMinutes < 60) {
+    return '${difference.inMinutes} minutes ago';
+  }
+  if (difference.inHours < 24) {
+    return '${difference.inHours} hours ago';
+  }
+  if (difference.inDays < 7) {
+    return '${difference.inDays} days ago';
+  }
+  if (difference.inDays < 30) {
     return '${(difference.inDays / 7).floor()} weeks ago';
-  if (difference.inDays < 365)
+  }
+  if (difference.inDays < 365) {
     return '${(difference.inDays / 30).floor()} months ago';
+  }
   return '${(difference.inDays / 365).floor()} years ago';
 }
 

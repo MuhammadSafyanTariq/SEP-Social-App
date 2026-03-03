@@ -243,29 +243,6 @@ class _GiftHistoryScreenState extends State<GiftHistoryScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isCashedOut
-                            ? AppColors.greenlight.withOpacity(0.1)
-                            : AppColors.grey.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: TextView(
-                        text: isCashedOut ? 'Cashed out' : 'Pending',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: isCashedOut
-                              ? AppColors.greenlight
-                              : AppColors.grey,
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               );

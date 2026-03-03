@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:sep/services/networking/urls.dart';
+import 'package:sep/services/storage/preferences.dart';
 import 'package:sep/utils/appUtils.dart';
+import 'package:sep/utils/extensions/extensions.dart';
 
 class PayPalService {
   final String baseUrl;
@@ -21,9 +23,21 @@ class PayPalService {
         'PayPal: Creating order for userId: $userId, amount: \$$amount',
       );
 
+      // Attach JWT as Bearer token as required by protected endpoints.
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+      };
+      final jwt = Preferences.authToken;
+      if (jwt != null && jwt.isNotEmpty) {
+        final bearer = jwt.bearer;
+        if (bearer != null && bearer.isNotEmpty) {
+          headers['Authorization'] = bearer;
+        }
+      }
+
       final response = await http.post(
         Uri.parse('$baseUrl/paypal/create-order'),
-        headers: {'Content-Type': 'application/json'},
+        headers: headers,
         body: jsonEncode({
           'userId': userId,
           'amount': amount.toStringAsFixed(2),

@@ -1,5 +1,6 @@
 const String _path = 'assets/images/';
 const String _iconPath = 'assets/icons/';
+const String _giftPath = 'assets/gifts/';
 
 class AppImages {
   static const String splash = '${_path}logo.png';
@@ -159,6 +160,30 @@ class AppImages {
   static const token = '${_iconPath}token.png';
   static const heartLikeLottie = '${_path}heart_like.json';
   static const coinAnimationLottie = '${_path}coinAnimation.json';
+
+  // Gift images (from assets/gifts/)
+  static const String giftApplauseHands =
+      '${_giftPath}Applause_Hands.png';
+  static const String giftAscendingSmilingFaceHeartEyes =
+      '${_giftPath}Ascending_Smiling_Face_Heart Eyes.png';
+  static const String giftBeatingHeart =
+      '${_giftPath}Beating_Heart.png';
+  static const String giftBloomingFlowers =
+      '${_giftPath}Blooming_Flowers.png';
+  static const String giftPoppingChampagne =
+      '${_giftPath}Popping_Champagne.png';
+  static const String giftBirthdayCake =
+      '${_giftPath}Birthday_Cake.png';
+  static const String giftVipJet =
+      '${_giftPath}Boeing_7478_VIP_Jet.png';
+  static const String giftFallingGoldCoins =
+      '${_giftPath}Falling_Gold_Coins.png';
+  static const String giftFloatingCash =
+      '${_giftPath}Floating_Cash.png';
+  static const String giftSoaringEagle =
+      '${_giftPath}Soaring_Eagle.png';
+  static const String giftVerdeMantisLamborghini =
+      '${_giftPath}Verde_Mantis_Lamborghini.png';
 
   // Short names for Flame.images (default prefix is assets/images/)
   static const backgorund = 'background.png';

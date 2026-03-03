@@ -38,7 +38,7 @@ import 'followers.dart';
 import 'pending_follow_requests_screen.dart';
 import 'setting/following.dart';
 import 'setting/editProfile.dart';
-import 'gift_history_screen.dart';
+import 'dashboard_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -285,8 +285,8 @@ class _ProfileScreenState extends State<ProfileScreen>
               SliverToBoxAdapter(child: _buildProfileInfoSection()),
               // Stats Section
               SliverToBoxAdapter(child: _buildStatsSection()),
-              // Monetization / Earnings Section
-              SliverToBoxAdapter(child: _buildMonetizationSection()),
+              // My Dashboard button (opens dashboard with earnings + gift history)
+              SliverToBoxAdapter(child: _buildMyDashboardButton()),
               // Edit Profile Button
               SliverToBoxAdapter(child: _buildEditProfileButton()),
               // Tabs Section
@@ -1224,150 +1224,69 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
   }
 
-  /// Earnings card: full card (balance, withdrawable) only for monetized users.
-  /// Non-monetized users see a single "Apply for Monetization" row.
-  Widget _buildMonetizationSection() {
+  /// "My Dashboard" button: navigates to DashboardScreen (earnings + gift history).
+  Widget _buildMyDashboardButton() {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      child: Obx(() {
-        final isMonetized = profileCtrl.isMonetized;
-        final isLoading = profileCtrl.isMonetizationLoading.value;
-        final balance = profileData.balanceUsd;
-        final withdrawal = profileData.withdrawalBalanceUsd;
-
-        // Non-monetized: only show apply CTA (no balance/earnings)
-        if (!isMonetized) {
-          return Container(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: BoxDecoration(
-              color: AppColors.newgrey,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: SizedBox(
-              width: double.infinity,
-              child: AppButton(
-                label: isLoading ? 'Applying...' : 'Apply for Monetization',
-                buttonColor: AppColors.btnColor,
-                onTap: isLoading
-                    ? null
-                    : () {
-                        profileCtrl.applyForMonetization();
-                      },
-              ),
-            ),
-          );
-        }
-
-        // Monetized: full earnings card + cashout action
-        final canCashout = withdrawal >= 50;
-
-        return Container(
-          padding: EdgeInsets.all(16),
+      child: InkWell(
+        onTap: () {
+          context.pushNavigator(const DashboardScreen());
+        },
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           decoration: BoxDecoration(
             color: AppColors.newgrey,
             borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.grey.withOpacity(0.2)),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
             children: [
-              Row(
-                children: [
-                  Icon(Icons.verified, color: AppColors.greenlight, size: 18),
-                  SizedBox(width: 6),
-                  TextView(
-                    text: 'Earnings',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.blackText,
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      TextView(
-                        text: 'Wallet balance',
-                        style: TextStyle(fontSize: 12, color: AppColors.grey),
-                      ),
-                      SizedBox(height: 2),
-                      TextView(
-                        text: '\$${balance.toStringAsFixed(2)}',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.blackText,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      TextView(
-                        text: 'Withdrawable',
-                        style: TextStyle(fontSize: 12, color: AppColors.grey),
-                      ),
-                      SizedBox(height: 2),
-                      TextView(
-                        text: '\$${withdrawal.toStringAsFixed(2)}',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.blackText,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              SizedBox(height: 12),
-              if (canCashout)
-                SizedBox(
-                  width: double.infinity,
-                  child: AppButton(
-                    label: profileCtrl.isCashoutLoading.value
-                        ? 'Cashout...'
-                        : 'Cashout gifts',
-                    buttonColor: AppColors.btnColor,
-                    onTap: profileCtrl.isCashoutLoading.value
-                        ? null
-                        : () {
-                            profileCtrl.cashoutGifts();
-                          },
-                  ),
-                )
-              else
-                TextView(
-                  text:
-                      'You can cash out once you reach at least \$50 in withdrawable balance.',
-                  style: TextStyle(fontSize: 12, color: AppColors.grey),
+              Container(
+                padding: EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.btnColor.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-              const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: () {
-                    context.pushNavigator(const GiftHistoryScreen());
-                  },
-                  child: const Text(
-                    'View gift history',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.primaryColor,
-                    ),
-                  ),
+                child: Icon(
+                  Icons.dashboard_rounded,
+                  color: AppColors.btnColor,
+                  size: 24,
                 ),
+              ),
+              SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextView(
+                      text: 'My Dashboard',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.blackText,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    TextView(
+                      text: 'Earnings, cashout & gift history',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.grey,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.grey,
+                size: 24,
               ),
             ],
           ),
-        );
-      }),
+        ),
+      ),
     );
   }
 }
