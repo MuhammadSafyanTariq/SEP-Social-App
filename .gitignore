@@ -33,6 +33,20 @@ migrate_working_dir/
 .pub/
 /build/
 
+# Vendor game project (Ludo) – keep only its Dart + assets
+lib/feature/presentation/game_screens/ludo_flutter-master/android/
+lib/feature/presentation/game_screens/ludo_flutter-master/ios/
+lib/feature/presentation/game_screens/ludo_flutter-master/web/
+lib/feature/presentation/game_screens/ludo_flutter-master/linux/
+lib/feature/presentation/game_screens/ludo_flutter-master/macos/
+lib/feature/presentation/game_screens/ludo_flutter-master/windows/
+lib/feature/presentation/game_screens/ludo_flutter-master/test/
+lib/feature/presentation/game_screens/ludo_flutter-master/.github/
+lib/feature/presentation/game_screens/ludo_flutter-master/.vscode/
+lib/feature/presentation/game_screens/ludo_flutter-master/.metadata
+lib/feature/presentation/game_screens/ludo_flutter-master/analysis_options.yaml
+lib/feature/presentation/game_screens/ludo_flutter-master/pubspec.yaml
+
 # Symbolication related
 app.*.symbols
 

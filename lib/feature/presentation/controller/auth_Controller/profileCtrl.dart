@@ -576,6 +576,28 @@ class ProfileCtrl extends GetxController {
     required double amount,
     String? paypalEmail,
   }) async {
+    // Some backend validations require a non-null, valid `seeMyProfile` enum
+    // on the user document (even though this field is unrelated to payouts).
+    // If it's missing or set to a legacy/invalid value that triggers 422,
+    // proactively normalize it to a safe default ("everyBody") before
+    // attempting the payout request.
+    try {
+      final currentVisibility = profileData.value.seeMyProfile;
+      final invalidVisibility = currentVisibility == null ||
+          currentVisibility.isEmpty ||
+          currentVisibility == 'myFriends' ||
+          currentVisibility == 'My Friends';
+      if (invalidVisibility) {
+        await _itemRepository.seemyprofile(seemyprofile: 'everyBody');
+        profileData.value =
+            profileData.value.copyWith(seeMyProfile: 'everyBody');
+        profileData.refresh();
+      }
+    } catch (_) {
+      // If this normalization fails, we still attempt payout – the backend
+      // will return a clear validation error that gets surfaced to the user.
+    }
+
     if (amount <= 0) {
       AppUtils.toastError('Enter a valid amount to withdraw');
       return;

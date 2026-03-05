@@ -50,13 +50,13 @@ class _ProfileVisibilityScreenState extends State<Whocansharemypost> {
   String _getApiValueForIndex(int index) {
     switch (index) {
       case 0:
-        return 'Everybody';
+        return 'everyBody';
       case 1:
-        return 'My Friends';
+        return 'myFriends';
       case 2:
-        return 'Nobody';
+        return 'nobody';
       default:
-        return 'Everybody';
+        return 'everyBody';
     }
   }
 
@@ -248,7 +248,19 @@ class _ProfileVisibilityScreenState extends State<Whocansharemypost> {
   }
 
   bool _isSelected(int index) {
-    String apiValue = _getApiValueForIndex(index);
-    return (state == 'everyBody' && index == 0) || (state == apiValue);
+    final current = state;
+    if (current == null) return false;
+
+    // Support both legacy enum values and previously stored display strings.
+    switch (index) {
+      case 0:
+        return current == 'everyBody' || current == 'Everybody';
+      case 1:
+        return current == 'myFriends' || current == 'My Friends';
+      case 2:
+        return current == 'nobody' || current == 'Nobody';
+      default:
+        return false;
+    }
   }
 }

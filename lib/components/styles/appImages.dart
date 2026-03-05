@@ -147,6 +147,8 @@ class AppImages {
   static const String game2048 = '${_path}2048.png';
   static const String ticTacToeImg = 'assets/car_race/images/ticklogo.png';
   static const String carRaceImg = 'assets/car_race/images/cargamelogo.png';
+  static const String ludoImg =
+      'lib/feature/presentation/game_screens/ludo_flutter-master/assets/images/board.png';
   static const String snakeImg = '${_path}snakeImg.jpeg';
   static const String sportImg = '${_path}sportImg.webp';
   static const String walletImg = '${_path}walletImg.png';

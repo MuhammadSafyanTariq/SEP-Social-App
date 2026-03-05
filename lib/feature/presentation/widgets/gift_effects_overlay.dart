@@ -1,8 +1,53 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:sep/components/styles/appColors.dart';
 import 'package:sep/components/styles/gift_images.dart';
+import 'package:sep/utils/appUtils.dart';
+
+// Map each gift code to an animation duration that matches
+// the product spec (approximate mid‑point of the allowed range).
+Duration _giftAnimationDuration(String code) {
+  switch (code) {
+    case 'Applause_Hands':
+      // Spec: 2–3 seconds
+      return const Duration(seconds: 2);
+    case 'Ascending_Smiling_Face_Heart_Eyes':
+      // Spec: 3–4 seconds
+      return const Duration(seconds: 4);
+    case 'Beating_Heart':
+      // Spec: 4–6 seconds
+      return const Duration(seconds: 3);
+    case 'Blooming_Flowers':
+      // Spec: 5–7 seconds
+      return const Duration(seconds: 3);
+    case 'Popping_Champagne':
+      // Spec: 5–6 seconds
+      return const Duration(seconds: 3);
+    case 'Birthday_Cake':
+      // Spec: 6–8 seconds
+      return const Duration(seconds: 3);
+    case 'Falling_Gold_Coins':
+      // Spec: 6–8 seconds
+      return const Duration(seconds: 3);
+    case 'Floating_Cash':
+      // Spec: 8–10 seconds
+      return const Duration(seconds: 3);
+    case 'Soaring_Eagle':
+      // Spec: 8–10 seconds
+      return const Duration(seconds: 3);
+    case 'Verde_Mantis_Lamborghini':
+      // Spec: 8–12 seconds
+      return const Duration(seconds: 3);
+    case 'Boeing_747_8_VIP_Jet':
+      // Spec: 10–12 seconds
+      return const Duration(seconds: 3);
+    default:
+      return const Duration(seconds: 3);
+  }
+}
 
 /// Public API: show a beautiful full‑screen gift effect overlay.
 void showGiftEffectOverlay(
@@ -11,18 +56,21 @@ void showGiftEffectOverlay(
   String? giftLabel,
   String? senderName,
 }) {
+  final duration = _giftAnimationDuration(giftCode);
+
   final entry = OverlayEntry(
     builder: (_) => GiftEffectsOverlay(
       giftCode: giftCode,
       giftLabel: giftLabel,
       senderName: senderName,
+      duration: duration,
     ),
   );
 
   Overlay.of(context).insert(entry);
 
-  // Remove after animation finishes.
-  Future.delayed(const Duration(milliseconds: 1800), () {
+  // Remove shortly after animation finishes.
+  Future.delayed(duration + const Duration(milliseconds: 400), () {
     entry.remove();
   });
 }
@@ -31,12 +79,14 @@ class GiftEffectsOverlay extends StatefulWidget {
   final String giftCode;
   final String? giftLabel;
   final String? senderName;
+  final Duration duration;
 
   const GiftEffectsOverlay({
     super.key,
     required this.giftCode,
     this.giftLabel,
     this.senderName,
+    required this.duration,
   });
 
   @override
@@ -46,18 +96,25 @@ class GiftEffectsOverlay extends StatefulWidget {
 class _GiftEffectsOverlayState extends State<GiftEffectsOverlay>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
+  AudioPlayer? _sfxPlayer;
+  AudioPlayer? _musicPlayer;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1600),
-    )..forward();
+    _controller = AnimationController(vsync: this, duration: widget.duration)
+      ..forward();
+    _controller.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        _stopAudio();
+      }
+    });
+    _playGiftAudio();
   }
 
   @override
   void dispose() {
+    _stopAudio();
     _controller.dispose();
     super.dispose();
   }
@@ -116,8 +173,8 @@ class _GiftEffectsOverlayState extends State<GiftEffectsOverlay>
           final textOpacity = (value < 0.15)
               ? (value / 0.15)
               : (value > 0.85)
-                  ? (1 - value) / 0.15
-                  : 1.0;
+              ? (1 - value) / 0.15
+              : 1.0;
 
           return Stack(
             children: [
@@ -178,6 +235,71 @@ class _GiftEffectsOverlayState extends State<GiftEffectsOverlay>
         },
       ),
     );
+  }
+
+  /// Play per‑gift SFX plus background music from 2s into the track.
+  Future<void> _playGiftAudio() async {
+    try {
+      AppUtils.log('🔊 _playGiftAudio for giftCode=${widget.giftCode}');
+      final sfxSource = _giftSfxSource(widget.giftCode);
+      if (sfxSource != null) {
+        // Gift has its own dedicated sound: play ONLY that.
+        AppUtils.log('🔊 Playing SFX source: $sfxSource');
+        final player = AudioPlayer();
+        _sfxPlayer = player;
+        await player.play(sfxSource);
+      } else {
+        // No dedicated sound: play shared music.mp3 starting at 2s.
+        AppUtils.log(
+          '🔊 No SFX for ${widget.giftCode}, playing music.mp3 from 2s',
+        );
+        final music = AudioPlayer();
+        _musicPlayer = music;
+        await music.play(
+          AssetSource('audio/gift_audio/music.mp3'),
+          position: const Duration(seconds: 2),
+        );
+      }
+    } catch (e) {
+      AppUtils.log('💥 _playGiftAudio error for ${widget.giftCode}: $e');
+    }
+  }
+
+  void _stopAudio() {
+    _sfxPlayer?.stop();
+    _sfxPlayer?.dispose();
+    _sfxPlayer = null;
+    _musicPlayer?.stop();
+    _musicPlayer?.dispose();
+    _musicPlayer = null;
+  }
+}
+
+/// Map gift codes to their specific audio assets in assets/audio/gift_audio;
+/// null means "use only music".
+Source? _giftSfxSource(String code) {
+  // With `- assets/audio/` in pubspec, logical paths start at `audio/...`.
+  // These files live under assets/audio/gift_audio/.
+  const base = 'audio/gift_audio/';
+
+  switch (code) {
+    case 'Applause_Hands':
+      return AssetSource('${base}applause.mp3');
+    case 'Ascending_Smiling_Face_Heart_Eyes':
+      return AssetSource('${base}smilingface.wav');
+    case 'Popping_Champagne':
+      return AssetSource('${base}champagne.mp3');
+    case 'Falling_Gold_Coins':
+      return AssetSource('${base}coins.wav');
+    case 'Soaring_Eagle':
+      return AssetSource('${base}eagle.mp3');
+    case 'Verde_Mantis_Lamborghini':
+      return AssetSource('${base}lamborghini.wav');
+    case 'Boeing_747_8_VIP_Jet':
+      return AssetSource('${base}Jet.wav');
+    default:
+      // For gifts without their own SFX, rely on background music only.
+      return null;
   }
 }
 
@@ -360,10 +482,7 @@ class _BeatingHeartsEffect extends StatelessWidget {
           child: DecoratedBox(
             decoration: BoxDecoration(
               gradient: RadialGradient(
-                colors: [
-                  Colors.red.withOpacity(0.35),
-                  Colors.transparent,
-                ],
+                colors: [Colors.red.withOpacity(0.35), Colors.transparent],
               ),
             ),
           ),
@@ -477,18 +596,15 @@ class _ChampagneEffect extends StatelessWidget {
       if (t <= 0) return const SizedBox.shrink();
       final dx = screen.width * (0.2 + (i / 10) * 0.6);
       final dy = screen.height * (0.7 - t * 0.8);
-      final color =
-          i.isEven ? Colors.white70 : Colors.amberAccent.withOpacity(0.9);
+      final color = i.isEven
+          ? Colors.white70
+          : Colors.amberAccent.withOpacity(0.9);
       return Positioned(
         left: dx,
         top: dy,
         child: Opacity(
           opacity: (1 - t).clamp(0.0, 1.0),
-          child: Icon(
-            Icons.circle,
-            color: color,
-            size: 18,
-          ),
+          child: Icon(Icons.circle, color: color, size: 18),
         ),
       );
     });
@@ -562,8 +678,9 @@ class _BirthdayCakeEffect extends StatelessWidget {
     final rotation = (1 - progress) * pi * 1.2;
     final scale = 0.9 + Curves.easeOutBack.transform(progress) * 0.5;
 
-    final flameOpacity =
-        progress < 0.7 ? 1.0 : (1 - (progress - 0.7) / 0.3).clamp(0.0, 1.0);
+    final flameOpacity = progress < 0.7
+        ? 1.0
+        : (1 - (progress - 0.7) / 0.3).clamp(0.0, 1.0);
 
     return Stack(
       alignment: Alignment.center,
@@ -699,10 +816,7 @@ class _FloatingCashEffect extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(4),
                 gradient: LinearGradient(
-                  colors: [
-                    Colors.greenAccent.shade100,
-                    Colors.green.shade700,
-                  ],
+                  colors: [Colors.greenAccent.shade100, Colors.green.shade700],
                 ),
                 boxShadow: [
                   BoxShadow(
@@ -773,10 +887,7 @@ class _SoaringEagleEffect extends StatelessWidget {
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [
-                  Colors.blue.shade900,
-                  Colors.blue.shade500,
-                ],
+                colors: [Colors.blue.shade900, Colors.blue.shade500],
               ),
             ),
           ),
@@ -808,8 +919,9 @@ class _LamboEffect extends StatelessWidget {
     final screen = MediaQuery.of(context).size;
 
     final dx = -screen.width * 0.6 + progress * screen.width * 1.6;
-    final glowOpacity =
-        Curves.easeInOut.transform((progress * 1.2).clamp(0.0, 1.0));
+    final glowOpacity = Curves.easeInOut.transform(
+      (progress * 1.2).clamp(0.0, 1.0),
+    );
 
     return Stack(
       children: [
@@ -819,10 +931,7 @@ class _LamboEffect extends StatelessWidget {
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [
-                  Colors.blueGrey.shade900,
-                  Colors.blueGrey.shade600,
-                ],
+                colors: [Colors.blueGrey.shade900, Colors.blueGrey.shade600],
               ),
             ),
           ),
@@ -886,10 +995,7 @@ class _JetEffect extends StatelessWidget {
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [
-                  Colors.indigo.shade900,
-                  Colors.indigo.shade500,
-                ],
+                colors: [Colors.indigo.shade900, Colors.indigo.shade500],
               ),
             ),
           ),
@@ -897,9 +1003,7 @@ class _JetEffect extends StatelessWidget {
         // Stars
         Positioned.fill(
           child: IgnorePointer(
-            child: CustomPaint(
-              painter: _StarFieldPainter(opacity: 0.35),
-            ),
+            child: CustomPaint(painter: _StarFieldPainter(opacity: 0.35)),
           ),
         ),
         // Soft horizon glow
@@ -1023,16 +1127,14 @@ class _GenericGlowEffect extends StatelessWidget {
   final double progress;
   final String giftCode;
 
-  const _GenericGlowEffect({
-    required this.progress,
-    required this.giftCode,
-  });
+  const _GenericGlowEffect({required this.progress, required this.giftCode});
 
   @override
   Widget build(BuildContext context) {
     final scale = 0.8 + Curves.easeOutBack.transform(progress) * 0.4;
-    final opacity =
-        progress < 0.2 ? progress / 0.2 : (1 - progress).clamp(0.0, 1.0);
+    final opacity = progress < 0.2
+        ? progress / 0.2
+        : (1 - progress).clamp(0.0, 1.0);
 
     return Center(
       child: Opacity(
@@ -1068,4 +1170,3 @@ class _GenericGlowEffect extends StatelessWidget {
     );
   }
 }
-

@@ -91,6 +91,8 @@ class GameMessages {
         return getFruitNinjaMessage();
       case 'game_2048':
         return get2048Message();
+      case 'ludo':
+        return "Ready for another roll? 🎲";
       case 'tic_tac_toe':
         return "Best of three? 🎯";
       case 'car_race':

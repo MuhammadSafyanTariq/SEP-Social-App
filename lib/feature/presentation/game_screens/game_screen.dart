@@ -13,7 +13,7 @@ import 'package:sep/feature/presentation/game_screens/gun_firing_game/gun_firing
 import 'package:sep/feature/presentation/game_screens/fruit_ninja_game/fruit_ninja_screen.dart';
 import 'package:sep/feature/presentation/game_screens/game_2048/game_2048_screen.dart';
 import 'package:sep/components/dialogs/game_start_dialog.dart';
-import 'package:sep/feature/presentation/game_screens/tic_tac_toe_game/tic_tac_toe_screen.dart';
+import 'package:sep/feature/presentation/game_screens/ludo_flutter-master/lib/ludo_game_screen.dart';
 import 'package:sep/feature/presentation/game_screens/car_race_game/car_race_screen.dart';
 import 'package:sep/services/game/game_manager.dart';
 import 'package:sep/utils/extensions/contextExtensions.dart';
@@ -574,16 +574,16 @@ Sign up the app using refer code: $referralCode
               ),
               _buildEnhancedGameCard(
                 context,
-                gameId: GameManager.TIC_TAC_TOE_GAME,
-                title: AppStrings.ticTacToe.tr,
+                gameId: GameManager.LUDO_GAME,
+                title: 'Ludo',
                 subtitle: '',
-                imagePath: AppImages.ticTacToeImg,
+                imagePath: AppImages.ludoImg,
                 backgroundColor: AppColors.white,
                 onTap: () => _startGameWithTokens(
                   context,
-                  gameId: GameManager.TIC_TAC_TOE_GAME,
-                  gameName: 'Tic Tac Toe',
-                  screen: const TicTacToeScreen(),
+                  gameId: GameManager.LUDO_GAME,
+                  gameName: 'Ludo',
+                  screen: const LudoGameScreen(),
                 ),
               ),
               _buildEnhancedGameCard(

@@ -217,11 +217,25 @@ class ApiUtils {
 
       try {
         final error = jsonDecode(result.body) as Map<String, dynamic>;
-        if (error.containsKey('error')) {
-          errorMsg = error['error'];
-        } else if (error.containsKey('message')) {
-          errorMsg = error['message'];
+        final dynamic rawError = error['error'];
+        final dynamic rawData = error['data'];
+        final dynamic rawMessage = error['message'];
+
+        // 1) Explicit error string from backend
+        if (rawError is String && rawError.trim().isNotEmpty) {
+          errorMsg = rawError.trim();
         }
+        // 2) Data field used as human‑readable message (only if it is a non‑empty string)
+        else if (rawData is String && rawData.trim().isNotEmpty) {
+          errorMsg = rawData.trim();
+        }
+        // 3) Fallback to message when it's a meaningful string (not just "false" or empty)
+        else if (rawMessage is String &&
+            rawMessage.trim().isNotEmpty &&
+            rawMessage.trim().toLowerCase() != 'false') {
+          errorMsg = rawMessage.trim();
+        }
+        // If data is an empty map {} or message is "false", keep the generic status error.
       } catch (e) {}
       // AppUtils.log(result.body);
 

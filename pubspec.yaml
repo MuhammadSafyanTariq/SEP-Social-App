@@ -72,6 +72,9 @@ dependencies:
   device_info_plus: ^11.3.0
   flutter_file_dialog: ^3.0.2
   app_rename: ^0.0.1
+  provider: ^6.1.2
+  just_audio: ^0.9.39
+  simple_ripple_animation: ^0.0.9
   #  firebase_auth: ^4.10.0
   #  firebase_auth: ^5.3.4
   flutter_slidable: ^4.0.1
@@ -211,6 +214,23 @@ flutter:
     - assets/car_race/images/game/
     - assets/car_race/audio/
     - assets/gifts/
+    - assets/audio/gift_audio/
+    # Ludo game assets (board, dice, crowns, thank-you gif, sounds)
+    - lib/feature/presentation/game_screens/ludo_flutter-master/assets/images/board.png
+    - lib/feature/presentation/game_screens/ludo_flutter-master/assets/images/thankyou.gif
+    - lib/feature/presentation/game_screens/ludo_flutter-master/assets/images/dice/1.png
+    - lib/feature/presentation/game_screens/ludo_flutter-master/assets/images/dice/2.png
+    - lib/feature/presentation/game_screens/ludo_flutter-master/assets/images/dice/3.png
+    - lib/feature/presentation/game_screens/ludo_flutter-master/assets/images/dice/4.png
+    - lib/feature/presentation/game_screens/ludo_flutter-master/assets/images/dice/5.png
+    - lib/feature/presentation/game_screens/ludo_flutter-master/assets/images/dice/6.png
+    - lib/feature/presentation/game_screens/ludo_flutter-master/assets/images/dice/draw.gif
+    - lib/feature/presentation/game_screens/ludo_flutter-master/assets/images/crown/1st.png
+    - lib/feature/presentation/game_screens/ludo_flutter-master/assets/images/crown/2nd.png
+    - lib/feature/presentation/game_screens/ludo_flutter-master/assets/images/crown/3rd.png
+    - lib/feature/presentation/game_screens/ludo_flutter-master/assets/sounds/move.wav
+    - lib/feature/presentation/game_screens/ludo_flutter-master/assets/sounds/laugh.mp3
+    - lib/feature/presentation/game_screens/ludo_flutter-master/assets/sounds/roll_the_dice.mp3
 
 
 

@@ -1026,6 +1026,10 @@ class ITempRepository implements TempRepository {
     try {
       final result = await _apiMethod.post(
         url: Urls.cashoutGifts,
+        // Backend expects a valid JSON object; sending `null` was encoded
+        // as the literal string "null" and rejected as "Invalid JSON format".
+        // Use an empty map so the body is `{}` instead of `null`.
+        body: const <String, dynamic>{},
         authToken: authToken,
         headers: {},
       );

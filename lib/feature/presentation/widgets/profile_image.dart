@@ -56,6 +56,28 @@ class ProfileImage extends StatelessWidget {
                   radius: imgSize / 2,
                   fit: BoxFit.cover,
                 )),
+            if (isLive)
+              Positioned(
+                bottom: 4,
+                right: 4,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text(
+                    'LIVE',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 8,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+              ),
             Positioned.fill(child: TapWidget(onTap: (){
               void joinLive() {
                 AgoraChatCtrl.find.joinLiveChannel(
@@ -135,7 +157,7 @@ class GradientRing extends StatelessWidget {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          if (child != null) child!,
+          child,
           if (strokeWidth > 0)
             CustomPaint(
               size: ui.Size.square(size),

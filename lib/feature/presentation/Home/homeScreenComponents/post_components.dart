@@ -442,7 +442,7 @@ Widget postFooter({
                         color: AppColors.primaryColor,
                       ),
                       5.width,
-                      TextView(text: "Share", style: 12.txtRegularprimary),
+                      TextView(text: "Share", style: 12.txtRegularGrey),
                     ],
                   ),
                 ),
@@ -454,24 +454,24 @@ Widget postFooter({
                   initialSavedState: item.isSaved ?? false,
                 ),
               ),
-              Spacer(),
-              10.width,
             ],
           ),
         ),
       ),
       // One row: Gift (monetized creators only) | Views (video) | X Gifts summary
       Padding(
-        padding: const EdgeInsets.only(left: 22, bottom: 10, top: 2),
+        // Align with like row (10 left padding + 12 spacer inside)
+        padding: const EdgeInsets.only(left: 10, bottom: 10, top: 2),
         child: Row(
           children: [
+            12.width,
             if (showGift)
               InkWell(
                 borderRadius: BorderRadius.circular(20),
                 onTap: () => _showGiftPicker(context, item),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
+                    horizontal: 0,
                     vertical: 6,
                   ),
                   child: Row(
@@ -483,7 +483,7 @@ Widget postFooter({
                         color: AppColors.primaryColor,
                       ),
                       6.width,
-                      TextView(text: 'Gift', style: 12.txtRegularprimary),
+                      TextView(text: 'Gift', style: 12.txtRegularGrey),
                     ],
                   ),
                 ),
@@ -563,6 +563,7 @@ void _showGiftPicker(BuildContext context, PostData post) {
 
   showModalBottomSheet(
     context: context,
+    isScrollControlled: true,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
@@ -603,6 +604,7 @@ void _showGiftPicker(BuildContext context, PostData post) {
           ),
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
           child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -674,18 +676,18 @@ void _showGiftPicker(BuildContext context, PostData post) {
                           vertical: 0,
                         ),
                         child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Image.asset(
-                              GiftImages.forCode(code),
-                              width: 100,
-                              height: 100,
-                              fit: BoxFit.contain,
+                            SizedBox(
+                              height: 60,
+                              child: Image.asset(
+                                GiftImages.forCode(code),
+                                fit: BoxFit.contain,
+                              ),
                             ),
-                            const SizedBox(height: 1),
+                            const SizedBox(height: 6),
                             TextView(text: label, style: 12.txtMediumprimary),
-                            const SizedBox(height: 2),
+                            const SizedBox(height: 4),
                             TextView(
                               text: '$tokens coins',
                               style: 11.txtRegularGrey,
@@ -832,7 +834,7 @@ class _SavePostButtonState extends State<SavePostButton> {
                   height: 20,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: AppColors.primaryColor,
+                    color: AppColors.grey,
                   ),
                 )
               : Icon(
@@ -841,10 +843,7 @@ class _SavePostButtonState extends State<SavePostButton> {
                   color: _isSaved ? AppColors.btnColor : AppColors.primaryColor,
                 ),
           5.width,
-          TextView(
-            text: _isSaved ? "Saved" : "Save",
-            style: 12.txtRegularprimary,
-          ),
+          TextView(text: _isSaved ? "Saved" : "Save", style: 12.txtRegularGrey),
         ],
       ),
     );

@@ -35,6 +35,7 @@ import 'PrivacyandSecurity/WhoCanSeeMyProfile.dart';
 import 'PrivacyandSecurity/WhoCanShareMyPost.dart';
 import 'changePassSetting.dart';
 import 'editProfile.dart';
+import '../dashboard_screen.dart';
 
 class Setting extends StatefulWidget {
   @override
@@ -111,6 +112,14 @@ class _SettingState extends State<Setting> {
                           builder: (context) => StoreViewScreen(),
                         ),
                       ),
+                      showToggle: false,
+                    ),
+                    Divider(height: 1, color: AppColors.grey.withOpacity(0.3)),
+                    _buildSettingsTile(
+                      title: 'My Dashboard',
+                      subtitle: 'Earnings & monetization',
+                      icon: Icons.dashboard_rounded,
+                      onTap: () => context.pushNavigator(const DashboardScreen()),
                       showToggle: false,
                     ),
                     Divider(height: 1, color: AppColors.grey.withOpacity(0.3)),
@@ -387,7 +396,7 @@ class _SettingState extends State<Setting> {
             ),
             if (showToggle && toggleValue != null && onToggleChanged != null)
               Switch(
-                value: toggleValue ?? false,
+                value: toggleValue,
                 activeColor: AppColors.greenlight,
                 onChanged: onToggleChanged,
               )

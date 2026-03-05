@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:pull_to_refresh/pull_to_refresh.dart';
 import 'package:sep/components/styles/textStyles.dart';
-import 'package:sep/services/networking/urls.dart';
 import 'package:sep/services/storage/preferences.dart';
 import 'package:sep/utils/appUtils.dart';
 import 'package:sep/utils/extensions/extensions.dart';
@@ -19,6 +18,10 @@ import '../../../components/styles/app_strings.dart';
 import '../../data/models/dataModels/profile_data/profile_data_model.dart';
 import '../../data/models/dataModels/post_data.dart';
 import 'homeScreenComponents/post_components.dart';
+import 'homeScreenComponents/postCard.dart';
+import 'homeScreenComponents/postVideo.dart';
+import 'homeScreenComponents/pollCard.dart';
+import 'homeScreenComponents/celebrationCard.dart';
 import '../controller/auth_Controller/auth_ctrl.dart';
 import '../controller/auth_Controller/profileCtrl.dart';
 import '../profileScreens/friend_profile_screen.dart';
@@ -300,32 +303,77 @@ class _SearchState extends State<Search> {
         itemBuilder: (context, index) {
           final raw = posts[index];
           final post = PostData.fromJson(raw);
-          final header = postCardHeader(
-            post,
-            onBlockUser: () {},
-            onRemovePostAction: null,
-          );
-
           return Padding(
             padding: EdgeInsets.only(bottom: 16.sdp),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                header,
-                postFooter(
-                  item: post,
-                  context: context,
-                  postLiker: (postId) async {
-                    await ProfileCtrl.find.likeposts(postId);
-                  },
-                  updateCommentCount: (_) {},
-                  updatePostOnAction: (_) {},
-                ),
-              ],
-            ),
+            child: _buildSearchPostCard(context, post),
           );
         },
       );
     });
+  }
+
+  /// Build a full post card (header + content + footer) for search results.
+  Widget _buildSearchPostCard(BuildContext context, PostData item) {
+    final header = postCardHeader(
+      item,
+      onBlockUser: () {},
+      onRemovePostAction: null,
+    );
+
+    final footer = postFooter(
+      item: item,
+      context: context,
+      postLiker: (postId) async {
+        await ProfileCtrl.find.likeposts(postId);
+      },
+      updateCommentCount: (_) {},
+      updatePostOnAction: (_) {},
+    );
+
+    // Mirror home feed rendering so search results look the same.
+    if (item.content != null && item.content!.startsWith('SEP#Celebrate')) {
+      return CelebrationCard(
+        header: header,
+        caption: item.content ?? '',
+        footer: footer,
+        data: item,
+      );
+    } else if (item.fileType == 'poll') {
+      return PollCard(
+        footer: footer,
+        data: item,
+        header: header,
+        question: item.content ?? '',
+        options: item.options,
+        onPollAction: (String optionId) async {
+          try {
+            await ProfileCtrl.find.givePollToHomePost(item, optionId).applyLoader;
+          } catch (e) {
+            AppUtils.log("Error voting on poll from search: $e");
+          }
+        },
+      );
+    } else if (item.files.isNotEmpty && item.files.first.type == 'video') {
+      return PostVideo(
+        data: item,
+        header: header,
+        footer: footer,
+        view: () {
+          // For search results we simply trigger a lightweight refresh;
+          // detailed view-count syncing is handled elsewhere.
+          _authCtrl.searchPostsByCaption(_lastSearchQuery, page: 1, limit: 20);
+        },
+      );
+    } else {
+      return PostCard(
+        postId: item.id ?? '',
+        header: header,
+        caption: item.content ?? '',
+        imageUrls: item.files,
+        likes: '',
+        comments: '',
+        footer: footer,
+      );
+    }
   }
 }

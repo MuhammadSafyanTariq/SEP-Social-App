@@ -73,51 +73,57 @@ class _HomeScreenState extends State<Contentscreen> {
         child: Row(
           children: [
             // Thumbnail / host image
-            ClipRRect(
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(16),
-                bottomLeft: Radius.circular(16),
-              ),
-              child: AspectRatio(
-                aspectRatio: 9 / 12,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Image.network(
-                      primary.hostImage?.fileUrl ?? '',
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        color: Colors.black12,
-                        child: const Icon(
-                          Icons.videocam,
-                          color: Colors.white70,
-                          size: 40,
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      top: 8,
-                      left: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const TextView(
-                          text: 'LIVE',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
+            SizedBox(
+              width: 110,
+              height: 110,
+              child: ClipRRect(
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  bottomLeft: Radius.circular(16),
+                ),
+                child: AspectRatio(
+                  aspectRatio: 9 / 12,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Image.network(
+                        primary.hostImage != null
+                            ? AppUtils.configImageUrl(primary.hostImage!)
+                            : '',
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          color: Colors.black12,
+                          child: const Icon(
+                            Icons.videocam,
+                            color: Colors.white70,
+                            size: 40,
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                      Positioned(
+                        top: 8,
+                        left: 8,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const TextView(
+                            text: 'LIVE',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -412,7 +418,11 @@ class _HomeScreenState extends State<Contentscreen> {
                                 children: [
                                   ProfileImage(
                                     size: 40,
-                                    image: item.hostImage.fileUrl,
+                                    image: item.hostImage != null
+                                        ? AppUtils.configImageUrl(
+                                            item.hostImage!,
+                                          )
+                                        : null,
                                     uid: item.hostId,
                                     socketConnection: socketConnectionFlag,
                                   ),
@@ -512,14 +522,16 @@ class _HomeScreenState extends State<Contentscreen> {
                           final posts = _getFilteredPosts();
                           final liveChannels =
                               AgoraChatCtrl.find.liveStreamChannels;
-                          final hasLive =
-                              liveChannels.isNotEmpty && posts.length > 3;
+                          final hasLive = liveChannels.isNotEmpty;
 
-                          final totalCount =
-                              posts.length + (hasLive ? 1 : 0);
+                          // Insert the live discovery card after the third post
+                          // when possible, otherwise append it after the last post.
+                          final insertIndex =
+                              hasLive ? (posts.length >= 3 ? 3 : posts.length) : -1;
+
+                          final totalCount = posts.length + (hasLive ? 1 : 0);
                           if (index >= totalCount) return const SizedBox();
 
-                          const insertIndex = 3;
                           if (hasLive && index == insertIndex) {
                             return _buildLiveDiscoveryCard(
                               context,
@@ -543,8 +555,7 @@ class _HomeScreenState extends State<Contentscreen> {
                           final posts = _getFilteredPosts();
                           final liveChannels =
                               AgoraChatCtrl.find.liveStreamChannels;
-                          final hasLive =
-                              liveChannels.isNotEmpty && posts.length > 3;
+                          final hasLive = liveChannels.isNotEmpty;
                           return posts.length + (hasLive ? 1 : 0);
                         })(),
                       )

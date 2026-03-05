@@ -27,7 +27,6 @@ import '../../data/models/dataModels/getUserDetailModel.dart';
 import '../Home/homeScreenComponents/pollCard.dart';
 import '../Home/homeScreenComponents/celebrationCard.dart';
 import '../Home/homeScreenComponents/post_components.dart';
-import '../profileScreens/setting/fullScreenVideoPlayer.dart';
 import '../Home/reels_video_screen.dart';
 import '../controller/auth_Controller/profileCtrl.dart';
 import '../controller/story/story_controller.dart';
@@ -38,7 +37,6 @@ import 'followers.dart';
 import 'pending_follow_requests_screen.dart';
 import 'setting/following.dart';
 import 'setting/editProfile.dart';
-import 'dashboard_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -285,8 +283,6 @@ class _ProfileScreenState extends State<ProfileScreen>
               SliverToBoxAdapter(child: _buildProfileInfoSection()),
               // Stats Section
               SliverToBoxAdapter(child: _buildStatsSection()),
-              // My Dashboard button (opens dashboard with earnings + gift history)
-              SliverToBoxAdapter(child: _buildMyDashboardButton()),
               // Edit Profile Button
               SliverToBoxAdapter(child: _buildEditProfileButton()),
               // Tabs Section
@@ -1224,69 +1220,4 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
   }
 
-  /// "My Dashboard" button: navigates to DashboardScreen (earnings + gift history).
-  Widget _buildMyDashboardButton() {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      child: InkWell(
-        onTap: () {
-          context.pushNavigator(const DashboardScreen());
-        },
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          decoration: BoxDecoration(
-            color: AppColors.newgrey,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.grey.withOpacity(0.2)),
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AppColors.btnColor.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  Icons.dashboard_rounded,
-                  color: AppColors.btnColor,
-                  size: 24,
-                ),
-              ),
-              SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    TextView(
-                      text: 'My Dashboard',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.blackText,
-                      ),
-                    ),
-                    SizedBox(height: 2),
-                    TextView(
-                      text: 'Earnings, cashout & gift history',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.grey,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(
-                Icons.chevron_right_rounded,
-                color: AppColors.grey,
-                size: 24,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }

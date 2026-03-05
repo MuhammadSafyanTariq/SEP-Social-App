@@ -415,68 +415,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             );
           }
 
-          final totalAmount = gifts.fold<double>(
-            0.0,
-            (sum, g) =>
-                sum +
-                (double.tryParse((g['amount'] ?? 0).toString()) ?? 0.0),
-          );
-
           return Column(
             children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.03),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const TextView(
-                          text: 'Total gifts received',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: AppColors.grey,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        TextView(
-                          text: '\$${totalAmount.toStringAsFixed(2)}',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.blackText,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AppColors.btnColor.withOpacity(0.1),
-                      ),
-                      child: const Icon(
-                        Icons.card_giftcard_outlined,
-                        color: AppColors.btnColor,
-                        size: 22,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
               ListView.separated(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
@@ -487,10 +427,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   final sender = g['senderId'] as Map<String, dynamic>? ?? {};
                   final senderName = sender['name'] as String? ?? 'Unknown';
                   final giftName = g['giftName']?.toString() ?? 'Gift';
-                  final amountValue =
-                      double.tryParse((g['amount'] ?? 0).toString()) ?? 0.0;
-                  final amountText = '\$${amountValue.toStringAsFixed(2)}';
-                  final status = g['status']?.toString() ?? 'pending';
                   final createdAt = g['createdAt']?.toString() ?? '';
 
                   String timeText = '';
@@ -501,8 +437,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
                     } catch (_) {}
                   }
-
-                  final isCashedOut = status == 'cashedOut';
 
                   return Container(
                     padding: const EdgeInsets.all(12),
@@ -542,29 +476,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Flexible(
-                                    child: TextView(
-                                      text: giftName,
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                        color: AppColors.blackText,
-                                      ),
-                                    ),
-                                  ),
-                                  TextView(
-                                    text: amountText,
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.blackText,
-                                    ),
-                                  ),
-                                ],
+                              TextView(
+                                text: giftName,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.blackText,
+                                ),
                               ),
                               const SizedBox(height: 4),
                               TextView(

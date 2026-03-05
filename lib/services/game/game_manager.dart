@@ -25,6 +25,7 @@ class GameManager {
   static const String GAME_2048 = 'game_2048';
   static const String TIC_TAC_TOE_GAME = 'tic_tac_toe';
   static const String CAR_RACE_GAME = 'car_race';
+  static const String LUDO_GAME = 'ludo';
 
   static SharedPreferences? _prefs;
 
@@ -166,12 +167,14 @@ class GameManager {
     await _prefs?.remove(_lastPlayKey(GAME_2048));
     await _prefs?.remove(_lastPlayKey(TIC_TAC_TOE_GAME));
     await _prefs?.remove(_lastPlayKey(CAR_RACE_GAME));
+    await _prefs?.remove(_lastPlayKey(LUDO_GAME));
     await _prefs?.remove(_hasPlayedKey(FLAPPY_BIRD_GAME));
     await _prefs?.remove(_hasPlayedKey(SHOOTING_GAME));
     await _prefs?.remove(_hasPlayedKey(FRUIT_NINJA_GAME));
     await _prefs?.remove(_hasPlayedKey(GAME_2048));
     await _prefs?.remove(_hasPlayedKey(TIC_TAC_TOE_GAME));
     await _prefs?.remove(_hasPlayedKey(CAR_RACE_GAME));
+    await _prefs?.remove(_hasPlayedKey(LUDO_GAME));
     AppUtils.log('All game data reset for current user');
   }
 
