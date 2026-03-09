@@ -66,41 +66,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildEarningsSection() {
     return Obx(() {
       final profileData = profileCtrl.profileData.value;
-      final isMonetized = profileCtrl.isMonetized;
-      final isLoading = profileCtrl.isMonetizationLoading.value;
       final withdrawal = profileData.withdrawalBalanceUsd;
       final giftsBalance = profileData.giftsBalanceUsd;
       final totalEarnings = profileCtrl.totalEarningsUsd.value;
       final totalWithdraw = profileCtrl.totalWithdrawUsd.value;
-
-      if (!isMonetized) {
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          decoration: BoxDecoration(
-            color: AppColors.white,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.04),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: SizedBox(
-            width: double.infinity,
-            child: AppButton(
-              label: isLoading ? 'Applying...' : 'Apply for Monetization',
-              buttonColor: AppColors.btnColor,
-              onTap: isLoading
-                  ? null
-                  : () {
-                      profileCtrl.applyForMonetization();
-                    },
-            ),
-          ),
-        );
-      }
 
       final canCashout = giftsBalance >= 50;
       final canPayout = withdrawal >= 50;

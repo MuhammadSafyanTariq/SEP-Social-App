@@ -208,8 +208,7 @@ class Urls {
 
   // PayPal payouts (creator withdrawals)
   static const String requestPaypalPayout = '/api/paypal/request-payout';
-  static const String payoutTransactions =
-      '/api/paypal/payout-transactions';
+  static const String payoutTransactions = '/api/paypal/payout-transactions';
 
   // Monetization & Gifting
   static const String monetizeAccount = '/api/monetize-account';

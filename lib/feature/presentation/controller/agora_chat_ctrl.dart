@@ -253,8 +253,6 @@ class AgoraChatCtrl extends GetxController {
 
     socket.on('giftSent', (data) {
       AppUtils.log({'event': 'giftSent', 'data': data});
-      final msg = data['message']?.toString() ?? 'Gift sent successfully!';
-      AppUtils.toast(msg);
       // Update local coin balance per guide: use senderNewTokenBalance
       final newBalanceRaw = data['senderNewTokenBalance'];
       if (newBalanceRaw != null) {

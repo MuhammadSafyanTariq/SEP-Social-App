@@ -101,7 +101,22 @@ class _TitleOverlayState extends State<TitleOverlay> {
         child: Column(
           children: [
             const SizedBox(height: 60),
-            SizedBox(width: 270, child: Image.asset('assets/images/title.png')),
+            // Shooting Rush title (do not use title.png – that is Fruit Ninja's asset)
+            Text(
+              'Shooting Rush',
+              style: TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                shadows: [
+                  Shadow(
+                    color: Colors.black54,
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(height: 20),
             Row(
               mainAxisSize: MainAxisSize.min,

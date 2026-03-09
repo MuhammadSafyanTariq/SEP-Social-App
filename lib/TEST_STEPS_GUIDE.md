@@ -128,6 +128,7 @@ Use these steps to verify the Flutter app against the deployed backend. Ensure t
 |--------|--------|
 | Gift icon never appears on posts | Backend must return `monetized: true` on the post’s user/author in feed API. |
 | PayPal success but balance not updating | WebView must receive `PAYPAL_SUCCESS` and app must apply `topUpResult.newWalletTokens` (and optionally `newWalletBalance`). |
+| "Pay with Debit or Credit Card" not shown; only "Create an Account" | Backend must pass `application_context.payment_method.payee_preferred = "IMMEDIATE_PAYMENT_REQUIRED"` and enable Guest Checkout in PayPal Business account. See FRONTEND_INTEGRATION_GUIDE §3.2.1.1. App sends `preferGuestCheckout: true` in create-order. |
 | "Insufficient tokens" when balance looks enough | Ensure UI uses same balance source as backend (`walletTokens`); refresh after PayPal or gift. |
 | Live gift not updating balance | Ensure `giftSent` listener updates local profile from `senderNewTokenBalance`. |
 | Cashout button always disabled | Profile API must return `giftsBalance`; cashout is enabled when `giftsBalance >= 50`. |

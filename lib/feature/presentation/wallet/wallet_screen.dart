@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
 import 'package:get/get_state_manager/src/rx_flutter/rx_obx_widget.dart';
+import 'package:intl/intl.dart';
 import 'package:sep/components/appLoader.dart';
 import 'package:sep/components/coreComponents/AppButton.dart';
 import 'package:sep/components/coreComponents/TextView.dart';
@@ -61,6 +62,25 @@ class _WalletScreenState extends State<WalletScreen>
   void _refreshData() {
     profileCtrl.getProfileDetails();
     stripeCtrl.getTransactionList();
+  }
+
+  /// Replaces "token"/"tokens" with "coin"/"coins" for display (app uses "coins").
+  static String _descriptionToCoins(String description) {
+    if (description.isEmpty) return description;
+    return description
+        .replaceAll(RegExp(r'\btokens\b', caseSensitive: false), 'coins')
+        .replaceAll(RegExp(r'\btoken\b', caseSensitive: false), 'coin');
+  }
+
+  /// Formats backend createdAt (ISO 8601) for display, e.g. "Mar 3, 2026".
+  static String _formatTransactionDate(String? createdAt) {
+    if (createdAt == null || createdAt.isEmpty) return '—';
+    try {
+      final date = DateTime.parse(createdAt);
+      return DateFormat('MMM d, yyyy').format(date);
+    } catch (_) {
+      return createdAt;
+    }
   }
 
   @override
@@ -217,9 +237,9 @@ class _WalletScreenState extends State<WalletScreen>
                     else
                       ...transactions.map(
                         (transaction) => TransactionTile(
-                          name: transaction.description ?? 'Transaction',
-                          date:
-                              'Sep 25', // Static date for now since transaction.createdAt is String
+                          name: _descriptionToCoins(
+                              transaction.description ?? 'Transaction'),
+                          date: _formatTransactionDate(transaction.createdAt),
                           amount:
                               (transaction.amount ?? 0) *
                               (transaction.type == "credit" ? 1 : -1),

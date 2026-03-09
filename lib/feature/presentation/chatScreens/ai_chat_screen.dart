@@ -28,6 +28,8 @@ class _AIChatScreenState extends State<AIChatScreen> {
   List<AIChatMessage> _messages = [];
   bool _isLoading = false;
   bool _isSending = false;
+  /// Set when OpenAI init fails (e.g. missing OPENAI_API_KEY in .env).
+  String? _initError;
 
   @override
   void initState() {
@@ -36,7 +38,10 @@ class _AIChatScreenState extends State<AIChatScreen> {
   }
 
   Future<void> _initializeChat() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _initError = null;
+    });
 
     try {
       _openAIService.initialize();
@@ -59,12 +64,23 @@ class _AIChatScreenState extends State<AIChatScreen> {
       setState(() {
         _messages = messages;
         _isLoading = false;
+        _initError = null;
       });
 
       _scrollToBottom();
     } catch (e) {
       AppUtils.log('Error initializing chat: $e');
-      setState(() => _isLoading = false);
+      final message = e.toString();
+      final friendlyMessage = message.contains('OPENAI_API_KEY') ||
+              message.contains('API Key') ||
+              message.contains('missing') ||
+              message.contains('placeholder')
+          ? 'AI Assistant is not configured.\n\nAdd your real OpenAI API key in the project .env file:\nOPENAI_API_KEY=sk-your-actual-key\n\nGet a key at platform.openai.com (do not use the example key from .env.example).'
+          : 'Could not start AI Assistant. Please try again.';
+      setState(() {
+        _isLoading = false;
+        _initError = friendlyMessage;
+      });
     }
   }
 
@@ -152,6 +168,38 @@ class _AIChatScreenState extends State<AIChatScreen> {
         );
       }
     });
+  }
+
+  Widget _buildInitErrorWidget() {
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.all(24.sdp),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 48.sdp, color: AppColors.red),
+            16.height,
+            Text(
+              'AI Assistant unavailable',
+              style: 18.txtSBoldprimary,
+              textAlign: TextAlign.center,
+            ),
+            12.height,
+            Text(
+              _initError!,
+              style: 14.txtRegularGrey,
+              textAlign: TextAlign.center,
+            ),
+            24.height,
+            TextButton.icon(
+              onPressed: () => _initializeChat(),
+              icon: Icon(Icons.refresh, size: 20.sdp),
+              label: Text('Retry', style: 14.txtMediumbtncolor),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _showSuggestedQuestions() {
@@ -254,11 +302,14 @@ class _AIChatScreenState extends State<AIChatScreen> {
             Expanded(
               child: _isLoading
                   ? Center(child: CircularProgressIndicator())
-                  : _messages.isEmpty
-                  ? Center(
-                      child: Text('No messages yet', style: 14.txtMediumgrey),
-                    )
-                  : ListView.builder(
+                  : _initError != null
+                      ? _buildInitErrorWidget()
+                      : _messages.isEmpty
+                          ? Center(
+                              child: Text(
+                                  'No messages yet', style: 14.txtMediumgrey),
+                            )
+                          : ListView.builder(
                       controller: _scrollController,
                       padding: EdgeInsets.all(16.sdp),
                       itemCount: _messages.length,
@@ -305,8 +356,11 @@ class _AIChatScreenState extends State<AIChatScreen> {
                       ),
                       child: TextField(
                         controller: _messageController,
+                        enabled: _initError == null,
                         decoration: InputDecoration(
-                          hintText: 'Type your message...',
+                          hintText: _initError != null
+                              ? 'Configure API key to chat'
+                              : 'Type your message...',
                           border: InputBorder.none,
                           hintStyle: 14.txtRegularGrey,
                         ),
@@ -318,13 +372,17 @@ class _AIChatScreenState extends State<AIChatScreen> {
                   ),
                   8.width,
                   InkWell(
-                    onTap: _isSending ? null : _sendMessage,
+                    onTap: (_isSending || _initError != null)
+                        ? null
+                        : _sendMessage,
                     child: Container(
-                      padding: EdgeInsets.all(12.sdp),
-                      decoration: BoxDecoration(
-                        color: _isSending ? AppColors.grey : AppColors.btnColor,
-                        shape: BoxShape.circle,
-                      ),
+                        padding: EdgeInsets.all(12.sdp),
+                        decoration: BoxDecoration(
+                          color: (_isSending || _initError != null)
+                              ? AppColors.grey
+                              : AppColors.btnColor,
+                          shape: BoxShape.circle,
+                        ),
                       child: Icon(
                         Icons.send,
                         color: AppColors.white,

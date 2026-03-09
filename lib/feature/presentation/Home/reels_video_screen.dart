@@ -165,14 +165,6 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
     return null;
   }
 
-  /// True when the reel's creator is monetized.
-  /// When user list is empty (e.g. old API or not populated), we show gift and let backend reject if not monetized – so old monetized users still get the icon.
-  bool _isReelCreatorMonetized(PostData post) {
-    if (post.user.isEmpty)
-      return true; // Fallback: show gift; backend will reject if not monetized
-    return post.user.first.monetized == true;
-  }
-
   @override
   void initState() {
     super.initState();
@@ -1178,9 +1170,8 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
                     ),
                     SizedBox(height: 24),
 
-                    // Gift summary (per-post) – only for monetized creators
-                    if ((post.id ?? '').isNotEmpty &&
-                        _isReelCreatorMonetized(post))
+                    // Gift summary (per-post)
+                    if ((post.id ?? '').isNotEmpty)
                       Obx(() {
                         final postId = post.id!;
                         profileCtrl.fetchPostGiftTotal(postId);
@@ -1194,8 +1185,7 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
                           onTap: null,
                         );
                       }),
-                    if ((post.id ?? '').isNotEmpty &&
-                        _isReelCreatorMonetized(post))
+                    if ((post.id ?? '').isNotEmpty)
                       SizedBox(height: 24),
 
                     // Share button
@@ -1207,17 +1197,15 @@ class _ReelsVideoScreenState extends State<ReelsVideoScreen>
                     ),
                     SizedBox(height: 24),
 
-                    // Gift button (only for other users' posts and only when creator is monetized)
-                    if (post.userId != profileCtrl.profileData.value.id &&
-                        _isReelCreatorMonetized(post))
+                    // Gift button (only for other users' posts)
+                    if (post.userId != profileCtrl.profileData.value.id)
                       _buildActionButton(
                         icon: Icons.card_giftcard,
                         color: Colors.white,
                         label: 'Gift',
                         onTap: () => _showGiftPicker(context, post),
                       ),
-                    if (post.userId != profileCtrl.profileData.value.id &&
-                        _isReelCreatorMonetized(post))
+                    if (post.userId != profileCtrl.profileData.value.id)
                       const SizedBox(height: 24),
 
                     // Save button

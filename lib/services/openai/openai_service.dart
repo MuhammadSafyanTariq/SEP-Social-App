@@ -15,6 +15,14 @@ class OpenAIService {
   // Get API Key from environment variables
   String get _apiKey => dotenv.env['OPENAI_API_KEY'] ?? '';
 
+  /// True if the key is the example placeholder (invalid for API calls).
+  bool get _isPlaceholderKey {
+    final k = _apiKey.toLowerCase();
+    return k.isEmpty ||
+        k.startsWith('sk-example') ||
+        k.contains('placeholder');
+  }
+
   // System prompt for the AI assistant
   static const String _systemPrompt = '''
 You are a helpful AI assistant for the SEP Social App. Your role is to:
@@ -54,6 +62,12 @@ Be friendly, helpful, and provide clear step-by-step guidance when needed.
           'OpenAI API Key is missing. Please add OPENAI_API_KEY to your .env file',
         );
       }
+      if (_isPlaceholderKey) {
+        AppUtils.log('ERROR: OpenAI API Key is still the example placeholder');
+        throw Exception(
+          'OpenAI API Key is the example placeholder. Replace it in .env with your real key from platform.openai.com',
+        );
+      }
 
       // Debug API key format
       AppUtils.log('API Key loaded: ${_apiKey.substring(0, 15)}...');
@@ -82,6 +96,9 @@ Be friendly, helpful, and provide clear step-by-step guidance when needed.
     try {
       if (!_initialized) {
         initialize();
+      }
+      if (_isPlaceholderKey) {
+        return '⚠️ You\'re using the example API key. To use the AI Assistant, add your real OpenAI API key in the project .env file (get one at platform.openai.com).';
       }
 
       AppUtils.log('Sending message to OpenAI: $userMessage');

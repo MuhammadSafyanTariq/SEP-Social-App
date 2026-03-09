@@ -128,50 +128,6 @@ class ProfileCtrl extends GetxController {
 
   bool get isMonetized => profileData.value.isMonetized;
 
-  /// Calls backend /api/monetize-account and updates local profile state.
-  Future<void> applyForMonetization() async {
-    // If already monetized, just show info and skip API call.
-    if (isMonetized) {
-      AppUtils.toast('Your account is already monetized');
-      return;
-    }
-
-    isMonetizationLoading.value = true;
-    try {
-      final result = await _authRepository.monetizeAccount();
-      String message;
-
-      if (result.isSuccess) {
-        // Prefer backend message when available
-        final raw = result.data ?? const <String, dynamic>{};
-        message =
-            raw['message'] as String? ??
-            'Your account is monetized successfully';
-
-        // Refetch profile so we get monetized (and balance) from backend
-        await getProfileDetails();
-        final updated = profileData.value;
-        Preferences.profile = updated;
-        Preferences.savePrefOnLogin = updated;
-
-        AppUtils.toast(message);
-      } else {
-        // For 4xx backend errors, ApiUtils puts the API message into getError
-        final err = result.getError;
-        final errText = err?.toString().replaceFirst('Exception: ', '');
-        message = errText?.isNotEmpty == true
-            ? errText!
-            : 'Something went wrong';
-        AppUtils.toastError(message);
-      }
-    } catch (e) {
-      AppUtils.toastError('Failed to apply for monetization');
-      AppUtils.log('applyForMonetization error: $e');
-    } finally {
-      isMonetizationLoading.value = false;
-    }
-  }
-
   /// Send a gift on feed/video for a given post.
   Future<void> sendGiftOnPost({
     required PostData post,
@@ -219,9 +175,6 @@ class ProfileCtrl extends GetxController {
 
       if (result.isSuccess) {
         final raw = result.data ?? const <String, dynamic>{};
-        final msg = raw['message'] as String? ?? 'Gift sent successfully';
-        AppUtils.toast(msg);
-
         // Update local token balance using senderNewTokenBalance when available.
         final data = raw['data'] as Map<String, dynamic>?;
         final newTokenBalanceRaw = data?['senderNewTokenBalance'];

@@ -6,6 +6,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:sep/components/styles/appColors.dart';
 import 'package:sep/components/styles/gift_images.dart';
 import 'package:sep/utils/appUtils.dart';
+import 'package:video_player/video_player.dart';
 
 // Map each gift code to an animation duration that matches
 // the product spec (approximate mid‑point of the allowed range).
@@ -39,8 +40,8 @@ Duration _giftAnimationDuration(String code) {
       // Spec: 8–10 seconds
       return const Duration(seconds: 3);
     case 'Verde_Mantis_Lamborghini':
-      // Spec: 8–12 seconds
-      return const Duration(seconds: 3);
+      // Spec: 8–12 seconds – align roughly with full video playback
+      return const Duration(seconds: 10);
     case 'Boeing_747_8_VIP_Jet':
       // Spec: 10–12 seconds
       return const Duration(seconds: 3);
@@ -58,21 +59,20 @@ void showGiftEffectOverlay(
 }) {
   final duration = _giftAnimationDuration(giftCode);
 
-  final entry = OverlayEntry(
+  late OverlayEntry entry;
+  entry = OverlayEntry(
     builder: (_) => GiftEffectsOverlay(
       giftCode: giftCode,
       giftLabel: giftLabel,
       senderName: senderName,
       duration: duration,
+      onCompleted: () {
+        entry.remove();
+      },
     ),
   );
 
   Overlay.of(context).insert(entry);
-
-  // Remove shortly after animation finishes.
-  Future.delayed(duration + const Duration(milliseconds: 400), () {
-    entry.remove();
-  });
 }
 
 class GiftEffectsOverlay extends StatefulWidget {
@@ -80,6 +80,7 @@ class GiftEffectsOverlay extends StatefulWidget {
   final String? giftLabel;
   final String? senderName;
   final Duration duration;
+  final VoidCallback onCompleted;
 
   const GiftEffectsOverlay({
     super.key,
@@ -87,6 +88,7 @@ class GiftEffectsOverlay extends StatefulWidget {
     this.giftLabel,
     this.senderName,
     required this.duration,
+    required this.onCompleted,
   });
 
   @override
@@ -107,6 +109,7 @@ class _GiftEffectsOverlayState extends State<GiftEffectsOverlay>
     _controller.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
         _stopAudio();
+        widget.onCompleted();
       }
     });
     _playGiftAudio();
@@ -157,7 +160,10 @@ class _GiftEffectsOverlayState extends State<GiftEffectsOverlay>
               effect = _SoaringEagleEffect(progress: value);
               break;
             case 'Verde_Mantis_Lamborghini':
-              effect = _LamboEffect(progress: value);
+              effect = _LamboEffect(
+                progress: value,
+                onCompleted: widget.onCompleted,
+              );
               break;
             case 'Boeing_747_8_VIP_Jet':
               effect = _JetEffect(progress: value);
@@ -909,62 +915,77 @@ class _SoaringEagleEffect extends StatelessWidget {
   }
 }
 
-class _LamboEffect extends StatelessWidget {
+class _LamboEffect extends StatefulWidget {
   final double progress;
+  final VoidCallback onCompleted;
 
-  const _LamboEffect({required this.progress});
+  const _LamboEffect({
+    required this.progress,
+    required this.onCompleted,
+  });
+
+  @override
+  State<_LamboEffect> createState() => _LamboEffectState();
+}
+
+class _LamboEffectState extends State<_LamboEffect> {
+  late final VideoPlayerController _videoController;
+  bool _isInitialized = false;
+  bool _hasReportedCompletion = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _videoController = VideoPlayerController.asset('assets/videos/car.mp4')
+      ..setLooping(false)
+      ..addListener(_handleVideoTick)
+      ..initialize().then((_) {
+        if (!mounted) return;
+        setState(() {
+          _isInitialized = true;
+        });
+        _videoController.play();
+      });
+  }
+
+  void _handleVideoTick() {
+    if (!_videoController.value.isInitialized || _hasReportedCompletion) return;
+    final value = _videoController.value;
+    if (!value.isPlaying &&
+        value.duration > Duration.zero &&
+        value.position >= value.duration) {
+      _hasReportedCompletion = true;
+      widget.onCompleted();
+    }
+  }
+
+  @override
+  void dispose() {
+    _videoController.removeListener(_handleVideoTick);
+    _videoController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final screen = MediaQuery.of(context).size;
-
-    final dx = -screen.width * 0.6 + progress * screen.width * 1.6;
-    final glowOpacity = Curves.easeInOut.transform(
-      (progress * 1.2).clamp(0.0, 1.0),
-    );
-
     return Stack(
       children: [
         Positioned.fill(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Colors.blueGrey.shade900, Colors.blueGrey.shade600],
+          child: Container(
+            color: Colors.black,
+          ),
+        ),
+        if (_isInitialized)
+          Positioned.fill(
+            child: FittedBox(
+              fit: BoxFit.contain,
+              child: SizedBox(
+                width: _videoController.value.size.width,
+                height: _videoController.value.size.height,
+                child: VideoPlayer(_videoController),
               ),
             ),
           ),
-        ),
-        Positioned(
-          left: 0,
-          right: 0,
-          bottom: screen.height * 0.08,
-          child: Opacity(
-            opacity: glowOpacity,
-            child: Container(
-              height: 8,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.cyanAccent.withOpacity(0.7),
-                    Colors.cyanAccent.withOpacity(0.0),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-        Positioned(
-          left: dx,
-          bottom: screen.height * 0.08,
-          child: Image.asset(
-            GiftImages.forCode('Verde_Mantis_Lamborghini'),
-            width: 320,
-            height: 160,
-            fit: BoxFit.contain,
-          ),
-        ),
       ],
     );
   }

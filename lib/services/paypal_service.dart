@@ -14,19 +14,23 @@ class PayPalService {
   /// Create PayPal order
   /// This is the ONLY API call you need to make!
   /// Backend handles everything else automatically after user approves
+  ///
+  /// [preferGuestCheckout] asks the backend to create the order so PayPal
+  /// shows "Pay with Debit or Credit Card" (guest checkout) instead of
+  /// only "Create an Account". Backend must pass application_context
+  /// with payment_method.payee_preferred and landing_page when calling PayPal.
   Future<Map<String, dynamic>> createOrder({
     required String userId,
     required double amount,
+    bool preferGuestCheckout = true,
   }) async {
     try {
       AppUtils.log(
-        'PayPal: Creating order for userId: $userId, amount: \$$amount',
+        'PayPal: Creating order for userId: $userId, amount: \$$amount, preferGuestCheckout: $preferGuestCheckout',
       );
 
       // Attach JWT as Bearer token as required by protected endpoints.
-      final headers = <String, String>{
-        'Content-Type': 'application/json',
-      };
+      final headers = <String, String>{'Content-Type': 'application/json'};
       final jwt = Preferences.authToken;
       if (jwt != null && jwt.isNotEmpty) {
         final bearer = jwt.bearer;
@@ -35,13 +39,16 @@ class PayPalService {
         }
       }
 
+      final body = <String, dynamic>{
+        'userId': userId,
+        'amount': amount.toStringAsFixed(2),
+        'preferGuestCheckout': preferGuestCheckout,
+      };
+
       final response = await http.post(
         Uri.parse('$baseUrl/paypal/create-order'),
         headers: headers,
-        body: jsonEncode({
-          'userId': userId,
-          'amount': amount.toStringAsFixed(2),
-        }),
+        body: jsonEncode(body),
       );
 
       AppUtils.log('PayPal: Response status: ${response.statusCode}');

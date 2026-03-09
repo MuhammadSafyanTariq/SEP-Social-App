@@ -187,12 +187,23 @@ Top‑up is a **two‑step PayPal flow**:
   "userId": "<currentUserId>",
   "amount": "20.00",
   "returnUrl": "yourapp://paypal/success",
-  "cancelUrl": "yourapp://paypal/cancel"
+  "cancelUrl": "yourapp://paypal/cancel",
+  "preferGuestCheckout": true
 }
 ```
 
 - `amount` must be a positive decimal in dollars.
 - `returnUrl`/`cancelUrl` are **optional**. If omitted, backend uses its own process/cancel URLs.
+- **`preferGuestCheckout`** (optional, default from app: `true`): When `true`, the backend **must** create the PayPal order with settings that show **"Pay with Debit or Credit Card"** (guest checkout). See §3.2.1.1 below.
+
+**§3.2.1.1 Enabling "Pay with Debit or Credit Card" (Guest Checkout)**
+
+If users see only "Create an Account" and no "Pay with Debit or Credit Card" option:
+
+1. **When calling PayPal Orders API v2** to create the order, include:
+   - **`application_context`** (or `payment_source.paypal.experience_context`): set **`payment_method.payee_preferred`** = **`"IMMEDIATE_PAYMENT_REQUIRED"`**, **`landing_page`** = **`"NO_PREFERENCE"`**, **`user_action`** = **`"PAY_NOW"`**.
+2. **PayPal Business account**: In Website payment preferences, enable **"PayPal Account Optional"** / **"Guest Checkout"** so buyers can pay with a card without creating a PayPal account.
+3. When the client sends **`preferGuestCheckout: true`** in the create-order body, use the above settings when calling PayPal.
 
 **Response (success, 200)** – simplified:
 

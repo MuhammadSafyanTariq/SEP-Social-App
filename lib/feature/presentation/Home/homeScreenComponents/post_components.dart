@@ -45,14 +45,6 @@ ProfileDataModel userProfile(PostData item) {
   return ProfileDataModel(id: item.userId ?? '');
 }
 
-/// True when the post's creator is monetized (backend sends monetized on user in post response).
-/// When user list is empty (backend not populating), we allow showing gift so backend can reject if not monetized.
-bool _isCreatorMonetized(PostData item) {
-  if (item.user.isEmpty)
-    return true; // Fallback: show gift; backend will reject if not monetized
-  return item.user.first.monetized == true;
-}
-
 PostCardHeader postCardHeader(
   PostData item, {
   Function? onBlockUser,
@@ -336,12 +328,10 @@ Widget postFooter({
   required Function(int?) updatePostOnAction,
   Function(PostData)?
   postLikerWithData, // New callback for handling PostData directly
-  /// When viewing a profile, pass true if the profile owner is monetized so the gift icon is shown on their posts.
+  /// Legacy flag kept for compatibility; gifting is now available for all creators.
   bool? profileOwnerIsMonetized,
 }) {
-  final showGift =
-      item.userId != Preferences.uid &&
-      (profileOwnerIsMonetized == true || _isCreatorMonetized(item));
+  final showGift = item.userId != Preferences.uid;
   return Column(
     children: [
       SizedBox(height: 10),
@@ -458,7 +448,7 @@ Widget postFooter({
           ),
         ),
       ),
-      // One row: Gift (monetized creators only) | Views (video) | X Gifts summary
+      // One row: Gift | Views (video) | X Gifts summary
       Padding(
         // Align with like row (10 left padding + 12 spacer inside)
         padding: const EdgeInsets.only(left: 10, bottom: 10, top: 2),
