@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Replace these placeholders with your real Meta App ID and Client Token
+      from Meta Developers -> App Dashboard -> App Settings / App Events.
+    -->
+    <string name="facebook_app_id">1719825022322149</string>
+    <string name="facebook_client_token">71b0dbece5287ef0671233ce6bc099a9</string>
+</resources>
+

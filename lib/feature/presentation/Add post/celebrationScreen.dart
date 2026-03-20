@@ -1061,6 +1061,7 @@ class _CelebrationScreenState extends State<CelebrationScreen> {
               "country": "",
             }, // Provide empty location data
             [], // No uploaded files - just text
+            null, // No audio
             null, // No poll options
             'post', // Use 'post' type like regular posts
             null,

@@ -54,6 +54,7 @@ PostCardHeader postCardHeader(
     time: formatTimeAgo(item.createdAt ?? ''),
     userData: userProfile(item),
     location: '',
+    audio: item.audio,
 
     // snapshot.connectionState == ConnectionState.done
     //     ? (snapshot.hasData ? address : "No Address Found")

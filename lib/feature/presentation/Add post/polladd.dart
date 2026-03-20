@@ -708,6 +708,7 @@ class _AddPollState extends State<AddPoll> {
                                 AddressModel(),
                                 null,
                                 null,
+                                null, // No audio
                                 pollOptions,
                                 'poll',
                                 start,

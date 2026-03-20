@@ -7,6 +7,7 @@ import 'package:sep/feature/presentation/Home/reels_screen.dart';
 import 'package:sep/feature/presentation/chatScreens/chatScreen.dart';
 import 'package:sep/services/networking/urls.dart';
 import 'package:sep/feature/presentation/Home/homeScreenComponents/auto_play_video_player.dart';
+import 'package:sep/feature/presentation/Home/homeScreenComponents/postCard.dart';
 import 'package:sep/services/deep_link_service.dart';
 
 import 'package:sep/feature/presentation/controller/auth_Controller/profileCtrl.dart';
@@ -194,6 +195,7 @@ class _HomeScreenState extends State<HomeScreen> {
       // Pause all videos when navigating away
       try {
         VideoControllerManager.find.pauseAll();
+        PostCard.setAudioEnabled(false);
       } catch (e) {
         AppUtils.log('Error pausing videos: $e');
       }
@@ -203,9 +205,14 @@ class _HomeScreenState extends State<HomeScreen> {
       if (_currentIndex == 0 && index != 0) {
         try {
           VideoControllerManager.find.pauseAll();
+          PostCard.setAudioEnabled(false);
         } catch (e) {
           AppUtils.log('Error pausing videos: $e');
         }
+      }
+
+      if (index == 0) {
+        PostCard.setAudioEnabled(true);
       }
 
       setState(() {

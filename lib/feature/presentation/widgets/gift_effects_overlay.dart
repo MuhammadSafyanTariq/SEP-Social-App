@@ -6,10 +6,13 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:sep/components/styles/appColors.dart';
 import 'package:sep/components/styles/gift_images.dart';
 import 'package:sep/utils/appUtils.dart';
-import 'package:video_player/video_player.dart';
+import 'package:flutter_svga/flutter_svga.dart';
 
 // Map each gift code to an animation duration that matches
 // the product spec (approximate mid‑point of the allowed range).
+// Public helper to get the configured animation duration for a gift.
+Duration giftAnimationDuration(String code) => _giftAnimationDuration(code);
+
 Duration _giftAnimationDuration(String code) {
   switch (code) {
     case 'Applause_Hands':
@@ -20,7 +23,7 @@ Duration _giftAnimationDuration(String code) {
       return const Duration(seconds: 4);
     case 'Beating_Heart':
       // Spec: 4–6 seconds
-      return const Duration(seconds: 3);
+      return const Duration(seconds: 4);
     case 'Blooming_Flowers':
       // Spec: 5–7 seconds
       return const Duration(seconds: 3);
@@ -38,7 +41,7 @@ Duration _giftAnimationDuration(String code) {
       return const Duration(seconds: 3);
     case 'Soaring_Eagle':
       // Spec: 8–10 seconds
-      return const Duration(seconds: 3);
+      return const Duration(seconds: 10);
     case 'Verde_Mantis_Lamborghini':
       // Spec: 8–12 seconds – align roughly with full video playback
       return const Duration(seconds: 10);
@@ -157,7 +160,10 @@ class _GiftEffectsOverlayState extends State<GiftEffectsOverlay>
               effect = _FloatingCashEffect(progress: value);
               break;
             case 'Soaring_Eagle':
-              effect = _SoaringEagleEffect(progress: value);
+              effect = _SoaringEagleEffect(
+                progress: value,
+                onCompleted: widget.onCompleted,
+              );
               break;
             case 'Verde_Mantis_Lamborghini':
               effect = _LamboEffect(
@@ -189,6 +195,8 @@ class _GiftEffectsOverlayState extends State<GiftEffectsOverlay>
                 Positioned(
                   left: 0,
                   right: 0,
+                  // Keep the gift banner slightly above the very bottom so
+                  // live chat (pinned at the bottom) appears in front of / over it.
                   bottom: 40,
                   child: Opacity(
                     opacity: textOpacity.clamp(0.0, 1.0),
@@ -247,6 +255,18 @@ class _GiftEffectsOverlayState extends State<GiftEffectsOverlay>
   Future<void> _playGiftAudio() async {
     try {
       AppUtils.log('🔊 _playGiftAudio for giftCode=${widget.giftCode}');
+
+      // SVGA gifts (Lambo, Beating Heart, Soaring Eagle) have their own audio.
+      // Skip all extra SFX/music so only the SVGA sound plays.
+      if (widget.giftCode == 'Verde_Mantis_Lamborghini' ||
+          widget.giftCode == 'Beating_Heart' ||
+          widget.giftCode == 'Soaring_Eagle') {
+        AppUtils.log(
+          '🔊 Skipping external audio for SVGA gift ${widget.giftCode}',
+        );
+        return;
+      }
+
       final sfxSource = _giftSfxSource(widget.giftCode);
       if (sfxSource != null) {
         // Gift has its own dedicated sound: play ONLY that.
@@ -298,7 +318,8 @@ Source? _giftSfxSource(String code) {
     case 'Falling_Gold_Coins':
       return AssetSource('${base}coins.wav');
     case 'Soaring_Eagle':
-      return AssetSource('${base}eagle.mp3');
+      // Audio comes from Soaring_Eagle.svga; no extra SFX.
+      return null;
     case 'Verde_Mantis_Lamborghini':
       return AssetSource('${base}lamborghini.wav');
     case 'Boeing_747_8_VIP_Jet':
@@ -444,68 +465,64 @@ class _HeartEyesEffect extends StatelessWidget {
   }
 }
 
-class _BeatingHeartsEffect extends StatelessWidget {
+class _BeatingHeartsEffect extends StatefulWidget {
   final double progress;
 
   const _BeatingHeartsEffect({required this.progress});
 
   @override
-  Widget build(BuildContext context) {
-    final screen = MediaQuery.of(context).size;
+  State<_BeatingHeartsEffect> createState() => _BeatingHeartsEffectState();
+}
 
-    // Central big heart beat
-    final beatScale = 0.9 + sin(progress * pi * 2) * 0.12;
-    final beatOpacity = (progress < 0.1 || progress > 0.9)
-        ? (progress < 0.1 ? progress * 10 : (1 - progress) * 10)
-        : 1.0;
+class _BeatingHeartsEffectState extends State<_BeatingHeartsEffect>
+    with SingleTickerProviderStateMixin {
+  late final SVGAAnimationController _svgaController;
+  bool _isLoaded = false;
 
-    final smallHearts = List.generate(10, (i) {
-      final t = (progress - i * 0.04).clamp(0.0, 1.0);
-      if (t <= 0) return const SizedBox.shrink();
-      final angle = (i / 10) * 2 * pi;
-      final radius = 40.0 + t * 80;
-      final dx = screen.width / 2 + cos(angle) * radius;
-      final dy = screen.height / 2 + sin(angle) * radius * 0.6;
+  @override
+  void initState() {
+    super.initState();
+    _svgaController = SVGAAnimationController(vsync: this);
+    _loadAnimation();
+  }
 
-      return Positioned(
-        left: dx,
-        top: dy,
-        child: Opacity(
-          opacity: (1 - t).clamp(0.0, 1.0),
-          child: Image.asset(
-            GiftImages.forCode('Beating_Heart'),
-            width: 34,
-            height: 34,
-          ),
-        ),
+  Future<void> _loadAnimation() async {
+    try {
+      final videoItem = await SVGAParser.shared.decodeFromAssets(
+        'assets/videos/Beating_Heart.svga',
       );
-    });
+      _svgaController.videoItem = videoItem;
 
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        Positioned.fill(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: RadialGradient(
-                colors: [Colors.red.withOpacity(0.35), Colors.transparent],
-              ),
-            ),
-          ),
-        ),
-        ...smallHearts,
-        Opacity(
-          opacity: beatOpacity.clamp(0.0, 1.0),
-          child: Transform.scale(
-            scale: beatScale,
-            child: Image.asset(
-              GiftImages.forCode('Beating_Heart'),
-              width: 200,
-              height: 200,
-            ),
-          ),
-        ),
-      ],
+      if (!mounted) return;
+      setState(() {
+        _isLoaded = true;
+      });
+
+      _svgaController
+        ..reset()
+        ..repeat();
+    } catch (_) {
+      // Fail silently and show nothing if loading fails.
+    }
+  }
+
+  @override
+  void dispose() {
+    _svgaController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_isLoaded) {
+      return const SizedBox.shrink();
+    }
+
+    return Center(
+      child: AspectRatio(
+        aspectRatio: 1,
+        child: SVGAImage(_svgaController, fit: BoxFit.contain),
+      ),
     );
   }
 }
@@ -873,44 +890,81 @@ class _FloatingCashEffect extends StatelessWidget {
   }
 }
 
-class _SoaringEagleEffect extends StatelessWidget {
+class _SoaringEagleEffect extends StatefulWidget {
   final double progress;
+  final VoidCallback onCompleted;
 
-  const _SoaringEagleEffect({required this.progress});
+  const _SoaringEagleEffect({
+    required this.progress,
+    required this.onCompleted,
+  });
+
+  @override
+  State<_SoaringEagleEffect> createState() => _SoaringEagleEffectState();
+}
+
+class _SoaringEagleEffectState extends State<_SoaringEagleEffect>
+    with SingleTickerProviderStateMixin {
+  late final SVGAAnimationController _svgaController;
+  bool _isLoaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _svgaController = SVGAAnimationController(vsync: this);
+    _loadAnimation();
+  }
+
+  Future<void> _loadAnimation() async {
+    try {
+      final videoItem = await SVGAParser.shared.decodeFromAssets(
+        'assets/videos/Soaring_Eagle.svga',
+      );
+      _svgaController.videoItem = videoItem;
+
+      if (!mounted) return;
+      setState(() {
+        _isLoaded = true;
+      });
+
+      // Play once; when finished, close the overlay.
+      _svgaController.reset();
+      _svgaController.forward().whenComplete(() {
+        if (!mounted) return;
+        widget.onCompleted();
+      });
+    } catch (_) {
+      if (!mounted) return;
+      widget.onCompleted();
+    }
+  }
+
+  @override
+  void dispose() {
+    _svgaController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final screen = MediaQuery.of(context).size;
+    if (!_isLoaded) {
+      return const SizedBox.shrink();
+    }
 
-    final dx = -screen.width * 0.3 + progress * screen.width * 1.6;
-    final dy = screen.height * (0.2 - sin(progress * pi) * 0.08);
-
-    return Stack(
-      children: [
-        Positioned.fill(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Colors.blue.shade900, Colors.blue.shade500],
-              ),
-            ),
+    // Leave a safe area at the bottom so live chat (which is pinned to the
+    // very bottom of the screen) stays visually on top and unobstructed
+    // when the SVGA animation plays.
+    return Positioned.fill(
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 120),
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: SVGAImage(
+            _svgaController,
+            fit: BoxFit.fitWidth,
           ),
         ),
-        Positioned(
-          left: dx,
-          top: dy,
-          child: Transform.rotate(
-            angle: -0.1 + sin(progress * pi) * 0.1,
-            child: Image.asset(
-              GiftImages.forCode('Soaring_Eagle'),
-              width: 220,
-              height: 220,
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
 }
@@ -919,41 +973,45 @@ class _LamboEffect extends StatefulWidget {
   final double progress;
   final VoidCallback onCompleted;
 
-  const _LamboEffect({
-    required this.progress,
-    required this.onCompleted,
-  });
+  const _LamboEffect({required this.progress, required this.onCompleted});
 
   @override
   State<_LamboEffect> createState() => _LamboEffectState();
 }
 
-class _LamboEffectState extends State<_LamboEffect> {
-  late final VideoPlayerController _videoController;
-  bool _isInitialized = false;
+class _LamboEffectState extends State<_LamboEffect>
+    with SingleTickerProviderStateMixin {
+  late final SVGAAnimationController _svgaController;
+  bool _isLoaded = false;
   bool _hasReportedCompletion = false;
 
   @override
   void initState() {
     super.initState();
-    _videoController = VideoPlayerController.asset('assets/videos/car.mp4')
-      ..setLooping(false)
-      ..addListener(_handleVideoTick)
-      ..initialize().then((_) {
-        if (!mounted) return;
-        setState(() {
-          _isInitialized = true;
-        });
-        _videoController.play();
-      });
+    _svgaController = SVGAAnimationController(vsync: this);
+    _loadAnimation();
   }
 
-  void _handleVideoTick() {
-    if (!_videoController.value.isInitialized || _hasReportedCompletion) return;
-    final value = _videoController.value;
-    if (!value.isPlaying &&
-        value.duration > Duration.zero &&
-        value.position >= value.duration) {
+  Future<void> _loadAnimation() async {
+    try {
+      final videoItem = await SVGAParser.shared.decodeFromAssets(
+        'assets/videos/s.svga',
+      );
+      _svgaController.videoItem = videoItem;
+
+      if (!mounted) return;
+      setState(() {
+        _isLoaded = true;
+      });
+
+      _svgaController.reset();
+      _svgaController.repeat().whenComplete(() {
+        if (_hasReportedCompletion) return;
+        _hasReportedCompletion = true;
+        widget.onCompleted();
+      });
+    } catch (_) {
+      if (_hasReportedCompletion) return;
       _hasReportedCompletion = true;
       widget.onCompleted();
     }
@@ -961,8 +1019,7 @@ class _LamboEffectState extends State<_LamboEffect> {
 
   @override
   void dispose() {
-    _videoController.removeListener(_handleVideoTick);
-    _videoController.dispose();
+    _svgaController.dispose();
     super.dispose();
   }
 
@@ -970,19 +1027,12 @@ class _LamboEffectState extends State<_LamboEffect> {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        Positioned.fill(
-          child: Container(
-            color: Colors.black,
-          ),
-        ),
-        if (_isInitialized)
+        if (_isLoaded)
           Positioned.fill(
-            child: FittedBox(
-              fit: BoxFit.contain,
-              child: SizedBox(
-                width: _videoController.value.size.width,
-                height: _videoController.value.size.height,
-                child: VideoPlayer(_videoController),
+            child: Center(
+              child: AspectRatio(
+                aspectRatio: 16 / 9,
+                child: SVGAImage(_svgaController, fit: BoxFit.contain),
               ),
             ),
           ),

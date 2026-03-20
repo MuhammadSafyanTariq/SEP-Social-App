@@ -9,6 +9,7 @@ import 'package:sep/utils/appUtils.dart';
 import 'package:sep/feature/presentation/Home/homeScreenComponents/read_more_text.dart';
 import 'package:video_player/video_player.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:sep/services/music/deezer_api.dart';
 import 'dart:async';
 
 class StoryViewScreenNew extends StatefulWidget {
@@ -51,6 +52,27 @@ class _StoryViewScreenNewState extends State<StoryViewScreenNew> {
     // Mark first story as viewed and start timer
     _viewCurrentStory();
     _startStoryTimer();
+  }
+
+  String? _getStoryAudioTitle(Story story) {
+    try {
+      final audioFile = story.files.firstWhere(
+        (f) => f.type == 'audio',
+        orElse: () => StoryFile(file: '', type: ''),
+      );
+      if (audioFile.file.isEmpty) return null;
+
+      final uri = Uri.parse(audioFile.file);
+      final segments = uri.pathSegments;
+      if (segments.isEmpty) return null;
+
+      var name = segments.last;
+      name = name.split('?').first;
+      name = Uri.decodeComponent(name);
+      return name;
+    } catch (_) {
+      return null;
+    }
   }
 
   @override
@@ -129,16 +151,77 @@ class _StoryViewScreenNewState extends State<StoryViewScreenNew> {
 
   Future<void> _playAudio(String audioUrl) async {
     try {
-      final fullUrl = audioUrl.startsWith('http')
-          ? audioUrl
-          : '$baseUrl$audioUrl';
+      final fullUrl = await _resolveAudioPlaybackUrl(audioUrl);
+      AppUtils.log('Story audio resolved exp=${_getUnixExpFromDeezerUrl(fullUrl)}');
 
       _audioPlayer ??= AudioPlayer();
       await _audioPlayer!.play(UrlSource(fullUrl));
       AppUtils.log('Playing audio: $fullUrl');
     } catch (e) {
       AppUtils.log('Error playing audio: $e');
+
+      // Retry once with a fresh Deezer preview URL (if this is Deezer-backed music).
+      final trackId = _extractDeezerTrackId(audioUrl);
+      if (trackId != null) {
+        try {
+          final freshPreviewUrl = await DeezerApi.previewUrlForTrackId(trackId);
+          if (freshPreviewUrl != null && freshPreviewUrl.isNotEmpty) {
+            final expUnix = _getUnixExpFromDeezerUrl(freshPreviewUrl);
+            AppUtils.log('Story audio retry. trackId=$trackId exp=$expUnix');
+            _audioPlayer ??= AudioPlayer();
+            await _audioPlayer!.play(UrlSource(freshPreviewUrl));
+          }
+        } catch (_) {}
+      }
     }
+  }
+
+  int? _extractDeezerTrackId(String rawValue) {
+    const marker = '::trackId=';
+    if (!rawValue.contains(marker)) return null;
+    final idPart = rawValue.split(marker).last;
+    return int.tryParse(idPart);
+  }
+
+  int? _getUnixExpFromDeezerUrl(String url) {
+    try {
+      final match = RegExp(r'exp=(\d+)').firstMatch(url);
+      if (match == null) return null;
+      return int.tryParse(match.group(1) ?? '');
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<String> _resolveAudioPlaybackUrl(String rawValue) async {
+    final marker = '::trackId=';
+    final hasMarker = rawValue.contains(marker);
+    final trackId = _extractDeezerTrackId(rawValue);
+
+    AppUtils.log(
+      'DEBUG story audio resolve rawHasMarker=$hasMarker trackId=$trackId',
+    );
+
+    if (trackId != null) {
+      final freshPreviewUrl = await DeezerApi.previewUrlForTrackId(trackId);
+      if (freshPreviewUrl != null && freshPreviewUrl.isNotEmpty) {
+        AppUtils.log(
+          'DEBUG story audio resolved. trackId=$trackId exp=${_getUnixExpFromDeezerUrl(freshPreviewUrl)}',
+        );
+        return freshPreviewUrl;
+      }
+    }
+
+    // Fallback: use the stored previewUrl part if present.
+    if (rawValue.contains(marker)) {
+      final fallback = rawValue.split(marker).first;
+      AppUtils.log(
+        'DEBUG story audio fallback to stored preview url (exp=${_getUnixExpFromDeezerUrl(fallback)})',
+      );
+      return fallback;
+    }
+
+    return rawValue.startsWith('http') ? rawValue : '$baseUrl$rawValue';
   }
 
   Future<void> _initializeVideo(String videoUrl) async {
@@ -439,27 +522,6 @@ class _StoryViewScreenNewState extends State<StoryViewScreenNew> {
         );
       }
     } else if (file.type == 'image') {
-      // Check if there's also an audio file
-      final audioFile = story.files.firstWhere(
-        (f) => f.type == 'audio',
-        orElse: () => StoryFile(file: '', type: ''),
-      );
-      final hasAudio = audioFile.file.isNotEmpty;
-
-      // Extract audio file name if present
-      String? audioFileName;
-      if (hasAudio) {
-        final uri = Uri.parse(audioFile.file);
-        final segments = uri.pathSegments;
-        if (segments.isNotEmpty) {
-          audioFileName = segments.last;
-          // Remove any query parameters or fragments
-          audioFileName = audioFileName.split('?').first;
-          // Decode URL encoding
-          audioFileName = Uri.decodeComponent(audioFileName);
-        }
-      }
-
       return Center(
         child: Stack(
           alignment: Alignment.center,
@@ -481,39 +543,6 @@ class _StoryViewScreenNewState extends State<StoryViewScreenNew> {
               errorWidget: (context, url, error) =>
                   Icon(Icons.error, color: Colors.white, size: 50),
             ),
-            // Show audio indicator and file name if story has audio
-            if (hasAudio && audioFileName != null)
-              Positioned(
-                top: 20,
-                right: 20,
-                child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.6),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.music_note, color: Colors.white, size: 20),
-                      SizedBox(width: 6),
-                      Container(
-                        constraints: BoxConstraints(maxWidth: 150),
-                        child: Text(
-                          audioFileName,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
           ],
         ),
       );
@@ -580,6 +609,8 @@ class _StoryViewScreenNewState extends State<StoryViewScreenNew> {
   }
 
   Widget _buildUserHeader(dynamic user, Story story) {
+    final audioTitle = _getStoryAudioTitle(story);
+
     return SafeArea(
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -611,6 +642,32 @@ class _StoryViewScreenNewState extends State<StoryViewScreenNew> {
                     _getTimeAgo(story.createdAt),
                     style: TextStyle(color: Colors.white70, fontSize: 12),
                   ),
+                  if (audioTitle != null) ...[
+                    const SizedBox(height: 2),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.music_note,
+                          size: 14,
+                          color: Colors.white,
+                        ),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            audioTitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),

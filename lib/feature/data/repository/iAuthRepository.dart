@@ -542,6 +542,7 @@ class IAuthRepository implements AuthRepository {
     required String? address,
     required Map<String, dynamic>? location,
     required List<Map<String, dynamic>>? uploadedFileUrls,
+    Map<String, dynamic>? audio,
     required String fileType,
     required List<PollItemModel>? pollOptions,
     required String? startTime,
@@ -598,6 +599,10 @@ class IAuthRepository implements AuthRepository {
         "duration": duration,
         "options": pollOptions?.map((element) => element.toJson()).toList(),
       };
+
+      if (audio != null && audio['file'] != null) {
+        requestBody['audio'] = audio;
+      }
 
       // Add price field for advertisement category (ID: 68eb8453d5e284efb554b401)
       if (categoryId == '68eb8453d5e284efb554b401') {

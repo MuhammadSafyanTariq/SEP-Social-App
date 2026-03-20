@@ -31,6 +31,9 @@ mixin _$PostData {
   List<FileElement> get files => throw _privateConstructorUsedError;
   String? get fileType => throw _privateConstructorUsedError;
   int? get duration => throw _privateConstructorUsedError;
+
+  /// Optional background audio track for the post.
+  PostAudio? get audio => throw _privateConstructorUsedError;
   @OptionFieldConverter()
   List<Option> get options => throw _privateConstructorUsedError;
   @VoteFieldConverter()
@@ -75,6 +78,7 @@ abstract class $PostDataCopyWith<$Res> {
     List<FileElement> files,
     String? fileType,
     int? duration,
+    PostAudio? audio,
     @OptionFieldConverter() List<Option> options,
     @VoteFieldConverter() List<Vote> votes,
     String? createdAt,
@@ -92,6 +96,7 @@ abstract class $PostDataCopyWith<$Res> {
   });
 
   $LocationCopyWith<$Res>? get location;
+  $PostAudioCopyWith<$Res>? get audio;
 }
 
 /// @nodoc
@@ -118,6 +123,7 @@ class _$PostDataCopyWithImpl<$Res, $Val extends PostData>
     Object? files = null,
     Object? fileType = freezed,
     Object? duration = freezed,
+    Object? audio = freezed,
     Object? options = null,
     Object? votes = null,
     Object? createdAt = freezed,
@@ -171,6 +177,10 @@ class _$PostDataCopyWithImpl<$Res, $Val extends PostData>
                 ? _value.duration
                 : duration // ignore: cast_nullable_to_non_nullable
                       as int?,
+            audio: freezed == audio
+                ? _value.audio
+                : audio // ignore: cast_nullable_to_non_nullable
+                      as PostAudio?,
             options: null == options
                 ? _value.options
                 : options // ignore: cast_nullable_to_non_nullable
@@ -245,6 +255,20 @@ class _$PostDataCopyWithImpl<$Res, $Val extends PostData>
       return _then(_value.copyWith(location: value) as $Val);
     });
   }
+
+  /// Create a copy of PostData
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $PostAudioCopyWith<$Res>? get audio {
+    if (_value.audio == null) {
+      return null;
+    }
+
+    return $PostAudioCopyWith<$Res>(_value.audio!, (value) {
+      return _then(_value.copyWith(audio: value) as $Val);
+    });
+  }
 }
 
 /// @nodoc
@@ -266,6 +290,7 @@ abstract class _$$PostDataImplCopyWith<$Res>
     List<FileElement> files,
     String? fileType,
     int? duration,
+    PostAudio? audio,
     @OptionFieldConverter() List<Option> options,
     @VoteFieldConverter() List<Vote> votes,
     String? createdAt,
@@ -284,6 +309,8 @@ abstract class _$$PostDataImplCopyWith<$Res>
 
   @override
   $LocationCopyWith<$Res>? get location;
+  @override
+  $PostAudioCopyWith<$Res>? get audio;
 }
 
 /// @nodoc
@@ -309,6 +336,7 @@ class __$$PostDataImplCopyWithImpl<$Res>
     Object? files = null,
     Object? fileType = freezed,
     Object? duration = freezed,
+    Object? audio = freezed,
     Object? options = null,
     Object? votes = null,
     Object? createdAt = freezed,
@@ -362,6 +390,10 @@ class __$$PostDataImplCopyWithImpl<$Res>
             ? _value.duration
             : duration // ignore: cast_nullable_to_non_nullable
                   as int?,
+        audio: freezed == audio
+            ? _value.audio
+            : audio // ignore: cast_nullable_to_non_nullable
+                  as PostAudio?,
         options: null == options
             ? _value._options
             : options // ignore: cast_nullable_to_non_nullable
@@ -436,6 +468,7 @@ class _$PostDataImpl implements _PostData {
     final List<FileElement> files = const [],
     this.fileType,
     this.duration,
+    this.audio,
     @OptionFieldConverter() final List<Option> options = const [],
     @VoteFieldConverter() final List<Vote> votes = const [],
     this.createdAt,
@@ -486,6 +519,10 @@ class _$PostDataImpl implements _PostData {
   final String? fileType;
   @override
   final int? duration;
+
+  /// Optional background audio track for the post.
+  @override
+  final PostAudio? audio;
   final List<Option> _options;
   @override
   @JsonKey()
@@ -560,7 +597,7 @@ class _$PostDataImpl implements _PostData {
 
   @override
   String toString() {
-    return 'PostData(id: $id, userId: $userId, categoryId: $categoryId, content: $content, location: $location, country: $country, files: $files, fileType: $fileType, duration: $duration, options: $options, votes: $votes, createdAt: $createdAt, updatedAt: $updatedAt, v: $v, user: $user, likeCount: $likeCount, videoCount: $videoCount, commentCount: $commentCount, isLikedByUser: $isLikedByUser, isSaved: $isSaved, savedAt: $savedAt, likes: $likes, comments: $comments)';
+    return 'PostData(id: $id, userId: $userId, categoryId: $categoryId, content: $content, location: $location, country: $country, files: $files, fileType: $fileType, duration: $duration, audio: $audio, options: $options, votes: $votes, createdAt: $createdAt, updatedAt: $updatedAt, v: $v, user: $user, likeCount: $likeCount, videoCount: $videoCount, commentCount: $commentCount, isLikedByUser: $isLikedByUser, isSaved: $isSaved, savedAt: $savedAt, likes: $likes, comments: $comments)';
   }
 
   @override
@@ -581,6 +618,7 @@ class _$PostDataImpl implements _PostData {
                 other.fileType == fileType) &&
             (identical(other.duration, duration) ||
                 other.duration == duration) &&
+            (identical(other.audio, audio) || other.audio == audio) &&
             const DeepCollectionEquality().equals(other._options, _options) &&
             const DeepCollectionEquality().equals(other._votes, _votes) &&
             (identical(other.createdAt, createdAt) ||
@@ -616,6 +654,7 @@ class _$PostDataImpl implements _PostData {
     const DeepCollectionEquality().hash(_files),
     fileType,
     duration,
+    audio,
     const DeepCollectionEquality().hash(_options),
     const DeepCollectionEquality().hash(_votes),
     createdAt,
@@ -657,6 +696,7 @@ abstract class _PostData implements PostData {
     final List<FileElement> files,
     final String? fileType,
     final int? duration,
+    final PostAudio? audio,
     @OptionFieldConverter() final List<Option> options,
     @VoteFieldConverter() final List<Vote> votes,
     final String? createdAt,
@@ -695,6 +735,10 @@ abstract class _PostData implements PostData {
   String? get fileType;
   @override
   int? get duration;
+
+  /// Optional background audio track for the post.
+  @override
+  PostAudio? get audio;
   @override
   @OptionFieldConverter()
   List<Option> get options;
@@ -732,6 +776,217 @@ abstract class _PostData implements PostData {
   @override
   @JsonKey(includeFromJson: false, includeToJson: false)
   _$$PostDataImplCopyWith<_$PostDataImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+PostAudio _$PostAudioFromJson(Map<String, dynamic> json) {
+  return _PostAudio.fromJson(json);
+}
+
+/// @nodoc
+mixin _$PostAudio {
+  @JsonKey(name: 'file')
+  String? get file => throw _privateConstructorUsedError;
+  @JsonKey(name: 'title')
+  String? get title => throw _privateConstructorUsedError;
+  @JsonKey(name: 'duration')
+  int? get duration => throw _privateConstructorUsedError;
+
+  /// Serializes this PostAudio to a JSON map.
+  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
+
+  /// Create a copy of PostAudio
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  $PostAudioCopyWith<PostAudio> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class $PostAudioCopyWith<$Res> {
+  factory $PostAudioCopyWith(PostAudio value, $Res Function(PostAudio) then) =
+      _$PostAudioCopyWithImpl<$Res, PostAudio>;
+  @useResult
+  $Res call({
+    @JsonKey(name: 'file') String? file,
+    @JsonKey(name: 'title') String? title,
+    @JsonKey(name: 'duration') int? duration,
+  });
+}
+
+/// @nodoc
+class _$PostAudioCopyWithImpl<$Res, $Val extends PostAudio>
+    implements $PostAudioCopyWith<$Res> {
+  _$PostAudioCopyWithImpl(this._value, this._then);
+
+  // ignore: unused_field
+  final $Val _value;
+  // ignore: unused_field
+  final $Res Function($Val) _then;
+
+  /// Create a copy of PostAudio
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? file = freezed,
+    Object? title = freezed,
+    Object? duration = freezed,
+  }) {
+    return _then(
+      _value.copyWith(
+            file: freezed == file
+                ? _value.file
+                : file // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            title: freezed == title
+                ? _value.title
+                : title // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            duration: freezed == duration
+                ? _value.duration
+                : duration // ignore: cast_nullable_to_non_nullable
+                      as int?,
+          )
+          as $Val,
+    );
+  }
+}
+
+/// @nodoc
+abstract class _$$PostAudioImplCopyWith<$Res>
+    implements $PostAudioCopyWith<$Res> {
+  factory _$$PostAudioImplCopyWith(
+    _$PostAudioImpl value,
+    $Res Function(_$PostAudioImpl) then,
+  ) = __$$PostAudioImplCopyWithImpl<$Res>;
+  @override
+  @useResult
+  $Res call({
+    @JsonKey(name: 'file') String? file,
+    @JsonKey(name: 'title') String? title,
+    @JsonKey(name: 'duration') int? duration,
+  });
+}
+
+/// @nodoc
+class __$$PostAudioImplCopyWithImpl<$Res>
+    extends _$PostAudioCopyWithImpl<$Res, _$PostAudioImpl>
+    implements _$$PostAudioImplCopyWith<$Res> {
+  __$$PostAudioImplCopyWithImpl(
+    _$PostAudioImpl _value,
+    $Res Function(_$PostAudioImpl) _then,
+  ) : super(_value, _then);
+
+  /// Create a copy of PostAudio
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? file = freezed,
+    Object? title = freezed,
+    Object? duration = freezed,
+  }) {
+    return _then(
+      _$PostAudioImpl(
+        file: freezed == file
+            ? _value.file
+            : file // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        title: freezed == title
+            ? _value.title
+            : title // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        duration: freezed == duration
+            ? _value.duration
+            : duration // ignore: cast_nullable_to_non_nullable
+                  as int?,
+      ),
+    );
+  }
+}
+
+/// @nodoc
+@JsonSerializable()
+class _$PostAudioImpl implements _PostAudio {
+  const _$PostAudioImpl({
+    @JsonKey(name: 'file') this.file,
+    @JsonKey(name: 'title') this.title,
+    @JsonKey(name: 'duration') this.duration,
+  });
+
+  factory _$PostAudioImpl.fromJson(Map<String, dynamic> json) =>
+      _$$PostAudioImplFromJson(json);
+
+  @override
+  @JsonKey(name: 'file')
+  final String? file;
+  @override
+  @JsonKey(name: 'title')
+  final String? title;
+  @override
+  @JsonKey(name: 'duration')
+  final int? duration;
+
+  @override
+  String toString() {
+    return 'PostAudio(file: $file, title: $title, duration: $duration)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$PostAudioImpl &&
+            (identical(other.file, file) || other.file == file) &&
+            (identical(other.title, title) || other.title == title) &&
+            (identical(other.duration, duration) ||
+                other.duration == duration));
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode => Object.hash(runtimeType, file, title, duration);
+
+  /// Create a copy of PostAudio
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$PostAudioImplCopyWith<_$PostAudioImpl> get copyWith =>
+      __$$PostAudioImplCopyWithImpl<_$PostAudioImpl>(this, _$identity);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$$PostAudioImplToJson(this);
+  }
+}
+
+abstract class _PostAudio implements PostAudio {
+  const factory _PostAudio({
+    @JsonKey(name: 'file') final String? file,
+    @JsonKey(name: 'title') final String? title,
+    @JsonKey(name: 'duration') final int? duration,
+  }) = _$PostAudioImpl;
+
+  factory _PostAudio.fromJson(Map<String, dynamic> json) =
+      _$PostAudioImpl.fromJson;
+
+  @override
+  @JsonKey(name: 'file')
+  String? get file;
+  @override
+  @JsonKey(name: 'title')
+  String? get title;
+  @override
+  @JsonKey(name: 'duration')
+  int? get duration;
+
+  /// Create a copy of PostAudio
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  _$$PostAudioImplCopyWith<_$PostAudioImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
 

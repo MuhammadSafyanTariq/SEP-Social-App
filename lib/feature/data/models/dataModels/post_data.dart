@@ -22,6 +22,9 @@ class PostData with _$PostData {
     String? fileType,
     int? duration,
 
+    /// Optional background audio track for the post.
+    PostAudio? audio,
+
     @OptionFieldConverter() @Default([]) List<Option> options,
 
     @VoteFieldConverter() @Default([]) List<Vote> votes,
@@ -47,6 +50,18 @@ class PostData with _$PostData {
 
   factory PostData.fromJson(Map<String, dynamic> json) =>
       _$PostDataFromJson(json);
+}
+
+@freezed
+class PostAudio with _$PostAudio {
+  const factory PostAudio({
+    @JsonKey(name: 'file') String? file,
+    @JsonKey(name: 'title') String? title,
+    @JsonKey(name: 'duration') int? duration,
+  }) = _PostAudio;
+
+  factory PostAudio.fromJson(Map<String, dynamic> json) =>
+      _$PostAudioFromJson(json);
 }
 
 @freezed

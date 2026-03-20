@@ -20,6 +20,7 @@ import 'feature/presentation/screens/loginsignup/onBoarding/language.dart';
 import 'feature/presentation/Home/homeScreen.dart';
 import 'services/storage/preferences.dart';
 import 'services/firebaseServices.dart';
+import 'services/meta/facebook_app_events_service.dart';
 import 'utils/extensions/contextExtensions.dart';
 import 'utils/appUtils.dart';
 import 'utils/gpu_error_handler.dart';
@@ -31,14 +32,9 @@ void main() async {
 
   // Set up global error handler for GPU device lost errors
   FlutterError.onError = (FlutterErrorDetails details) {
-    // Handle GPU errors through our handler
-    final wasGpuError = GpuErrorHandler.instance.isGpuDeviceLost;
-    GpuErrorHandler.instance.handleFlutterError(details);
-
-    // Only present error if it wasn't a GPU error (GPU errors are suppressed)
-    if (!wasGpuError || !GpuErrorHandler.instance.isGpuDeviceLost) {
-      FlutterError.presentError(details);
-    }
+    // Suppress known noisy image/GPU decode failures from crashing logs.
+    final suppressed = GpuErrorHandler.instance.handleFlutterError(details);
+    if (!suppressed) FlutterError.presentError(details);
   };
 
   // Lock orientation to portrait mode
@@ -61,6 +57,10 @@ void main() async {
   Get.put(AuthCtrl());
   Get.put(LanguageController());
   Get.put(GetStripeCtrl());
+
+  // Initialize Meta App Events for installs/open/in-app tracking.
+  await FacebookAppEventsService.instance.init();
+  FacebookAppEventsService.instance.logAppOpen();
 
   // Initialize Deep Link Service
   await DeepLinkService.instance.initialize(navigatorKey: navState);
@@ -225,18 +225,34 @@ class ScreenTracker extends NavigatorObserver {
   static final ScreenTracker instance = ScreenTracker();
   Widget? currentScreen;
 
+  void _trackInAppActivity(Route route) {
+    // Best-effort: use a stable identifier that doesn't require building
+    // the destination widget (avoids side effects from calling route.builder).
+    final String screenName =
+        route.settings.name ?? route.runtimeType.toString();
+    FacebookAppEventsService.instance.logInAppActivity(screen: screenName);
+  }
+
   @override
   void didPush(Route route, Route? previousRoute) {
     if (route is MaterialPageRoute) {
-      currentScreen = route.builder(navState.currentContext!);
+      final ctx = navState.currentContext;
+      if (ctx != null) {
+        // Keep this for existing app code that reads `currentScreen`.
+        currentScreen = route.builder(ctx);
+      }
     }
+    _trackInAppActivity(route);
     super.didPush(route, previousRoute);
   }
 
   @override
   void didPop(Route route, Route? previousRoute) {
     if (previousRoute is MaterialPageRoute) {
-      currentScreen = previousRoute.builder(navState.currentContext!);
+      final ctx = navState.currentContext;
+      if (ctx != null) {
+        currentScreen = previousRoute.builder(ctx);
+      }
     }
     super.didPop(route, previousRoute);
   }

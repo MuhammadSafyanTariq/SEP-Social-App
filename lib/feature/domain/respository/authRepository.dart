@@ -84,6 +84,7 @@ abstract class AuthRepository {
     required String? address,
     required Map<String, dynamic>? location,
     required List<Map<String, dynamic>>? uploadedFileUrls,
+    Map<String, dynamic>? audio,
     required String fileType,
     required List<PollItemModel>? pollOptions,
     required String? startTime,

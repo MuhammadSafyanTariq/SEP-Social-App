@@ -55,6 +55,8 @@
 	<string>This app needs permission to send you notifications.</string>
 	<key>GIDClientID</key>
 	<string>668047341805-mkgmfm2inuqdvsuir7cmal9su9sdlos8.apps.googleusercontent.com</string>
+	<key>NSUserTrackingUsageDescription</key>
+	<string>This app uses tracking to measure ad performance.</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -84,6 +86,17 @@
 	<false/>
 	<key>GADApplicationIdentifier</key>
 	<string>ca-app-pub-7164424730429677~2234858629</string>
+
+	<!-- Meta App Events (Facebook App Events / Facebook SDK) -->
+	<key>FacebookAppID</key>
+	<string>1719825022322149</string>
+
+	<key>FacebookClientToken</key>
+	<string>71b0dbece5287ef0671233ce6bc099a9</string>
+
+	<key>FacebookDisplayName</key>
+	<string>SEP</string>
+
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
@@ -92,6 +105,8 @@
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>stripe</string>
+		<string>fbapi</string>
+		<string>fb-messenger-share-api</string>
 	</array>
 	<key>NSAppleMusicUsageDescription</key>
 	<string>Please allow</string>

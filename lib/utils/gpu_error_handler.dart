@@ -47,9 +47,11 @@ class GpuErrorHandler {
     }
   }
 
-  /// Handle Flutter errors and check for GPU device lost errors
+  /// Handle Flutter errors and check for GPU device lost errors.
+  ///
+  /// Returns `true` if the error should be suppressed from `FlutterError.presentError`.
   /// This runs synchronously on the error thread, so keep it fast!
-  void handleFlutterError(FlutterErrorDetails details) {
+  bool handleFlutterError(FlutterErrorDetails details) {
     // Fast path: if GPU already marked as lost, suppress immediately
     if (_gpuDeviceLost) {
       // Only check if enough time has passed to potentially reset
@@ -62,7 +64,7 @@ class GpuErrorHandler {
               errorStr.contains('impeller') || 
               errorStr.contains('gpu') ||
               errorStr.contains('devicelost')) {
-            return; // Suppress immediately
+            return true; // Suppress immediately
           }
         }
       }
@@ -109,11 +111,18 @@ class GpuErrorHandler {
         });
       }
       // Suppress the error to prevent cascade - don't call FlutterError.presentError
-      return;
+      return true;
     }
     
     // For non-GPU errors, let Flutter handle them normally
     // But we still want to present them
+    if (isImageDecodingError) {
+      // Invalid image data can happen for broken/corrupt URLs.
+      // Suppress console spam; UI will still handle errors via image widgets.
+      return true;
+    }
+
+    return false;
   }
 
   /// Safe image precaching that checks GPU state first

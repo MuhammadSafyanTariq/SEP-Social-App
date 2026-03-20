@@ -29,6 +29,7 @@ class PostCardHeader extends StatelessWidget {
   final String? location;
   final ProfileDataModel userData;
   final PostData data;
+  final PostAudio? audio;
   final Function? onBlockUser;
   final Function? onRemovePostAction;
 
@@ -38,6 +39,7 @@ class PostCardHeader extends StatelessWidget {
     required this.location,
     required this.data,
     required this.userData,
+    this.audio,
     this.onBlockUser,
     this.onRemovePostAction,
   });
@@ -462,25 +464,30 @@ class PostCardHeader extends StatelessWidget {
                     Row(
                       children: [
                         TextView(text: '$time', style: 12.txtRegularGrey),
-
-                        // Visibility(
-                        //   visible: location != null,
-                        //   child: Row(
-                        //     children: [
-                        //       Icon(
-                        //         Icons.location_on,
-                        //         color: AppColors.black,
-                        //         size: 13,
-                        //       ),
-                        //       TextView(
-                        //         text: location ?? '',
-                        //         style: 12.txtRegularBlack,
-                        //       ),
-                        //     ],
-                        //   ),
-                        // ),
                       ],
                     ),
+                    if (audio != null && (audio!.file ?? '').isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.music_note,
+                            size: 14,
+                            color: Colors.grey[600],
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: TextView(
+                              maxlines: 1,
+                              text: audio!.title.isNotNullEmpty
+                                  ? audio!.title!
+                                  : 'Music',
+                              style: 12.txtMediumgrey,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                     Visibility(
                       visible: data.country.isNotNullEmpty,
                       child: TextView(

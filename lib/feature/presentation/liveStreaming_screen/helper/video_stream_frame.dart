@@ -18,6 +18,7 @@ import '../../../../components/coreComponents/TextView.dart';
 import '../../../../components/styles/appColors.dart';
 import '../../../../components/styles/appImages.dart';
 import '../../../../components/styles/gift_images.dart';
+import '../../../../components/coreComponents/sep_image_filter.dart';
 import '../../widgets/gift_effects_overlay.dart';
 import '../../../../services/storage/preferences.dart';
 import '../../../data/models/dataModels/live_stream_message_model/live_stream_message_model.dart';
@@ -90,6 +91,10 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
 
   // Chat overlay visibility (hidden by default)
   bool _showChatOverlay = false;
+
+  // Live filter picker (host only) shown as a bottom panel.
+  bool _showLiveFiltersBottomPanel = false;
+  int _liveFilterDraftIndex = 0;
 
   void onJoinHandler() {
     if (ctrl.isHost && !chatConnected) {
@@ -230,6 +235,7 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
       // Auto-collapse controls when keyboard opens, expand when closes
       if (_keyboardVisible) {
         _rightControlsCollapsed = true;
+        _showLiveFiltersBottomPanel = false;
       }
     }
 
@@ -240,10 +246,35 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
           // Full-screen video: non-positioned so Stack gets full size
           SizedBox.expand(child: _buildCameraView()),
 
+          // Live gift overlay layer for host/viewers. This is intentionally
+          // placed *above* the video but *below* chat / controls so that
+          // messages and UI always appear on top of SVGA animations.
+          Obx(() {
+            final cfg = chatCtrl.currentLiveGiftOverlay.value;
+            if (cfg == null) {
+              return const SizedBox.shrink();
+            }
+            final duration = giftAnimationDuration(cfg.giftCode);
+            return IgnorePointer(
+              ignoring: true,
+              child: GiftEffectsOverlay(
+                giftCode: cfg.giftCode,
+                giftLabel: cfg.giftLabel,
+                senderName: cfg.senderName,
+                duration: duration,
+                onCompleted: () {
+                  chatCtrl.currentLiveGiftOverlay.value = null;
+                },
+              ),
+            );
+          }),
+
           // Chat overlay (show when toggled on, or when host needs Start Live button)
           Obx(() {
-            final showOverlay = _showChatOverlay ||
-                (ctrl.isHost && !ctrl.streamCtrl.value.localChannelJoined);
+            final showOverlay = !_showLiveFiltersBottomPanel &&
+                (_showChatOverlay ||
+                    (ctrl.isHost &&
+                        !ctrl.streamCtrl.value.localChannelJoined));
             return showOverlay
                 ? _buildChatOverlay()
                 : Positioned(top: 0, left: 0, child: SizedBox.shrink());
@@ -265,6 +296,15 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
           widget.clientRole == ClientRoleType.clientRoleAudience
               ? _buildAppBar(context, isLiveNow)
               : Obx(() => _buildAppBar(context, isLiveNow)),
+
+          // Host filter panel (toggled from the filter icon in sidebar).
+          if (_showLiveFiltersBottomPanel && ctrl.isHost)
+            Positioned(
+              left: 16,
+              right: 16,
+              bottom: _keyboardVisible ? keyboardHeight + 8 : 16,
+              child: _buildLiveFiltersBottomPanel(),
+            ),
 
           // Video Controls (Right side) - Overlay entire screen
           _buildVideoControls(context),
@@ -587,21 +627,29 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
 
   Widget _agoraVideoViewWidget({required RemoteUserAgora uid}) {
     final isLocal = uid.id == 0;
+    // For now, use a simple shared preset index for live filters.
+    // Index 0 = Original (no filter).
+    final EnhancementSettings settings =
+        EnhancementPresets.byIndex(ctrl.liveFilterIndex);
+
     return Container(
       decoration: BoxDecoration(border: Border.all(color: Colors.black)),
-      child: AgoraVideoView(
-        controller: isLocal
-            ? VideoViewController(
-                rtcEngine: ctrl.engine,
-                canvas: const VideoCanvas(uid: 0),
-              )
-            : VideoViewController.remote(
-                rtcEngine: ctrl.engine,
-                canvas: VideoCanvas(uid: uid.id),
-                connection: RtcConnection(
-                  channelId: ctrl.streamCtrl.value.channelId,
+      child: SepImageFilter(
+        settings: settings,
+        child: AgoraVideoView(
+          controller: isLocal
+              ? VideoViewController(
+                  rtcEngine: ctrl.engine,
+                  canvas: const VideoCanvas(uid: 0),
+                )
+              : VideoViewController.remote(
+                  rtcEngine: ctrl.engine,
+                  canvas: VideoCanvas(uid: uid.id),
+                  connection: RtcConnection(
+                    channelId: ctrl.streamCtrl.value.channelId,
+                  ),
                 ),
-              ),
+        ),
       ),
     );
   }
@@ -1631,11 +1679,10 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
                   ),
                   onTap: () {
                     Navigator.pop(context);
+                    // Send the live gift; the host-side overlay (with golden
+                    // border message) is driven by the `giftReceivedPersonal`
+                    // socket event, so we don't show a second local overlay here.
                     chatCtrl.sendLiveGift(giftName: code);
-                    showGiftEffectOverlay(
-                      context,
-                      giftCode: code,
-                    );
                   },
                 );
               },
@@ -1683,6 +1730,126 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
     );
   }
 
+  Widget _buildLiveFiltersBottomPanel() {
+    final names = EnhancementPresets.names;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.85),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Handle bar
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.25),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          const TextView(
+            text: 'Filters',
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 104,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              itemCount: names.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 10),
+              itemBuilder: (context, index) {
+                final selected = index == _liveFilterDraftIndex;
+                final asset = EnhancementPresets.assetForIndex(index);
+
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _liveFilterDraftIndex = index;
+                    });
+                  },
+                  child: Container(
+                    width: 86,
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? AppColors.btnColor.withOpacity(0.18)
+                          : Colors.white.withOpacity(0.04),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: selected ? AppColors.btnColor : Colors.white24,
+                        width: selected ? 2 : 1,
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Expanded(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              color: Colors.black,
+                              child: asset != null
+                                  ? Image.asset(
+                                      asset,
+                                      fit: BoxFit.cover,
+                                      width: double.infinity,
+                                    )
+                                  : const Center(
+                                      child: Icon(
+                                        Icons.filter_alt,
+                                        color: Colors.white70,
+                                        size: 18,
+                                      ),
+                                    ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          names[index],
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            height: 1.0,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 12),
+          AppButton(
+            label: 'Apply',
+            buttonColor: AppColors.primaryColor,
+            onTap: () {
+              // Apply locally (updates preview), and broadcast to all viewers.
+              ctrl.setLiveFilterIndex(_liveFilterDraftIndex);
+              AgoraChatCtrl.find.sendLiveFilterPreset(_liveFilterDraftIndex);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildVideoControls(BuildContext context) {
     return Obx(() {
       if ((!ctrl.streamCtrl.value.localChannelJoined) ||
@@ -1711,6 +1878,9 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
                 onTap: () {
                   setState(() {
                     _rightControlsCollapsed = !_rightControlsCollapsed;
+                    if (_rightControlsCollapsed) {
+                      _showLiveFiltersBottomPanel = false;
+                    }
                   });
                 },
                 child: Container(
@@ -1730,6 +1900,20 @@ class _InstagramLiveFrameState extends State<InstagramLiveFrame>
               ),
               if (!_rightControlsCollapsed) ...[
                 SizedBox(height: 8),
+                if (ctrl.isHost)
+                  IconControl(
+                    icon: Icons.filter_alt,
+                    onTap: () {
+                      setState(() {
+                        if (!_showLiveFiltersBottomPanel) {
+                          _liveFilterDraftIndex = ctrl.liveFilterIndex;
+                      _showChatOverlay = false;
+                        }
+                        _showLiveFiltersBottomPanel =
+                            !_showLiveFiltersBottomPanel;
+                      });
+                    },
+                  ),
                 // Recording button (only for host)
                 Visibility(
                   visible: ctrl.isHost,

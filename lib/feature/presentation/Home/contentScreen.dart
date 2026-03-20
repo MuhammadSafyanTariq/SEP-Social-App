@@ -744,6 +744,7 @@ class _HomeScreenState extends State<Contentscreen> {
         likes: '',
         comments: '',
         footer: footer,
+        audio: item.audio,
       );
     }
   }

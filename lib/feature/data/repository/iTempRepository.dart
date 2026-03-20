@@ -156,6 +156,51 @@ class ITempRepository implements TempRepository {
     }
   }
 
+  /// Fetch music posts only (fileType = "music") using the common postListing
+  /// endpoint but with the `fileType` query parameter set to "music".
+  Future<ResponseData<List<PostData>>> getMusicPosts({
+    int? limit,
+    int? offset,
+  }) async {
+    String? authToken = Preferences.authToken?.bearer;
+
+    final query = <String, String>{
+      'userId': Preferences.uid ?? '',
+      'limit': (limit ?? 10).toString(),
+      'page': (offset ?? 1).toString(),
+      'fileType': 'music',
+    };
+
+    AppUtils.log('🎵 Music posts query: $query');
+
+    try {
+      final response = await _apiMethod.get(
+        url: Urls.globalPostList,
+        query: query,
+        authToken: authToken,
+      );
+
+      final rawPosts = response.data?['data']?['data'] ?? [];
+
+      final parsedData = List<PostData>.from(
+        rawPosts.map((json) => PostData.fromJson(json)),
+      );
+
+      // Extra safety: ensure we only keep posts where fileType == "music".
+      final musicOnly = parsedData
+          .where((post) => (post.fileType ?? '').toLowerCase() == 'music')
+          .toList();
+
+      return ResponseData<List<PostData>>(isSuccess: true, data: musicOnly);
+    } catch (e) {
+      AppUtils.log('Error fetching music posts: $e');
+      return ResponseData<List<PostData>>(
+        isSuccess: false,
+        error: Exception(e),
+      );
+    }
+  }
+
   @override
   Future<ResponseData<List<PostData>>> deletePost(String postId) async {
     try {
@@ -1116,10 +1161,7 @@ class ITempRepository implements TempRepository {
       final result = await _apiMethod.get(
         url: Urls.payoutTransactions,
         authToken: authToken,
-        query: {
-          'page': page.toString(),
-          'limit': limit.toString(),
-        },
+        query: {'page': page.toString(), 'limit': limit.toString()},
       );
 
       if (result.isSuccess) {
@@ -1160,11 +1202,7 @@ class ITempRepository implements TempRepository {
       final result = await _apiMethod.get(
         url: Urls.searchPosts,
         authToken: authToken,
-        query: {
-          'q': query,
-          'page': page.toString(),
-          'limit': limit.toString(),
-        },
+        query: {'q': query, 'page': page.toString(), 'limit': limit.toString()},
       );
 
       if (result.isSuccess) {

@@ -49,6 +49,7 @@ class CreatePostCtrl extends GetxController {
     // <<<<<<< HEAD
     Map<String, dynamic>? location,
     List<Map<String, dynamic>>? uploadedFileUrls,
+    Map<String, dynamic>? audio,
     List<PollItemModel>? pollOptions,
     String fileType,
     String? startTime,
@@ -56,6 +57,16 @@ class CreatePostCtrl extends GetxController {
     String? duration,
   ) async {
     try {
+      if (audio != null) {
+        final audioFile = audio['file']?.toString() ?? '';
+        final trackId = audio['duration'];
+        AppUtils.log(
+          'DEBUG CreatePostCtrl audio payload. categoryId=$categoryId filePrefix="${audioFile.length > 60 ? audioFile.substring(0, 60) + "..." : audioFile}" trackId(duration)=$trackId',
+        );
+      } else {
+        AppUtils.log('DEBUG CreatePostCtrl audio payload is null.');
+      }
+
       List<PollItemModel>? pollOptionsData;
       Map<String, dynamic>? formattedLocation;
       if (fileType == 'post') {
@@ -132,6 +143,7 @@ class CreatePostCtrl extends GetxController {
         content: content,
         location: formattedLocation,
         uploadedFileUrls: uploadedFileUrls,
+        audio: audio,
         fileType: fileType,
         endTime: endTime,
         pollOptions: pollOptionsData,
@@ -141,6 +153,9 @@ class CreatePostCtrl extends GetxController {
       );
 
       if (response.isSuccess) {
+        AppUtils.log(
+          'DEBUG CreatePostCtrl backend response success. data=${response.data}',
+        );
         return;
       } else {
         final error = response.getError;

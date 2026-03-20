@@ -7,6 +7,7 @@ import 'package:sep/feature/data/repository/i_agora_chat_repo.dart';
 import 'package:sep/feature/domain/respository/agora_chat_repo.dart';
 import 'package:sep/feature/presentation/controller/auth_Controller/profileCtrl.dart';
 import 'package:sep/feature/presentation/liveStreaming_screen/live_stream_ctrl.dart';
+import 'package:sep/components/coreComponents/sep_image_filter.dart';
 import 'package:sep/main.dart';
 import 'package:sep/services/socket/socket_helper.dart';
 import 'package:sep/services/storage/preferences.dart';
@@ -34,6 +35,18 @@ enum LiveRequestStatus {
 
 enum GiftTokenEnum { giftToken }
 
+class LiveGiftOverlayConfig {
+  final String giftCode;
+  final String? giftLabel;
+  final String? senderName;
+
+  const LiveGiftOverlayConfig({
+    required this.giftCode,
+    this.giftLabel,
+    this.senderName,
+  });
+}
+
 class AgoraChatCtrl extends GetxController {
   static AgoraChatCtrl get find {
     try {
@@ -51,6 +64,8 @@ class AgoraChatCtrl extends GetxController {
   String? roomId;
   String? hostId;
   RxInt coinsAnimationList = RxInt(0);
+  Rx<LiveGiftOverlayConfig?> currentLiveGiftOverlay =
+      Rx<LiveGiftOverlayConfig?>(null);
 
   final RxInt _liveCount = RxInt(0);
 
@@ -208,21 +223,29 @@ class AgoraChatCtrl extends GetxController {
 
       final amount = (data['amount'] ?? 0).toString().getDouble ?? 0.0;
       liveGiftTotalAmount.value = (liveGiftTotalAmount.value) + amount;
-      // Show visual gift effect for everyone in the room first,
-      // so even if the coin animation fails, the main overlay still runs.
+      // Show visual gift effect for everyone in the room.
       try {
         final giftName = data['giftName']?.toString();
         final senderName = data['senderName']?.toString();
         if (giftName != null && giftName.isNotEmpty) {
-          final ctx =
-              liveOverlayContext ?? Get.context ?? navState.currentContext;
-          if (ctx != null) {
-            showGiftEffectOverlay(
-              ctx,
+          // When the live screen is active, drive the local overlay layer
+          // instead of inserting a global OverlayEntry so chat stays on top.
+          if (liveOverlayContext != null) {
+            currentLiveGiftOverlay.value = LiveGiftOverlayConfig(
               giftCode: giftName,
               giftLabel: giftName,
               senderName: senderName,
             );
+          } else {
+            final ctx = Get.context ?? navState.currentContext;
+            if (ctx != null) {
+              showGiftEffectOverlay(
+                ctx,
+                giftCode: giftName,
+                giftLabel: giftName,
+                senderName: senderName,
+              );
+            }
           }
         }
       } catch (_) {}
@@ -284,24 +307,46 @@ class AgoraChatCtrl extends GetxController {
           'uid': Preferences.uid,
         },
       });
-      final msg =
-          data['message']?.toString() ?? 'You received a gift during live';
-      AppUtils.toast(msg);
 
-      // Also show the full-screen gift animation for the receiver.
+      // Prefer backend-provided message in the golden bottom banner instead of a toast.
+      var backendMessage = data['message']?.toString();
+      // Strip amount like " ($0.48)" from the end, if present.
+      if (backendMessage != null) {
+        final idx = backendMessage.indexOf(' (\$');
+        if (idx > 0) {
+          backendMessage = backendMessage.substring(0, idx);
+        }
+      }
+
+      // Show the full-screen gift animation for the receiver.
       try {
         final giftName = data['giftName']?.toString();
-        final senderName = data['senderName']?.toString();
         if (giftName != null && giftName.isNotEmpty) {
-          final ctx =
-              liveOverlayContext ?? Get.context ?? navState.currentContext;
-          if (ctx != null) {
-            showGiftEffectOverlay(
-              ctx,
+          // If we're on the live screen, drive a local overlay layer instead
+          // of pushing a global OverlayEntry above the entire UI. This keeps
+          // chat/messages visually on top of the SVGA animations.
+          if (liveOverlayContext != null) {
+            currentLiveGiftOverlay.value = LiveGiftOverlayConfig(
               giftCode: giftName,
-              giftLabel: giftName,
-              senderName: senderName,
+              giftLabel:
+                  (backendMessage != null && backendMessage.isNotEmpty)
+                      ? backendMessage
+                      : giftName,
+              senderName: null,
             );
+          } else {
+            final ctx = Get.context ?? navState.currentContext;
+            if (ctx != null) {
+              showGiftEffectOverlay(
+                ctx,
+                giftCode: giftName,
+                giftLabel:
+                    (backendMessage != null && backendMessage.isNotEmpty)
+                        ? backendMessage
+                        : giftName,
+                senderName: null,
+              );
+            }
           }
         }
       } catch (_) {}
@@ -654,6 +699,15 @@ class AgoraChatCtrl extends GetxController {
     });
   }
 
+  /// Broadcast host's selected live filter preset index to all participants.
+  void sendLiveFilterPreset(int index) {
+    _sendMsg({
+      "message": index.toString(),
+      "type": "liveFilter",
+      "roomId": roomId,
+    });
+  }
+
   void hostRequestActive(
     LiveRequestStatus status,
     String msgId,
@@ -744,7 +798,14 @@ class AgoraChatCtrl extends GetxController {
       // final liveRequestStatus = LiveRequestStatus.values
       //     .indexWhere((element) => element.name == msg.message);
 
-      if (msgData.type == GiftTokenEnum.giftToken.name) {
+      if (msgData.type == "liveFilter") {
+        final idx = int.tryParse(msgData.message ?? '');
+        if (idx != null &&
+            idx >= 0 &&
+            idx < EnhancementPresets.names.length) {
+          liveStreamCtrl.setLiveFilterIndex(idx);
+        }
+      } else if (msgData.type == GiftTokenEnum.giftToken.name) {
         final amount = msgData.message!.getInt;
         hostGiftAmountTotal.value = hostGiftAmountTotal.value + amount;
         coinsAnimationList.value = coinsAnimationList.value + 1;

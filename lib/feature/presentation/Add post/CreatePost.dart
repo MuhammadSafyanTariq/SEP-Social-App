@@ -28,9 +28,25 @@ import 'dart:async';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'post_video_preview_screen.dart';
+import 'image_post_filter_screen.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'package:sep/services/music/deezer_api.dart';
+import 'package:sep/feature/presentation/music/deezer_music_picker_screen.dart';
+import 'package:sep/utils/video_filter_exporter.dart';
+
 class CreatePost extends StatefulWidget {
   final String categoryid;
-  CreatePost({super.key, required this.categoryid});
+
+  /// When true, this post will be created as a music post
+  /// by sending `fileType: "music"` to the backend.
+  final bool isMusicPost;
+
+  CreatePost({
+    super.key,
+    required this.categoryid,
+    this.isMusicPost = false,
+  });
 
   @override
   State<CreatePost> createState() => _CreatePostState();
@@ -52,6 +68,13 @@ class _CreatePostState extends State<CreatePost> {
   String? _selectedCountry;
   bool isVideo = false;
   bool _isUploading = false;
+  bool _isExporting = false;
+
+  // Deezer track selected for this post
+  DeezerTrack? _selectedDeezerTrack;
+  String? _musicFileName;
+  AudioPlayer? _audioPlayer;
+  bool _isMusicPlaying = false;
 
   // Advertisement pricing variables
   bool showAdvertisementWarning = false;
@@ -68,6 +91,51 @@ class _CreatePostState extends State<CreatePost> {
       profileCtrl.getProfileDetails();
     });
     fetchCategories();
+  }
+
+  Future<void> _pickMusicForPost() async {
+    final track = await Navigator.of(context).push<DeezerTrack>(
+      MaterialPageRoute(
+        builder: (_) => const DeezerMusicPickerScreen(),
+        fullscreenDialog: true,
+      ),
+    );
+    if (track != null) {
+      setState(() {
+        _selectedDeezerTrack = track;
+        _musicFileName = null;
+        _isMusicPlaying = false;
+      });
+      AppUtils.toast('Music added: ${track.title}');
+    }
+  }
+
+  Future<void> _toggleMusicPlayback() async {
+    if (_selectedDeezerTrack == null) return;
+    try {
+      _audioPlayer ??= AudioPlayer();
+      if (_isMusicPlaying) {
+        await _audioPlayer?.pause();
+        setState(() => _isMusicPlaying = false);
+      } else {
+        await _audioPlayer!.play(UrlSource(_selectedDeezerTrack!.previewUrl));
+        setState(() => _isMusicPlaying = true);
+      }
+    } catch (e) {
+      AppUtils.toastError('Error playing preview: $e');
+    }
+  }
+
+  void _removeMusicFile() {
+    setState(() {
+      _selectedDeezerTrack = null;
+      _musicFileName = null;
+      _audioPlayer?.stop();
+      _audioPlayer?.dispose();
+      _audioPlayer = null;
+      _isMusicPlaying = false;
+    });
+    AppUtils.toast('Music removed');
   }
 
   // Helper method to sort categories in the specified order
@@ -220,16 +288,21 @@ class _CreatePostState extends State<CreatePost> {
 
       for (var file in pickedFiles.take(remainingSlots)) {
         final fileData = File(file.path);
-        // 👇 Await outside setState
-        // final size = await getImageSize(fileData);
+
+        // Open image filter screen before adding
+        final filteredFile = await Navigator.of(context).push<File?>(
+          MaterialPageRoute(
+            builder: (_) => ImagePostFilterScreen(imageFile: fileData),
+          ),
+        );
+
+        if (filteredFile == null) continue;
 
         setState(() {
           _mediaItems.add(
             MediaItem(
-              file: fileData,
+              file: filteredFile,
               isVideo: false,
-              // x: size.width,   // You can store size if needed
-              // y: size.height,
             ),
           );
         });
@@ -262,48 +335,104 @@ class _CreatePostState extends State<CreatePost> {
   void _pickVideo() async {
     final XFile? media = await _picker.pickVideo(source: ImageSource.gallery);
 
-    if (media != null) {
-      // Check video duration before proceeding
-      final controller = VideoPlayerController.file(File(media.path));
-      try {
-        await controller.initialize();
-        final duration = controller.value.duration;
+    if (media == null) return;
 
-        // Check if video is longer than 90 seconds
-        if (duration.inSeconds > 90) {
-          AppUtils.toastError("You can't upload videos longer than 90 seconds");
-          await controller.dispose();
-          return;
-        }
+    // Check video duration before proceeding
+    final controller = VideoPlayerController.file(File(media.path));
+    try {
+      await controller.initialize();
+      final duration = controller.value.duration;
 
+      // Check if video is longer than 90 seconds
+      if (duration.inSeconds > 90) {
+        AppUtils.toastError("You can't upload videos longer than 90 seconds");
         await controller.dispose();
-      } catch (e) {
-        AppUtils.log("Error checking video duration: $e");
+        return;
+      }
+    } catch (e) {
+      AppUtils.log("Error checking video duration: $e");
+      AppUtils.toastError(
+        "Error processing video. Please try another video.",
+      );
+      await controller.dispose();
+      return;
+    }
+
+    await controller.dispose();
+
+    // Go to preview where trim + filters are available.
+    final VideoPreviewResult? confirmedResult =
+        await Navigator.of(context).push<VideoPreviewResult?>(
+      MaterialPageRoute(
+        builder: (_) => PostVideoPreviewScreen(
+          videoFile: File(media.path),
+          caption: _postController.text,
+          onPublish: null, // confirm-only mode
+        ),
+      ),
+    );
+
+    if (confirmedResult == null) return;
+
+    final thumbnail = await getThumbnail(
+      confirmedResult.videoFile.path,
+    );
+
+    setState(() {
+      _mediaItems.add(
+        MediaItem(
+          file: confirmedResult.videoFile,
+          isVideo: true,
+          thumnailFile: thumbnail,
+          filterPresetIndex: confirmedResult.filterPresetIndex,
+          videoConfirmed: true,
+        ),
+      );
+    });
+  }
+
+  Future<void> _exportAndSubmitConfirmedVideo(int videoIndex) async {
+    final videoItem = _mediaItems[videoIndex];
+    final presetIndex = videoItem.filterPresetIndex ?? 0;
+
+    setState(() {
+      _isExporting = true;
+    });
+    try {
+      final exported = await VideoFilterExporter.applyPresetToVideo(
+        inputFile: videoItem.file,
+        presetIndex: presetIndex,
+      );
+
+      if (exported == null || !exported.existsSync()) {
         AppUtils.toastError(
-          "Error processing video. Please try another video.",
+          'Failed to apply selected filter. Please try again.',
         );
         return;
       }
 
-      // String networkThumbnailUrl = "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhgBO9es3gnfmoILLgaplnrfQCAqYKl_rGf2TqRead8WjoMnpJ-rS7fFWEBn0oJy_-U1DFeTM-Gle7-Humwy3KDO8EjV0G3a7M6QOkEd2CPXaRbYWR94aRuiYp4sn9gttYvNpwS5X1etudg/s1600/file-MrylO8jADD.png";
-      // final size = await getVideoResolution(media.path);
-      final thumbnail = await getThumbnail(
-        media.path,
-        // , size.height, size.width
-      );
-
+      final thumbnail = await getThumbnail(exported.path);
       setState(() {
-        _mediaItems.add(
-          MediaItem(
-            file: File(media.path),
-            isVideo: true,
-            // thumbnailUrl: networkThumbnailUrl,
-            thumnailFile: thumbnail,
-            // x: size.width,
-            // y: size.height
-          ),
+        _mediaItems[videoIndex] = MediaItem(
+          file: exported,
+          isVideo: true,
+          thumnailFile: thumbnail,
+          thumbnailUrl: _mediaItems[videoIndex].thumbnailUrl,
+          x: _mediaItems[videoIndex].x,
+          y: _mediaItems[videoIndex].y,
+          // Already baked into the exported file.
+          filterPresetIndex: 0,
+          videoConfirmed: true,
         );
       });
+
+      await _submitPost(context);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isExporting = false;
+        });
+      }
     }
   }
 
@@ -377,6 +506,7 @@ class _CreatePostState extends State<CreatePost> {
 
       // AppLoader.showLoader(context);
       List<Map<String, dynamic>> uploadedFiles = [];
+      String? audioUrl;
 
       // try {
 
@@ -493,6 +623,24 @@ class _CreatePostState extends State<CreatePost> {
         }
       }
 
+      // Use Deezer preview URL directly (no upload required)
+      if (_selectedDeezerTrack != null) {
+        // Deezer preview URLs are time-limited. We still store `file` as
+        // the preview URL, but we store `trackId` in `audio.duration` so we
+        // can resolve a fresh preview later.
+        audioUrl = _selectedDeezerTrack!.previewUrl;
+        AppUtils.log('Using Deezer preview URL: $audioUrl');
+      }
+
+      // Debug: trackId and preview exp (if we can parse it)
+      if (_selectedDeezerTrack != null && audioUrl != null) {
+        final expMatch = RegExp(r'exp=(\d+)').firstMatch(audioUrl);
+        final expUnix = expMatch?.group(1);
+        AppUtils.log(
+          'DEBUG Deezer track selected. trackId=${_selectedDeezerTrack!.id} exp=$expUnix previewPrefix="${audioUrl.length > 60 ? audioUrl.substring(0, 60) + "..." : audioUrl}"',
+        );
+      }
+
       final categoryId = selectedCategory?.id ?? '';
       AppUtils.log("Final category ID before API call: '$categoryId'");
       AppUtils.log("Selected category: ${selectedCategory?.name}");
@@ -526,8 +674,17 @@ class _CreatePostState extends State<CreatePost> {
                   "country": _selectedCountry ?? " ",
                 },
                 uploadedFiles,
+                audioUrl != null
+                    ? {
+                        'file': audioUrl,
+                        'title': _selectedDeezerTrack?.title ?? _musicFileName ?? 'Music',
+                        // Persist Deezer track id for later preview refresh.
+                        // `PostAudio.duration` exists in our model, but isn't used for UI.
+                        'duration': _selectedDeezerTrack?.id,
+                      }
+                    : null,
                 null,
-                "post",
+                widget.isMusicPost ? "music" : "post",
                 null,
                 null,
                 null,
@@ -643,11 +800,18 @@ class _CreatePostState extends State<CreatePost> {
               "country": _selectedCountry ?? " ",
             },
             uploadedFiles,
+            audioUrl != null
+                ? {
+                    'file': audioUrl,
+                    'title': _selectedDeezerTrack?.title ?? _musicFileName ?? 'Music',
+                    'duration': _selectedDeezerTrack?.id,
+                  }
+                : null,
             null,
-            "post",
+            widget.isMusicPost ? "music" : "post",
             null,
             null,
-            duration, // Pass duration in days for advertisement posts
+            duration,
           )
           .applyLoader;
 
@@ -708,6 +872,7 @@ class _CreatePostState extends State<CreatePost> {
 
   @override
   Widget build(BuildContext context) {
+    final hasVideoSelected = _mediaItems.any((item) => item.isVideo);
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -731,16 +896,70 @@ class _CreatePostState extends State<CreatePost> {
             padding: EdgeInsets.only(right: 16),
             child: Center(
               child: GestureDetector(
-                onTap: _isUploading ? null : () => _submitPost(context),
+                  onTap: (_isUploading || _isExporting)
+                    ? null
+                    : () {
+                        final hasVideo =
+                            _mediaItems.any((item) => item.isVideo == true);
+
+                        if (!hasVideo) {
+                          _submitPost(context);
+                          return;
+                        }
+
+                        // For now, preview the first video in the selection.
+                        final videoIndex =
+                            _mediaItems.indexWhere((item) => item.isVideo);
+                        final videoItem = _mediaItems[videoIndex];
+
+                        if (videoItem.videoConfirmed) {
+                          unawaited(
+                            _exportAndSubmitConfirmedVideo(videoIndex),
+                          );
+                          return;
+                        }
+
+                        context.pushNavigator(
+                          PostVideoPreviewScreen(
+                            videoFile: videoItem.file,
+                            caption: _postController.text,
+                            initialPresetIndex:
+                                videoItem.filterPresetIndex ?? 0,
+                            onPublish: (editedVideoFile) async {
+                              if (!mounted) return;
+                              // Keep the selected thumbnail reasonably up-to-date.
+                              final thumbnail = await getThumbnail(
+                                editedVideoFile.path,
+                              );
+                              setState(() {
+                                _mediaItems[videoIndex] = MediaItem(
+                                  file: editedVideoFile,
+                                  isVideo: true,
+                                  thumnailFile: thumbnail,
+                                  thumbnailUrl:
+                                      _mediaItems[videoIndex].thumbnailUrl,
+                                  x: _mediaItems[videoIndex].x,
+                                  y: _mediaItems[videoIndex].y,
+                                  // The exported file already has the filter baked in,
+                                  // so don't apply the overlay filter again next time.
+                                  filterPresetIndex: 0,
+                                  videoConfirmed: true,
+                                );
+                              });
+                              await _submitPost(context);
+                            },
+                          ),
+                        );
+                      },
                 child: Container(
                   padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
-                    color: _isUploading
+                    color: (_isUploading || _isExporting)
                         ? AppColors.greenlight.withOpacity(0.6)
                         : AppColors.greenlight,
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: _isUploading
+                  child: (_isUploading || _isExporting)
                       ? Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -784,6 +1003,11 @@ class _CreatePostState extends State<CreatePost> {
           children: [
             // Media Upload Section
             _buildMediaUploadSection(),
+
+            SizedBox(height: 20),
+
+            // Optional music selection for this post
+            if (!hasVideoSelected) _buildMusicSection(),
 
             SizedBox(height: 20),
 
@@ -878,6 +1102,149 @@ class _CreatePostState extends State<CreatePost> {
                   ),
                 ],
               ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMusicSection() {
+    final hasTrack = _selectedDeezerTrack != null;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextView(
+          text: "Add Music (optional)",
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+            color: Colors.grey[700],
+          ),
+        ),
+        SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            color: hasTrack
+                ? AppColors.btnColor.withOpacity(0.06)
+                : Colors.grey[50],
+            border: Border.all(
+              color: hasTrack ? AppColors.btnColor.withOpacity(0.4) : Colors.grey[300]!,
+            ),
+          ),
+          child: Row(
+            children: [
+              InkWell(
+                onTap: _pickMusicForPost,
+                borderRadius: BorderRadius.circular(24),
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.black,
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        hasTrack
+                            ? Icons.library_music
+                            : Icons.library_music_outlined,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                      SizedBox(width: 6),
+                      TextView(
+                        text: hasTrack ? 'Change' : 'Add Music',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              SizedBox(width: 12),
+              if (hasTrack)
+                Expanded(
+                  child: Row(
+                    children: [
+                      GestureDetector(
+                        onTap: _toggleMusicPlayback,
+                        child: Container(
+                          padding: EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.black87,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            _isMusicPlaying ? Icons.pause : Icons.play_arrow,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              _selectedDeezerTrack!.artist,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey[600],
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              _selectedDeezerTrack!.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: _removeMusicFile,
+                        child: Container(
+                          padding: EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.redAccent,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.close,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                Expanded(
+                  child: Text(
+                    'Search & attach a background track to this post.',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  ),
+                ),
             ],
           ),
         ),
@@ -1664,6 +2031,8 @@ class MediaItem {
   final Uint8List? thumnailFile;
   final double? x;
   final double? y;
+  final int? filterPresetIndex;
+  final bool videoConfirmed;
   // Change this to String?
 
   MediaItem({
@@ -1673,5 +2042,7 @@ class MediaItem {
     this.thumnailFile,
     this.x,
     this.y,
+    this.filterPresetIndex,
+    this.videoConfirmed = false,
   });
 }

@@ -210,6 +210,14 @@ class LiveStreamCtrl extends GetxController {
   final Rx<StreamControlsModel> streamCtrl = Rx(StreamControlsModel());
   Rx<ProfileDataModel> hostProfileData = Rx(ProfileDataModel());
   RxBool videoRequestButtonEnable = RxBool(true);
+  // Shared live filter preset index (0 = Original).
+  RxInt liveFilterIndexRx = RxInt(0);
+
+  int get liveFilterIndex => liveFilterIndexRx.value;
+
+  void setLiveFilterIndex(int index) {
+    liveFilterIndexRx.value = index;
+  }
 
   ///---------------------------------------------------------------------------
   /// Recording variables

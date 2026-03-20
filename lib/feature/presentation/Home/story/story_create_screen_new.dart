@@ -11,8 +11,9 @@ import 'package:sep/utils/appUtils.dart';
 import 'package:sep/components/coreComponents/EditText.dart';
 import 'package:video_player/video_player.dart';
 import 'package:audioplayers/audioplayers.dart';
-import 'package:flutter_file_dialog/flutter_file_dialog.dart';
-import 'package:path/path.dart' as path;
+import 'package:sep/components/coreComponents/sep_image_filter.dart';
+import 'package:sep/services/music/deezer_api.dart';
+import 'package:sep/feature/presentation/music/deezer_music_picker_screen.dart';
 
 enum StoryMediaType { image, video, audio }
 
@@ -25,7 +26,7 @@ class StoryCreateScreenNew extends StatefulWidget {
 
 class _StoryCreateScreenNewState extends State<StoryCreateScreenNew> {
   File? _selectedFile;
-  File? _selectedMusicFile;
+  DeezerTrack? _selectedDeezerTrack;
   StoryMediaType _mediaType = StoryMediaType.image;
   final ImagePicker _picker = ImagePicker();
   final TextEditingController _captionController = TextEditingController();
@@ -35,6 +36,7 @@ class _StoryCreateScreenNewState extends State<StoryCreateScreenNew> {
   AudioPlayer? _audioPlayer;
   String? _musicFileName;
   bool _isMusicPlaying = false;
+  int _selectedFilterIndex = 0;
 
   @override
   void dispose() {
@@ -74,7 +76,7 @@ class _StoryCreateScreenNewState extends State<StoryCreateScreenNew> {
             _selectedFile = file;
             _mediaType = StoryMediaType.video;
             // Clear music when selecting video
-            _selectedMusicFile = null;
+            _selectedDeezerTrack = null;
             _musicFileName = null;
             _audioPlayer?.stop();
           });
@@ -94,90 +96,67 @@ class _StoryCreateScreenNewState extends State<StoryCreateScreenNew> {
   }
 
   Future<void> _pickMusicForImage() async {
-    // Only allow music for images
     if (_mediaType != StoryMediaType.image) {
       AppUtils.toastError('Music can only be added to image stories');
       return;
     }
 
-    try {
-      final params = OpenFileDialogParams(
-        dialogType: OpenFileDialogType.document,
-        sourceType: SourceType.photoLibrary,
-        fileExtensionsFilter: ['mp3'],
-      );
-      final filePath = await FlutterFileDialog.pickFile(params: params);
+    final track = await Navigator.of(context).push<DeezerTrack>(
+      MaterialPageRoute(
+        builder: (_) => const DeezerMusicPickerScreen(),
+        fullscreenDialog: true,
+      ),
+    );
 
-      if (filePath != null) {
-        final file = File(filePath);
-        final fileName = path.basename(filePath);
-        final extension = path.extension(filePath).toLowerCase();
-
-        // Validate MP3 format
-        if (extension != '.mp3') {
-          AppUtils.toastError(
-            'Only MP3 format is supported. Please select an MP3 file.',
-          );
-          return;
-        }
-
-        setState(() {
-          _selectedMusicFile = file;
-          _musicFileName = fileName;
-          _isMusicPlaying = false;
-        });
-
-        // Auto-play the music
-        _startMusicPlayback();
-
-        AppUtils.toast('Music added: $fileName');
-      }
-    } catch (e) {
-      AppUtils.toastError('Error selecting music: $e');
+    if (track != null) {
+      setState(() {
+        _selectedDeezerTrack = track;
+        _musicFileName = track.title;
+        _isMusicPlaying = false;
+      });
+      // Auto-play the Deezer preview
+      _startMusicPlayback();
+      AppUtils.toast('Music added: ${track.title}');
     }
   }
 
   Future<void> _startMusicPlayback() async {
-    if (_selectedMusicFile == null || _mediaType != StoryMediaType.image) {
+    if (_selectedDeezerTrack == null || _mediaType != StoryMediaType.image) {
       return;
     }
 
     try {
       _audioPlayer ??= AudioPlayer();
-      await _audioPlayer!.setReleaseMode(
-        ReleaseMode.loop,
-      ); // Enable continuous loop
-      await _audioPlayer!.play(DeviceFileSource(_selectedMusicFile!.path));
+      await _audioPlayer!.setReleaseMode(ReleaseMode.loop);
+      await _audioPlayer!.play(UrlSource(_selectedDeezerTrack!.previewUrl));
       setState(() {
         _isMusicPlaying = true;
       });
     } catch (e) {
-      AppUtils.toastError('Error playing music: $e');
+      AppUtils.toastError('Error playing preview: $e');
     }
   }
 
   Future<void> _toggleMusicPlayback() async {
-    if (_selectedMusicFile == null || _mediaType != StoryMediaType.image) {
+    if (_selectedDeezerTrack == null || _mediaType != StoryMediaType.image) {
       return;
     }
 
     try {
       if (_isMusicPlaying) {
         await _audioPlayer?.pause();
-        setState(() {
-          _isMusicPlaying = false;
-        });
+        setState(() => _isMusicPlaying = false);
       } else {
         await _startMusicPlayback();
       }
     } catch (e) {
-      AppUtils.toastError('Error playing music: $e');
+      AppUtils.toastError('Error playing preview: $e');
     }
   }
 
   void _removeMusicFile() {
     setState(() {
-      _selectedMusicFile = null;
+      _selectedDeezerTrack = null;
       _musicFileName = null;
       _audioPlayer?.stop();
       _audioPlayer?.dispose();
@@ -187,12 +166,7 @@ class _StoryCreateScreenNewState extends State<StoryCreateScreenNew> {
     AppUtils.toast('Music removed');
   }
 
-  Future<void> _pickAudio() async {
-    // For audio, you would typically use a file picker
-    // This is a placeholder - implement based on your file picker package
-    AppUtils.toast('Audio selection coming soon!');
-    // TODO: Implement audio file picking
-  }
+  // _pickAudio placeholder is currently unused.
 
   Future<void> _createStory() async {
     if (_selectedFile == null) {
@@ -225,23 +199,23 @@ class _StoryCreateScreenNewState extends State<StoryCreateScreenNew> {
 
       AppUtils.log('File uploaded: $fullUrl');
 
-      // Upload music file if selected (for image stories)
+      // Use Deezer preview URL directly (no upload required)
       String? musicUrl;
-      if (_mediaType == StoryMediaType.image && _selectedMusicFile != null) {
-        AppUtils.log('Uploading music file: ${_selectedMusicFile!.path}');
-        final uploadedMusicFiles = await createPostCtrl.uploadFiles([
-          _selectedMusicFile!,
-        ]);
+      if (_mediaType == StoryMediaType.image && _selectedDeezerTrack != null) {
+        // Deezer preview URLs are time-limited. Store track id too,
+        // and resolve a fresh preview when viewing the story later.
+        musicUrl =
+            '${_selectedDeezerTrack!.previewUrl}::trackId=${_selectedDeezerTrack!.id}';
+        AppUtils.log('Using Deezer preview URL for story: $musicUrl');
+      }
 
-        if (uploadedMusicFiles.isNotEmpty) {
-          final musicFileUrl = uploadedMusicFiles[0]['file'] as String;
-          musicUrl = musicFileUrl.startsWith('http')
-              ? musicFileUrl
-              : '$baseUrl$musicFileUrl';
-          AppUtils.log('Music uploaded: $musicUrl');
-        } else {
-          AppUtils.log('Warning: Music upload failed');
-        }
+      // Extra debug for testing Deezer audio persistence.
+      if (_selectedDeezerTrack != null && musicUrl != null) {
+        final expMatch = RegExp(r'exp=(\d+)').firstMatch(musicUrl);
+        final expUnix = expMatch?.group(1);
+        AppUtils.log(
+          'DEBUG Story music payload. trackId=${_selectedDeezerTrack!.id} exp=$expUnix musicPrefix="${musicUrl.length > 60 ? musicUrl.substring(0, 60) + "..." : musicUrl}"',
+        );
       }
 
       // Create story based on media type
@@ -572,36 +546,39 @@ class _StoryCreateScreenNewState extends State<StoryCreateScreenNew> {
       );
     }
 
+    final settings = EnhancementPresets.byIndex(_selectedFilterIndex);
+
     if (_mediaType == StoryMediaType.image) {
-      return Image.file(_selectedFile!, fit: BoxFit.contain);
-    } else if (_mediaType == StoryMediaType.video && _videoController != null) {
-      return Stack(
-        alignment: Alignment.center,
-        children: [
-          AspectRatio(
-            aspectRatio: _videoController!.value.aspectRatio,
-            child: VideoPlayer(_videoController!),
-          ),
-          // Play/Pause overlay
-          if (!_videoController!.value.isPlaying)
-            Icon(Icons.play_circle_outline, size: 80, color: Colors.white70),
-        ],
+      return SepImageFilter(
+        settings: settings,
+        child: Image.file(_selectedFile!, fit: BoxFit.contain),
+      );
+    } else if (_mediaType == StoryMediaType.video &&
+        _videoController != null) {
+      return SepImageFilter(
+        settings: settings,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            AspectRatio(
+              aspectRatio: _videoController!.value.aspectRatio,
+              child: VideoPlayer(_videoController!),
+            ),
+            if (!_videoController!.value.isPlaying)
+              const Icon(
+                Icons.play_circle_outline,
+                size: 80,
+                color: Colors.white70,
+              ),
+          ],
+        ),
       );
     }
 
     return SizedBox();
   }
 
-  String _getMediaTypeLabel() {
-    switch (_mediaType) {
-      case StoryMediaType.image:
-        return 'Image Story';
-      case StoryMediaType.video:
-        return 'Video Story';
-      case StoryMediaType.audio:
-        return 'Audio Story';
-    }
-  }
+  // _getMediaTypeLabel helper is currently unused.
 
   Widget _buildModernActionButton({
     required IconData icon,
@@ -691,23 +668,17 @@ class _StoryCreateScreenNewState extends State<StoryCreateScreenNew> {
                           ),
                           child: Column(
                             children: [
-                              _buildModernActionButton(
-                                icon: Icons.edit_outlined,
-                                onPressed: _showMediaTypeDialog,
-                                heroTag: 'change',
-                                backgroundColor: Colors.black.withOpacity(0.6),
-                              ),
                               // Add music button for images only
                               if (_mediaType == StoryMediaType.image)
                                 Padding(
                                   padding: const EdgeInsets.only(top: 12.0),
                                   child: _buildModernActionButton(
-                                    icon: _selectedMusicFile != null
+                                    icon: _selectedDeezerTrack != null
                                         ? Icons.library_music
                                         : Icons.library_music_outlined,
                                     onPressed: _pickMusicForImage,
                                     heroTag: 'music',
-                                    backgroundColor: _selectedMusicFile != null
+                                    backgroundColor: _selectedDeezerTrack != null
                                         ? AppColors.primaryColor.withOpacity(
                                             0.9,
                                           )
@@ -740,7 +711,7 @@ class _StoryCreateScreenNewState extends State<StoryCreateScreenNew> {
                                   ),
                                 ),
                               if (_mediaType == StoryMediaType.image &&
-                                  _selectedMusicFile != null)
+                                  _selectedDeezerTrack != null)
                                 Padding(
                                   padding: const EdgeInsets.only(top: 12.0),
                                   child: _buildModernActionButton(
@@ -760,7 +731,7 @@ class _StoryCreateScreenNewState extends State<StoryCreateScreenNew> {
                       ),
                       // Music indicator for images
                       if (_mediaType == StoryMediaType.image &&
-                          _selectedMusicFile != null)
+                          _selectedDeezerTrack != null)
                         Positioned(
                           bottom: 20,
                           left: 20,
@@ -861,12 +832,13 @@ class _StoryCreateScreenNewState extends State<StoryCreateScreenNew> {
                     ],
                   ),
                 ),
-                // Caption input
+                _buildStoryFilterRow(),
                 Container(
-                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                   decoration: BoxDecoration(
                     color: Colors.grey[900],
-                    boxShadow: [
+                    boxShadow: const [
                       BoxShadow(
                         color: Colors.black26,
                         blurRadius: 8,
@@ -877,10 +849,12 @@ class _StoryCreateScreenNewState extends State<StoryCreateScreenNew> {
                   child: EditText(
                     controller: _captionController,
                     hint: '✨ Add a caption... (optional)',
-                    textStyle: TextStyle(color: Colors.white, fontSize: 15),
-                    hintStyle: TextStyle(color: Colors.white54, fontSize: 15),
+                    textStyle:
+                        const TextStyle(color: Colors.white, fontSize: 15),
+                    hintStyle:
+                        const TextStyle(color: Colors.white54, fontSize: 15),
                     isFilled: true,
-                    filledColor: Colors.grey[850],
+                    filledColor: Colors.grey,
                     borderColor: Colors.transparent,
                     radius: 16,
                     maxLength: 100,
@@ -889,6 +863,77 @@ class _StoryCreateScreenNewState extends State<StoryCreateScreenNew> {
                 ),
               ],
             ),
+    );
+  }
+
+  Widget _buildStoryFilterRow() {
+    final names = EnhancementPresets.names;
+    return Container(
+      height: 70,
+      color: Colors.black,
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        scrollDirection: Axis.horizontal,
+        itemCount: names.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final selected = index == _selectedFilterIndex;
+          return GestureDetector(
+            onTap: () {
+              setState(() {
+                _selectedFilterIndex = index;
+              });
+            },
+            child: Container(
+              width: 80,
+              decoration: BoxDecoration(
+                color: selected
+                    ? AppColors.btnColor.withOpacity(0.15)
+                    : Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: selected ? AppColors.btnColor : Colors.white24,
+                  width: selected ? 2 : 1,
+                ),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        color: Colors.black,
+                        child: EnhancementPresets.assetForIndex(index) != null
+                            ? Image.asset(
+                                EnhancementPresets.assetForIndex(index)!,
+                                fit: BoxFit.cover,
+                              )
+                            : const Icon(
+                                Icons.filter_alt,
+                                size: 20,
+                                color: Colors.white70,
+                              ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    names[index],
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }

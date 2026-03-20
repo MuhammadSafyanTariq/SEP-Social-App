@@ -8,11 +8,14 @@ import 'package:sep/utils/appUtils.dart';
 import 'package:sep/utils/extensions/extensions.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
+import 'package:sep/services/music/deezer_api.dart';
 import '../../../../components/styles/appColors.dart';
 import '../../../../utils/image_utils.dart';
 import '../../../data/models/dataModels/post_data.dart';
 import '../../../../utils/video_quality_helper.dart';
 import 'dart:ui' as ui;
+import 'package:audioplayers/audioplayers.dart';
+import 'package:visibility_detector/visibility_detector.dart';
 
 List<String> videoExtensions = [
   "mp4",
@@ -63,6 +66,7 @@ class PostCard extends StatelessWidget {
   final PostCardHeader header;
   final Widget footer;
   final String postId;
+  final PostAudio? audio;
 
   PostCard({
     Key? key,
@@ -74,9 +78,36 @@ class PostCard extends StatelessWidget {
     required this.header,
     required this.footer,
     required this.postId,
+    this.audio,
   }) : super(key: key);
 
   final PageController _pageController = PageController();
+  static final AudioPlayer _sharedAudioPlayer = AudioPlayer();
+  static String? _currentAudioUrl;
+  static final Set<String> _audioDebugLoggedPostIds = <String>{};
+  static bool _audioEnabled = true;
+
+  /// Stop any currently playing post audio (shared across all PostCards).
+  /// This is needed when leaving the Home tab, because some widgets may remain
+  /// mounted and `VisibilityDetector` might not fire immediately.
+  static void stopSharedAudio() {
+    try {
+      // Fire-and-forget: we don't want tab switching to wait on audio I/O.
+      _sharedAudioPlayer.stop();
+    } catch (_) {
+      // Ignore audio stop failures.
+    }
+    _currentAudioUrl = null;
+  }
+
+  /// Enable/disable post-audio autoplay globally.
+  ///
+  /// When disabled, `_AutoPlayPostAudio` will not start playback even if
+  /// `VisibilityDetector` reports the widget as visible.
+  static void setAudioEnabled(bool enabled) {
+    _audioEnabled = enabled;
+    if (!enabled) stopSharedAudio();
+  }
 
   bool isVideo(FileElement file) {
     // First check the type field if available
@@ -345,6 +376,21 @@ class PostCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isSingleImage = imageUrls.isNotEmpty && imageUrls.length == 1;
     final screenHeight = MediaQuery.of(context).size.height;
+    final hasAudio = audio != null && (audio!.file ?? '').isNotEmpty;
+    final audioUrl =
+        hasAudio ? AppUtils.configImageUrl(audio!.file ?? '') : null;
+    final int? deezerTrackId = audio?.duration;
+
+    // Debug: confirm backend returns what we expect for autoplay.
+    if (hasAudio && !_audioDebugLoggedPostIds.contains(postId)) {
+      _audioDebugLoggedPostIds.add(postId);
+      final fileRaw = audio!.file ?? '';
+      final filePreview =
+          fileRaw.length > 90 ? '${fileRaw.substring(0, 90)}...' : fileRaw;
+      AppUtils.log(
+        'DEBUG post audio model. postId=$postId file="$filePreview" duration(trackId?)=${audio?.duration} title="${audio?.title}"',
+      );
+    }
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(40),
@@ -357,6 +403,13 @@ class PostCard extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             header,
+            // Helper that auto-plays this post's audio when visible.
+            if (hasAudio && audioUrl != null)
+              _AutoPlayPostAudio(
+                url: audioUrl,
+                postId: postId,
+                deezerTrackId: deezerTrackId,
+              ),
             Visibility(
               visible: caption.isNotNullEmpty,
               child: Padding(
@@ -364,7 +417,6 @@ class PostCard extends StatelessWidget {
                 child: ReadMoreText(text: caption),
               ),
             ),
-
             if (imageUrls.isNotEmpty)
               Flexible(
                 child: ConstrainedBox(
@@ -420,6 +472,169 @@ class PostCard extends StatelessWidget {
             footer,
           ],
         ),
+      ),
+    );
+  }
+
+}
+
+class _AutoPlayPostAudio extends StatefulWidget {
+  final String url;
+  final String postId;
+  final int? deezerTrackId;
+
+  const _AutoPlayPostAudio({
+    Key? key,
+    required this.url,
+    required this.postId,
+    required this.deezerTrackId,
+  }) : super(key: key);
+
+  @override
+  State<_AutoPlayPostAudio> createState() => _AutoPlayPostAudioState();
+}
+
+class _AutoPlayPostAudioState extends State<_AutoPlayPostAudio> {
+  bool _isPlaying = false;
+
+  int? _maybeTrackIdFromDuration(int? value) {
+    if (value == null) return null;
+    // Deezer track ids are typically large; Deezer "duration (seconds)" is small.
+    return value > 100000 ? value : null;
+  }
+
+  int? _getUnixExpFromDeezerUrl(String url) {
+    // Deezer signed preview URLs contain `exp=<unixSeconds>` inside `hdnea`.
+    // If parsing fails, return null and just play the URL as-is.
+    try {
+      final match = RegExp(r'exp=(\d+)').firstMatch(url);
+      if (match == null) return null;
+      return int.tryParse(match.group(1) ?? '');
+    } catch (_) {
+      return null;
+    }
+  }
+
+  int? _extractDeezerTrackId(String rawValue) {
+    const marker = '::trackId=';
+    if (!rawValue.contains(marker)) return null;
+    final idPart = rawValue.split(marker).last;
+    return int.tryParse(idPart);
+  }
+
+  Future<String> _resolveAudioPlaybackUrl(String rawValue) async {
+    // Best path: use persisted deezerTrackId from PostAudio.duration.
+    final trackIdFromModel = _maybeTrackIdFromDuration(widget.deezerTrackId);
+    if (trackIdFromModel != null) {
+      final freshPreviewUrl = await DeezerApi.previewUrlForTrackId(trackIdFromModel);
+      if (freshPreviewUrl != null && freshPreviewUrl.isNotEmpty) {
+        AppUtils.log('Deezer preview resolved from trackId=$trackIdFromModel exp=${_getUnixExpFromDeezerUrl(freshPreviewUrl)}');
+        return freshPreviewUrl;
+      }
+    }
+
+    final trackId = _extractDeezerTrackId(rawValue);
+    if (trackId != null) {
+      // Some signed URLs can expire very quickly; if `exp` is too close,
+      // fetch again once before playback.
+      for (var attempt = 0; attempt < 2; attempt++) {
+        final freshPreviewUrl =
+            await DeezerApi.previewUrlForTrackId(trackId);
+        if (freshPreviewUrl == null || freshPreviewUrl.isEmpty) continue;
+
+        final expUnix = _getUnixExpFromDeezerUrl(freshPreviewUrl);
+        final nowUnix = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+
+        // If we can read exp and it's within the next 10 seconds, retry.
+        if (expUnix != null && (expUnix - nowUnix) <= 10) {
+          continue;
+        }
+
+        // Avoid logging full signed URLs; tokenized URLs can be large.
+        AppUtils.log('Deezer preview resolved. trackId=$trackId exp=$expUnix');
+        return freshPreviewUrl;
+      }
+    }
+
+    // Fallback: use the stored previewUrl part if present.
+    const marker = '::trackId=';
+    if (rawValue.contains(marker)) {
+      return rawValue.split(marker).first;
+    }
+
+    return rawValue;
+  }
+
+  Future<void> _handleVisibilityChanged(VisibilityInfo info) async {
+    if (!mounted) return;
+
+    // If Home is not active, never start autoplay (and pause if needed).
+    if (!PostCard._audioEnabled) {
+      if (_isPlaying && PostCard._currentAudioUrl == widget.url) {
+        try {
+          await PostCard._sharedAudioPlayer.pause();
+        } catch (_) {}
+      }
+      return;
+    }
+
+    final isVisible = info.visibleFraction > 0.6;
+
+    if (isVisible) {
+      try {
+        if (PostCard._currentAudioUrl != widget.url) {
+          await PostCard._sharedAudioPlayer.stop();
+          PostCard._currentAudioUrl = widget.url;
+        }
+        final playbackUrl = await _resolveAudioPlaybackUrl(widget.url);
+        AppUtils.log('Playing post audio. exp=${_getUnixExpFromDeezerUrl(playbackUrl)} trackId=${_maybeTrackIdFromDuration(widget.deezerTrackId)}');
+        await PostCard._sharedAudioPlayer.play(UrlSource(playbackUrl));
+        if (mounted) {
+          setState(() {
+            _isPlaying = true;
+          });
+        }
+      } catch (e) {
+        final trackId = _maybeTrackIdFromDuration(widget.deezerTrackId) ?? _extractDeezerTrackId(widget.url);
+        AppUtils.log('Error auto-playing post audio: $e. trackId=$trackId');
+
+        // Retry once with a freshly generated preview URL.
+        if (trackId != null) {
+          try {
+            final freshPreviewUrl = await DeezerApi.previewUrlForTrackId(trackId);
+            if (freshPreviewUrl != null && freshPreviewUrl.isNotEmpty) {
+              AppUtils.log('Retrying Deezer preview play. exp=${_getUnixExpFromDeezerUrl(freshPreviewUrl)}');
+              await PostCard._sharedAudioPlayer.play(UrlSource(freshPreviewUrl));
+              if (mounted) {
+                setState(() => _isPlaying = true);
+              }
+            }
+          } catch (_) {}
+        }
+      }
+    } else {
+      if (_isPlaying && PostCard._currentAudioUrl == widget.url) {
+        try {
+          await PostCard._sharedAudioPlayer.pause();
+        } catch (_) {}
+        if (mounted) {
+          setState(() {
+            _isPlaying = false;
+          });
+        }
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Tiny widget whose only job is to react to visibility changes
+    return VisibilityDetector(
+      key: ValueKey('post-audio-${widget.postId}'),
+      onVisibilityChanged: _handleVisibilityChanged,
+      child: const SizedBox(
+        height: 1,
+        width: double.infinity,
       ),
     );
   }

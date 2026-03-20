@@ -23,6 +23,9 @@ _$PostDataImpl _$$PostDataImplFromJson(Map<String, dynamic> json) =>
           const [],
       fileType: json['fileType'] as String?,
       duration: (json['duration'] as num?)?.toInt(),
+      audio: json['audio'] == null
+          ? null
+          : PostAudio.fromJson(json['audio'] as Map<String, dynamic>),
       options: json['options'] == null
           ? const []
           : const OptionFieldConverter().fromJson(json['options']),
@@ -56,6 +59,7 @@ Map<String, dynamic> _$$PostDataImplToJson(_$PostDataImpl instance) =>
       'files': instance.files,
       'fileType': instance.fileType,
       'duration': instance.duration,
+      'audio': instance.audio,
       'options': const OptionFieldConverter().toJson(instance.options),
       'votes': const VoteFieldConverter().toJson(instance.votes),
       'createdAt': instance.createdAt,
@@ -70,6 +74,20 @@ Map<String, dynamic> _$$PostDataImplToJson(_$PostDataImpl instance) =>
       'savedAt': instance.savedAt,
       'likes': instance.likes,
       'comments': instance.comments,
+    };
+
+_$PostAudioImpl _$$PostAudioImplFromJson(Map<String, dynamic> json) =>
+    _$PostAudioImpl(
+      file: json['file'] as String?,
+      title: json['title'] as String?,
+      duration: (json['duration'] as num?)?.toInt(),
+    );
+
+Map<String, dynamic> _$$PostAudioImplToJson(_$PostAudioImpl instance) =>
+    <String, dynamic>{
+      'file': instance.file,
+      'title': instance.title,
+      'duration': instance.duration,
     };
 
 _$OptionImpl _$$OptionImplFromJson(Map<String, dynamic> json) => _$OptionImpl(

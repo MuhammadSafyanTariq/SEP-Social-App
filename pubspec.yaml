@@ -35,6 +35,10 @@ dependencies:
   video_player: ^2.9.2
   visibility_detector: ^0.4.0+2
 
+  # Meta (Facebook App Events) tracking
+  facebook_app_events: ^0.26.0
+  app_tracking_transparency: ^2.0.6+1
+
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
@@ -166,6 +170,9 @@ dependencies:
   rflutter_alert: ^2.0.7
   rxdart: ^0.28.0
 
+  flutter_svga: ^0.0.13
+  ffmpeg_kit_flutter_new: ^4.1.0
+
 #  flutter_unity_widget: ^2022.2.1
 
 #  flutter_video_info: ^1.3.2
@@ -211,6 +218,7 @@ flutter:
     - assets/images/
     - assets/icons/
     - assets/videos/
+    - assets/filter_images/
     - assets/car_race/images/
     - assets/car_race/images/game/
     - assets/car_race/audio/
